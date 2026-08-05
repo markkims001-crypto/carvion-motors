@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+
+    <!-- HEADER -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2>
+                Customer Inquiries
+            </h2>
+
+            <p class="text-muted">
+                Manage buyer messages and seller communication.
+            </p>
+
+        </div>
+
+
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="btn btn-dark">
+
+            Back Dashboard
+
+        </a>
+
+
+    </div>
+
+
+
+
+
+    <!-- INQUIRIES TABLE -->
+
+
+    <div class="card shadow">
+
+
+        <div class="card-body">
+
+
+            {% if inquiries %}
+
+
+            <div class="table-responsive">
+
+
+                <table class="table table-hover align-middle">
+
+
+                    <thead class="table-dark">
+
+
+                        <tr>
+
+                            <th>
+                                ID
+                            </th>
+
+
+                            <th>
+                                Vehicle
+                            </th>
+
+
+                            <th>
+                                Buyer
+                            </th>
+
+
+                            <th>
+                                Seller
+                            </th>
+
+
+                            <th>
+                                Status
+                            </th>
+
+
+                            <th>
+                                Date
+                            </th>
+
+
+                            <th>
+                                Actions
+                            </th>
+
+
+                        </tr>
+
+
+                    </thead>
+
+
+
+                    <tbody>
+
+
+                    {% for inquiry in inquiries %}
+
+
+                        <tr>
+
+
+                            <td>
+                                #{{ inquiry.id }}
+                            </td>
+
+
+
+                            <td>
+
+
+                                {% if inquiry.car %}
+
+
+                                <strong>
+                                    {{ inquiry.car.brand }}
+                                    {{ inquiry.car.model }}
+                                </strong>
+
+
+                                <br>
+
+
+                                <small>
+                                    KSh {{ "{:,}".format(inquiry.car.price) }}
+                                </small>
+
+
+                                {% else %}
+
+                                Vehicle deleted
+
+                                {% endif %}
+
+
+                            </td>
+
+
+
+
+
+                            <td>
+
+
+                                {% if inquiry.buyer %}
+
+
+                                    {{ inquiry.buyer.name }}
+
+                                    <br>
+
+                                    <small>
+                                        {{ inquiry.buyer.email }}
+                                    </small>
+
+
+                                {% else %}
+
+                                    Unknown Buyer
+
+                                {% endif %}
+
+
+
+                            </td>
+
+
+
+
+
+                            <td>
+
+
+                                {% if inquiry.seller %}
+
+
+                                    {{ inquiry.seller.name }}
+
+
+                                {% else %}
+
+
+                                    Unknown Seller
+
+
+                                {% endif %}
+
+
+                            </td>
+
+
+
+
+
+                            <td>
+
+
+                                {% if inquiry.status == "New" %}
+
+
+                                    <span class="badge bg-warning">
+
+                                        New
+
+                                    </span>
+
+
+
+                                {% elif inquiry.status == "Replied" %}
+
+
+
+                                    <span class="badge bg-success">
+
+                                        Replied
+
+                                    </span>
+
+
+
+                                {% else %}
+
+
+
+                                    <span class="badge bg-secondary">
+
+                                        {{ inquiry.status }}
+
+                                    </span>
+
+
+
+                                {% endif %}
+
+
+                            </td>
+
+
+
+
+
+                            <td>
+
+                                {{ inquiry.created_at.strftime('%d %b %Y') }}
+
+                            </td>
+
+
+
+
+
+                            <td>
+
+
+                                <a href="{{ url_for(
+                                    'admin.inquiry_details',
+                                    inquiry_id=inquiry.id
+                                ) }}"
+                                   class="btn btn-primary btn-sm">
+
+
+                                    View
+
+
+                                </a>
+
+
+
+
+
+                                <a href="{{ url_for(
+                                    'admin.delete_inquiry',
+                                    inquiry_id=inquiry.id
+                                ) }}"
+                                   class="btn btn-danger btn-sm"
+                                   onclick="return confirm(
+                                   'Delete this inquiry?'
+                                   );">
+
+
+                                    Delete
+
+
+                                </a>
+
+
+
+                            </td>
+
+
+                        </tr>
+
+
+
+                    {% endfor %}
+
+
+                    </tbody>
+
+
+                </table>
+
+
+            </div>
+
+
+
+            {% else %}
+
+
+
+                <div class="alert alert-info text-center">
+
+                    No inquiries available.
+
+                </div>
+
+
+
+            {% endif %}
+
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+</div>
+
+
+{% endblock %}

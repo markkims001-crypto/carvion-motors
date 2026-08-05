@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-4">
+
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <h2>
+            My Vehicle Inquiries
+        </h2>
+
+        <a href="{{ url_for('cars.all_cars') }}"
+           class="btn btn-secondary">
+
+            Browse Cars
+
+        </a>
+
+    </div>
+
+
+
+    {% if inquiries %}
+
+
+        {% for inquiry in inquiries %}
+
+
+        <div class="card shadow-sm mb-4">
+
+
+            <div class="card-header d-flex justify-content-between">
+
+
+                <h5 class="mb-0">
+
+                    {{ inquiry.car.brand }}
+                    {{ inquiry.car.model }}
+
+                </h5>
+
+
+
+                {% if inquiry.status == "Open" %}
+
+                    <span class="badge bg-warning text-dark">
+                        Open
+                    </span>
+
+
+                {% elif inquiry.status == "Closed" %}
+
+                    <span class="badge bg-success">
+                        Closed
+                    </span>
+
+
+                {% else %}
+
+                    <span class="badge bg-secondary">
+                        {{ inquiry.status }}
+                    </span>
+
+
+                {% endif %}
+
+
+
+            </div>
+
+
+
+
+            <div class="card-body">
+
+
+                <div class="row">
+
+
+                    <div class="col-md-6">
+
+
+                        <p>
+
+                            <strong>Vehicle:</strong>
+
+                            {{ inquiry.car.brand }}
+                            {{ inquiry.car.model }}
+
+                        </p>
+
+
+
+                        <p>
+
+                            <strong>Year:</strong>
+
+                            {{ inquiry.car.year }}
+
+                        </p>
+
+
+
+                        <p>
+
+                            <strong>Price:</strong>
+
+                            KSh {{ "{:,.0f}".format(inquiry.car.price) }}
+
+                        </p>
+
+
+
+                        <p>
+
+                            <strong>Location:</strong>
+
+                            {{ inquiry.car.location }}
+
+                        </p>
+
+
+                    </div>
+
+
+
+
+
+                    <div class="col-md-6">
+
+
+                        <p>
+
+                            <strong>Seller:</strong>
+
+                            {{ inquiry.seller.name }}
+
+                        </p>
+
+
+
+                        <p>
+
+                            <strong>Submitted:</strong>
+
+                            {{ inquiry.created_at.strftime("%d %B %Y") }}
+
+                        </p>
+
+
+
+                        <p>
+
+                            <strong>Messages:</strong>
+
+                            {{ inquiry.messages|length }}
+
+                        </p>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                <hr>
+
+
+
+                {% if inquiry.messages %}
+
+
+                <h6>
+                    Latest Message
+                </h6>
+
+
+                <div class="alert alert-light">
+
+
+                    {{ inquiry.messages[-1].message }}
+
+
+                </div>
+
+
+                {% else %}
+
+
+                <div class="alert alert-info">
+
+                    No messages yet.
+
+                </div>
+
+
+                {% endif %}
+
+
+
+
+
+                <a href="{{ url_for(
+                    'cars.buyer_chat',
+                    inquiry_id=inquiry.id
+                ) }}"
+                class="btn btn-primary">
+
+
+                    Open Chat
+
+
+                </a>
+
+
+
+            </div>
+
+
+        </div>
+
+
+        {% endfor %}
+
+
+
+    {% else %}
+
+
+
+        <div class="alert alert-info text-center">
+
+
+            <h5>
+                No inquiries found
+            </h5>
+
+
+            <p>
+                You have not requested information about any vehicle yet.
+            </p>
+
+
+
+            <a href="{{ url_for('cars.all_cars') }}"
+               class="btn btn-primary">
+
+                View Available Cars
+
+            </a>
+
+
+
+        </div>
+
+
+
+    {% endif %}
+
+
+
+</div>
+
+
+{% endblock %}

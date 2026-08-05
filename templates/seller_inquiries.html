@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+<h1>
+Buyer Inquiries
+</h1>
+
+
+{% if inquiries %}
+
+<table width="100%" border="1">
+
+<tr>
+
+<th>Car</th>
+<th>Buyer</th>
+<th>Phone</th>
+<th>Email</th>
+<th>Message</th>
+<th>Status</th>
+
+</tr>
+
+
+
+{% for inquiry in inquiries %}
+
+<tr>
+
+<td>
+
+{{ inquiry.car.brand }}
+{{ inquiry.car.model }}
+
+</td>
+
+
+<td>
+
+{{ inquiry.name }}
+
+</td>
+
+
+<td>
+
+{{ inquiry.phone }}
+
+</td>
+
+
+<td>
+
+{{ inquiry.email }}
+
+</td>
+
+
+<td>
+
+{{ inquiry.message }}
+
+</td>
+
+
+<td>
+
+{{ inquiry.status }}
+
+</td>
+
+
+</tr>
+
+
+{% endfor %}
+
+
+</table>
+
+
+{% else %}
+
+<p>
+No inquiries yet.
+</p>
+
+{% endif %}
+
+
+{% endblock %}

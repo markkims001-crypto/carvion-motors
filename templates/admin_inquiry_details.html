@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2>
+        Inquiry #{{ inquiry.id }}
+    </h2>
+
+
+    <!-- Vehicle Information -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            Vehicle Details
+        </div>
+
+
+        <div class="card-body">
+
+            <h5>
+                {{ inquiry.car.brand }}
+                {{ inquiry.car.model }}
+                {{ inquiry.car.year }}
+            </h5>
+
+
+            <p>
+                Price:
+                KSh {{ "{:,.0f}".format(inquiry.car.price) }}
+            </p>
+
+
+            <p>
+                Location:
+                {{ inquiry.car.location }}
+            </p>
+
+
+            <p>
+                Status:
+                <span class="badge bg-info">
+                    {{ inquiry.status }}
+                </span>
+            </p>
+
+        </div>
+
+    </div>
+
+
+
+
+    <!-- Conversation -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+
+            Conversation
+
+        </div>
+
+
+
+        <div class="card-body">
+
+
+            {% if messages %}
+
+
+                {% for message in messages %}
+
+
+                <div class="mb-3">
+
+
+                    {% if message.sender.role == "admin" %}
+
+
+                    <div class="text-end">
+
+                        <div class="alert alert-primary d-inline-block">
+
+                            <strong>
+                                Carvion Admin
+                            </strong>
+
+                            <br>
+
+                            {{ message.message }}
+
+                            <br>
+
+                            <small>
+                                {{ message.created_at }}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    {% else %}
+
+
+                    <div>
+
+                        <div class="alert alert-secondary d-inline-block">
+
+
+                            <strong>
+                                Buyer
+                            </strong>
+
+
+                            <br>
+
+
+                            {{ message.message }}
+
+
+                            <br>
+
+
+                            <small>
+                                {{ message.created_at }}
+                            </small>
+
+
+                        </div>
+
+
+                    </div>
+
+
+                    {% endif %}
+
+
+
+                </div>
+
+
+                {% endfor %}
+
+
+
+            {% else %}
+
+
+                <p class="text-muted">
+                    No messages yet.
+                </p>
+
+
+            {% endif %}
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <!-- Reply -->
+
+    <div class="card mb-4">
+
+
+        <div class="card-header">
+
+            Reply to Buyer
+
+        </div>
+
+
+        <div class="card-body">
+
+
+            <form method="POST"
+                  action="{{ url_for(
+                    'admin.reply_inquiry',
+                    inquiry_id=inquiry.id
+                  ) }}">
+
+
+
+                <div class="mb-3">
+
+
+                    <textarea
+                        name="message"
+                        class="form-control"
+                        rows="4"
+                        placeholder="Type your reply..."
+                        required></textarea>
+
+
+                </div>
+
+
+
+                <button
+                    type="submit"
+                    class="btn btn-primary">
+
+                    Send Reply
+
+                </button>
+
+
+
+            </form>
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+
+    <!-- Actions -->
+
+    <div>
+
+
+        <form method="POST"
+              action="{{ url_for(
+                'admin.resolve_inquiry',
+                inquiry_id=inquiry.id
+              ) }}"
+              class="d-inline">
+
+
+            <button
+                class="btn btn-success">
+
+                Mark Resolved
+
+            </button>
+
+
+        </form>
+
+
+
+
+
+        <form method="POST"
+              action="{{ url_for(
+                'admin.delete_inquiry',
+                inquiry_id=inquiry.id
+              ) }}"
+              class="d-inline">
+
+
+            <button
+                class="btn btn-danger"
+                onclick="return confirm(
+                'Delete this inquiry?'
+                )">
+
+                Delete
+
+            </button>
+
+
+        </form>
+
+
+
+    </div>
+
+
+</div>
+
+
+{% endblock %}

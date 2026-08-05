@@ -1,0 +1,510 @@
+```html
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- HEADER -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+
+            <h2 class="fw-bold">
+                Carvion Motors Admin Dashboard
+            </h2>
+
+            <p class="text-muted">
+                Monitor the marketplace and manage daily operations.
+            </p>
+
+        </div>
+
+        <div>
+
+            <a href="{{ url_for('admin.users') }}"
+               class="btn btn-dark">
+
+                Manage Users
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- STATISTICS -->
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-lg-3">
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-muted">
+                        Total Users
+                    </h6>
+
+                    <h2>
+                        {{ stats.total_users }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg-3">
+
+            <div class="card shadow-sm border-0">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-muted">
+                        Total Vehicles
+                    </h6>
+
+                    <h2>
+                        {{ stats.total_cars }}
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg-3">
+
+            <div class="card shadow-sm border-0 border-warning">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-warning">
+                        Pending Approval
+                    </h6>
+
+                    <h2 class="text-warning">
+
+                        {{ stats.pending_cars }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg-3">
+
+            <div class="card shadow-sm border-0 border-primary">
+
+                <div class="card-body text-center">
+
+                    <h6 class="text-primary">
+                        Buyer Inquiries
+                    </h6>
+
+                    <h2 class="text-primary">
+
+                        {{ stats.total_inquiries }}
+
+                    </h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <div class="row">
+
+        <!-- LEFT COLUMN -->
+
+        <div class="col-lg-8">
+
+            <!-- NOTIFICATIONS -->
+
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header bg-danger text-white">
+
+                    <h5 class="mb-0">
+
+                        🔔 Notification Center
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% if notifications %}
+
+                        {% for note in notifications %}
+
+                        <div class="border-start border-4 border-danger ps-3 mb-3">
+
+                            <strong>{{ note.title }}</strong>
+
+                            <br>
+
+                            <small>
+
+                                {{ note.message }}
+
+                            </small>
+
+                            <br>
+
+                            <small class="text-muted">
+
+                                {{ note.created_at.strftime("%d %b %Y %H:%M") }}
+
+                            </small>
+
+                        </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p class="text-muted">
+
+                            No new notifications.
+
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+
+            <!-- PENDING VEHICLES -->
+
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header bg-warning">
+
+                    <h5 class="mb-0">
+
+                        Pending Vehicle Approval
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% if pending_cars %}
+
+                    <table class="table table-hover">
+
+                        <thead>
+
+                        <tr>
+
+                            <th>Vehicle</th>
+
+                            <th>Seller</th>
+
+                            <th>Submitted</th>
+
+                            <th>Action</th>
+
+                        </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                        {% for car in pending_cars %}
+
+                        <tr>
+
+                            <td>
+
+                                {{ car.brand }}
+                                {{ car.model }}
+
+                            </td>
+
+                            <td>
+
+                                {{ car.seller.name }}
+
+                            </td>
+
+                            <td>
+
+                                {{ car.created_at.strftime("%d %b %Y") }}
+
+                            </td>
+
+                            <td>
+
+                                <a href="{{ url_for('admin.review_car', car_id=car.id) }}"
+                                   class="btn btn-sm btn-primary">
+
+                                    Review
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                    {% else %}
+
+                    <p class="text-success">
+
+                        ✔ No vehicles waiting approval.
+
+                    </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+
+            <!-- RECENT ACTIVITY -->
+
+            <div class="card shadow-sm">
+
+                <div class="card-header">
+
+                    <h5>
+
+                        Recent Activity
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% if recent_activity %}
+
+                        <ul class="list-group list-group-flush">
+
+                        {% for activity in recent_activity %}
+
+                            <li class="list-group-item">
+
+                                {{ activity.message }}
+
+                                <br>
+
+                                <small class="text-muted">
+
+                                    {{ activity.created_at.strftime("%d %b %Y %H:%M") }}
+
+                                </small>
+
+                            </li>
+
+                        {% endfor %}
+
+                        </ul>
+
+                    {% else %}
+
+                        <p>
+
+                            No recent activity.
+
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- RIGHT COLUMN -->
+
+        <div class="col-lg-4">
+
+            <!-- QUICK ACTIONS -->
+
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header">
+
+                    <h5>
+
+                        Quick Actions
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body d-grid gap-2">
+
+                    <a href="{{ url_for('admin.pending_cars') }}"
+                       class="btn btn-warning">
+
+                        Approve Vehicles
+
+                    </a>
+
+                    <a href="{{ url_for('admin.users') }}"
+                       class="btn btn-dark">
+
+                        Manage Users
+
+                    </a>
+
+                    <a href="{{ url_for('admin.inquiries') }}"
+                       class="btn btn-success">
+
+                        Buyer Inquiries
+
+                    </a>
+
+                    <a href="{{ url_for('admin.cars') }}"
+                       class="btn btn-primary">
+
+                        Manage Vehicles
+
+                    </a>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- NEW USERS -->
+
+            <div class="card shadow-sm mb-4">
+
+                <div class="card-header">
+
+                    <h5>
+
+                        New Users
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% if recent_users %}
+
+                        {% for user in recent_users %}
+
+                            <div class="mb-3">
+
+                                <strong>
+
+                                    {{ user.name }}
+
+                                </strong>
+
+                                <br>
+
+                                <small>
+
+                                    {{ user.role|title }}
+
+                                </small>
+
+                            </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                        <p>
+
+                            No recent users.
+
+                        </p>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+
+            <!-- SEARCH -->
+
+            <div class="card shadow-sm">
+
+                <div class="card-header">
+
+                    <h5>
+
+                        Global Search
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <form action="{{ url_for('admin.search_cars') }}"
+                          method="GET">
+
+                        <input type="text"
+                               class="form-control mb-2"
+                               name="q"
+                               placeholder="Registration, Seller, Buyer...">
+
+                        <button class="btn btn-primary w-100">
+
+                            Search
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
+```

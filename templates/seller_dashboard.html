@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-4">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold">Seller Dashboard</h2>
+            <p class="text-muted mb-0">
+                Manage your vehicle listings
+            </p>
+        </div>
+
+        <a href="{{ url_for('cars.add_car') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i>
+            Add Vehicle
+        </a>
+    </div>
+
+
+    <!-- Statistics -->
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 text-center">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Vehicles</h6>
+                    <h2 class="fw-bold">{{ stats.total }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-success text-white text-center">
+                <div class="card-body">
+                    <h6>Approved</h6>
+                    <h2 class="fw-bold">{{ stats.approved }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-warning text-dark text-center">
+                <div class="card-body">
+                    <h6>Pending</h6>
+                    <h2 class="fw-bold">{{ stats.pending }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 bg-danger text-white text-center">
+                <div class="card-body">
+                    <h6>Rejected</h6>
+                    <h2 class="fw-bold">{{ stats.rejected }}</h2>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- Vehicle Listings -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+
+            <h4 class="mb-0">
+                My Vehicle Listings
+            </h4>
+
+            <span class="badge bg-primary">
+                {{ cars|length }} Vehicles
+            </span>
+
+        </div>
+
+        <div class="card-body">
+
+            {% if cars %}
+
+            <div class="table-responsive">
+
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+
+                        <tr>
+
+                            <th>Vehicle</th>
+                            <th>Registration</th>
+                            <th>Location</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for car in cars %}
+
+                        <tr>
+
+                            <td>
+
+                                <strong>
+
+                                    {{ car.brand }}
+                                    {{ car.model }}
+
+                                </strong>
+
+                                <br>
+
+                                <small class="text-muted">
+
+                                    {{ car.year }}
+
+                                </small>
+
+                            </td>
+
+                            <td>
+
+                                {{ car.registration_number }}
+
+                            </td>
+
+                            <td>
+
+                                {{ car.location }}
+
+                            </td>
+
+                            <td>
+
+                                <strong>
+
+                                    KSh {{ "{:,.0f}".format(car.price) }}
+
+                                </strong>
+
+                            </td>
+
+                            <td>
+
+                                {% if car.status == "Approved" %}
+
+                                    <span class="badge bg-success">
+                                        Approved
+                                    </span>
+
+                                {% elif car.status == "Pending" %}
+
+                                    <span class="badge bg-warning text-dark">
+                                        Pending
+                                    </span>
+
+                                {% elif car.status == "Rejected" %}
+
+                                    <span class="badge bg-danger">
+                                        Rejected
+                                    </span>
+
+                                {% else %}
+
+                                    <span class="badge bg-secondary">
+                                        {{ car.status }}
+                                    </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a href="{{ url_for('cars.car_details', car_id=car.id) }}"
+                                   class="btn btn-outline-secondary btn-sm">
+
+                                    View
+
+                                </a>
+
+                                <a href="{{ url_for('cars.edit_car', car_id=car.id) }}"
+                                   class="btn btn-primary btn-sm">
+
+                                    Edit
+
+                                </a>
+
+                                <form method="POST"
+                                      action="{{ url_for('cars.delete_car', car_id=car.id) }}"
+                                      class="d-inline">
+
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm('Delete this vehicle permanently?')">
+
+                                        Delete
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="text-center py-5">
+
+                <h5>No vehicles listed yet.</h5>
+
+                <p class="text-muted">
+                    Start selling by adding your first vehicle.
+                </p>
+
+                <a href="{{ url_for('cars.add_car') }}"
+                   class="btn btn-success">
+
+                    Add Vehicle
+
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

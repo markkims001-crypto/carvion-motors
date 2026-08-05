@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+
+<h2>
+    Review Vehicle Listing
+</h2>
+
+
+<div class="card mb-4">
+
+<div class="card-body">
+
+
+<h3>
+{{ car.brand }}
+{{ car.model }}
+{{ car.year }}
+</h3>
+
+
+<p>
+Seller:
+{{ car.seller.name }}
+</p>
+
+
+<p>
+Phone:
+{{ car.seller.phone }}
+</p>
+
+
+<p>
+Price:
+KSh {{ "{:,.0f}".format(car.price) }}
+</p>
+
+
+<p>
+Location:
+{{ car.location }}
+</p>
+
+
+<p>
+Fuel:
+{{ car.fuel }}
+</p>
+
+
+<p>
+Transmission:
+{{ car.transmission }}
+</p>
+
+
+<p>
+Mileage:
+{{ car.mileage }} km
+</p>
+
+
+<p>
+Condition:
+{{ car.condition }}
+</p>
+
+
+<p>
+Description:
+{{ car.description }}
+</p>
+
+
+<h5>
+Status:
+{{ car.status }}
+</h5>
+
+
+</div>
+
+</div>
+
+
+
+<h3>
+Vehicle Images
+</h3>
+
+
+<div class="row">
+
+
+{% for image in car.images %}
+
+
+<div class="col-md-4 mb-3">
+
+
+<div class="card">
+
+
+<img src="{{ url_for(
+'static',
+filename=image.filename
+)}}"
+class="card-img-top"
+height="250">
+
+
+<div class="card-body text-center">
+
+{{ image.image_type }}
+
+</div>
+
+
+</div>
+
+
+</div>
+
+
+{% endfor %}
+
+
+</div>
+
+
+
+<hr>
+
+
+<div class="mt-4">
+
+
+<form method="POST"
+action="{{ url_for(
+'admin.approve_car',
+car_id=car.id
+)}}"
+style="display:inline;">
+
+
+<button class="btn btn-success btn-lg">
+
+Approve Vehicle
+
+</button>
+
+
+</form>
+
+
+
+<form method="POST"
+action="{{ url_for(
+'admin.reject_car',
+car_id=car.id
+)}}"
+style="display:inline;">
+
+
+<button class="btn btn-danger btn-lg">
+
+Reject Vehicle
+
+</button>
+
+
+</form>
+
+
+<a href="{{ url_for(
+'admin.cars'
+)}}"
+class="btn btn-secondary btn-lg">
+
+Back
+
+</a>
+
+
+</div>
+
+
+
+</div>
+
+
+{% endblock %}

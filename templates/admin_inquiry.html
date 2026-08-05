@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">
+        Customer Inquiries
+    </h2>
+
+
+    {% if inquiries %}
+
+    <div class="table-responsive">
+
+        <table class="table table-bordered table-striped">
+
+            <thead class="table-dark">
+
+                <tr>
+                    <th>#</th>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Vehicle</th>
+                    <th>Message</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+            {% for inquiry in inquiries %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+
+                    <td>
+                        {% if inquiry.user %}
+                            {{ inquiry.user.name }}
+                        {% else %}
+                            Unknown User
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+                        {% if inquiry.user %}
+                            {{ inquiry.user.email }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+                        {% if inquiry.user %}
+                            {{ inquiry.user.phone or "N/A" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+
+                        {% if inquiry.car %}
+
+                            {{ inquiry.car.brand }}
+                            {{ inquiry.car.model }}
+                            ({{ inquiry.car.year }})
+
+                        {% else %}
+
+                            Vehicle Removed
+
+                        {% endif %}
+
+                    </td>
+
+
+
+                    <td>
+
+                        {{ inquiry.message }}
+
+                    </td>
+
+
+
+                    <td>
+
+                        {% if inquiry.created_at %}
+
+                            {{ inquiry.created_at.strftime('%d %b %Y') }}
+
+                        {% else %}
+
+                            N/A
+
+                        {% endif %}
+
+                    </td>
+
+
+
+                    <td>
+
+                        {% if inquiry.status == "pending" %}
+
+                            <span class="badge bg-warning">
+                                Pending
+                            </span>
+
+                        {% elif inquiry.status == "approved" %}
+
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+
+                        {% elif inquiry.status == "rejected" %}
+
+                            <span class="badge bg-danger">
+                                Rejected
+                            </span>
+
+                        {% else %}
+
+                            <span class="badge bg-secondary">
+                                {{ inquiry.status }}
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+
+                </tr>
+
+
+            {% endfor %}
+
+            </tbody>
+
+
+        </table>
+
+    </div>
+
+
+    {% else %}
+
+        <div class="alert alert-info">
+
+            No inquiries available.
+
+        </div>
+
+
+    {% endif %}
+
+
+</div>
+
+
+{% endblock %}
+{% extends "base.html" %}
+
+
+{% block content %}
+
+
+<h2>
+Inquiry Details
+</h2>
+
+
+<div class="card p-4">
+
+
+<p>
+<b>Buyer:</b>
+{{ inquiry.buyer_name }}
+</p>
+
+
+<p>
+<b>Email:</b>
+{{ inquiry.buyer_email }}
+</p>
+
+
+<p>
+<b>Phone:</b>
+{{ inquiry.buyer_phone }}
+</p>
+
+
+<p>
+<b>Message:</b>
+</p>
+
+
+<p>
+{{ inquiry.message }}
+</p>
+
+
+<hr>
+
+
+<form method="POST">
+
+
+<label>
+Reply to buyer
+</label>
+
+
+<textarea
+name="reply"
+class="form-control"
+rows="5"
+required></textarea>
+
+
+<br>
+
+
+<button class="btn btn-success">
+
+Send Reply
+
+</button>
+
+
+</form>
+
+
+</div>
+
+
+{% endblock %}

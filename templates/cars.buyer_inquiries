@@ -1,0 +1,15 @@
+@cars.route("/buyer/inquiries")
+@login_required
+def buyer_inquiries():
+
+    inquiries = Inquiry.query.filter_by(
+        buyer_id=current_user.id
+    ).order_by(
+        Inquiry.created_at.desc()
+    ).all()
+
+
+    return render_template(
+        "buyer_inquiries.html",
+        inquiries=inquiries
+    )

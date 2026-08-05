@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+
+<h2>
+    My Vehicle Messages
+</h2>
+
+
+
+{% if inquiries %}
+
+
+{% for inquiry in inquiries %}
+
+
+<div class="card mb-4 shadow-sm">
+
+
+    <!-- Vehicle Information -->
+
+    <div class="card-header bg-dark text-white">
+
+        {{ inquiry.car.brand }}
+        {{ inquiry.car.model }}
+        ({{ inquiry.car.year }})
+
+    </div>
+
+
+
+    <div class="card-body">
+
+
+        <p>
+            <strong>Price:</strong>
+
+            KSh {{ "{:,.0f}".format(
+                inquiry.car.price
+            ) }}
+
+        </p>
+
+
+
+        <p>
+            <strong>Location:</strong>
+
+            {{ inquiry.car.location }}
+
+        </p>
+
+
+
+        <p>
+
+            <strong>Status:</strong>
+
+
+            {% if inquiry.status == "Open" %}
+
+            <span class="badge bg-warning">
+                Waiting for admin response
+            </span>
+
+
+            {% elif inquiry.status == "Replied" %}
+
+            <span class="badge bg-success">
+                Admin replied
+            </span>
+
+
+            {% elif inquiry.status == "Resolved" %}
+
+            <span class="badge bg-secondary">
+                Completed
+            </span>
+
+
+            {% endif %}
+
+
+        </p>
+
+
+
+        <hr>
+
+
+
+        <h5>
+            Conversation
+        </h5>
+
+
+
+        {% if inquiry.messages %}
+
+
+            {% for message in inquiry.messages %}
+
+
+
+                {% if message.sender_role == "admin" %}
+
+
+
+                <div class="text-start">
+
+
+                    <div class="alert alert-primary">
+
+
+                        <strong>
+                            Carvion Motors
+                        </strong>
+
+
+                        <br>
+
+
+                        {{ message.message }}
+
+
+
+                        <br>
+
+
+                        <small>
+                            {{ message.created_at }}
+                        </small>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                {% elif message.sender_id == current_user.id %}
+
+
+
+                <div class="text-end">
+
+
+                    <div class="alert alert-secondary">
+
+
+                        <strong>
+                            You
+                        </strong>
+
+
+                        <br>
+
+
+                        {{ message.message }}
+
+
+
+                        <br>
+
+
+                        <small>
+                            {{ message.created_at }}
+                        </small>
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                {% endif %}
+
+
+
+            {% endfor %}
+
+
+
+        {% else %}
+
+
+        <p class="text-muted">
+            No messages yet.
+        </p>
+
+
+        {% endif %}
+
+
+
+
+
+        <!-- SEND MESSAGE -->
+
+
+        <form method="POST"
+        action="{{ url_for(
+            'messages.send_message',
+            inquiry_id=inquiry.id
+        ) }}">
+
+
+
+            <div class="mb-3">
+
+
+                <textarea
+                name="message"
+                class="form-control"
+                rows="3"
+                placeholder="Send message to Carvion Motors..."
+                required></textarea>
+
+
+            </div>
+
+
+
+            <button class="btn btn-primary">
+
+                Send Message
+
+            </button>
+
+
+
+        </form>
+
+
+
+
+    </div>
+
+
+</div>
+
+
+{% endfor %}
+
+
+
+{% else %}
+
+
+<div class="alert alert-info">
+
+    You have no vehicle inquiries.
+
+</div>
+
+
+{% endif %}
+
+
+
+</div>
+
+
+{% endblock %}

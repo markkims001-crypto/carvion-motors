@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container py-4">
+
+
+    <!-- ========================= -->
+    <!-- TITLE -->
+    <!-- ========================= -->
+
+    <div class="mb-4">
+
+        <h2>
+            {{ car.brand }} {{ car.model }}
+        </h2>
+
+        <h3 class="text-success">
+
+            KSh {{ "{:,.0f}".format(car.price) }}
+
+        </h3>
+
+    </div>
+
+
+
+    <!-- ========================= -->
+    <!-- IMAGE GALLERY -->
+    <!-- ========================= -->
+
+
+    <div class="row">
+
+
+        {% for image in car.images %}
+
+
+        <div class="col-md-4 mb-4">
+
+
+            <div class="card shadow-sm h-100">
+
+
+                <img
+
+                    src="{{ url_for('static', filename=image.filename) }}"
+
+                    class="card-img-top"
+
+                    style="height:250px;object-fit:cover;"
+
+                    alt="{{ image.image_type }}"
+
+                >
+
+
+
+                <div class="card-body">
+
+
+                    <h6 class="text-center">
+
+                        {{ image.image_type }}
+
+                    </h6>
+
+
+
+                    {% if current_user.is_authenticated %}
+
+
+                        {% if current_user.id == car.seller_id or current_user.role == "admin" %}
+
+
+                        <form
+
+                            method="POST"
+
+                            action="{{ url_for('cars.delete_image', image_id=image.id) }}">
+
+
+
+                            <button
+
+                                class="btn btn-danger btn-sm w-100"
+
+                                onclick="return confirm('Delete this image?')">
+
+
+                                Delete Image
+
+
+                            </button>
+
+
+
+                        </form>
+
+
+                        {% endif %}
+
+
+                    {% endif %}
+
+
+
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+        {% endfor %}
+
+
+
+    </div>
+
+
+
+
+
+    <!-- ========================= -->
+    <!-- VEHICLE DETAILS -->
+    <!-- ========================= -->
+
+
+    <div class="card shadow-sm mt-4">
+
+
+        <div class="card-header">
+
+            <h4>
+                Vehicle Details
+            </h4>
+
+
+        </div>
+
+
+
+        <div class="card-body">
+
+
+            <div class="row">
+
+
+
+                <div class="col-md-6">
+
+
+                    <p>
+                        <strong>Brand:</strong>
+                        {{ car.brand }}
+                    </p>
+
+
+                    <p>
+                        <strong>Model:</strong>
+                        {{ car.model }}
+                    </p>
+
+
+                    <p>
+                        <strong>Year:</strong>
+                        {{ car.year }}
+                    </p>
+
+
+                    <p>
+                        <strong>Mileage:</strong>
+                        {{ "{:,}".format(car.mileage) }} km
+                    </p>
+
+
+                    <p>
+                        <strong>Fuel:</strong>
+                        {{ car.fuel }}
+                    </p>
+
+
+                </div>
+
+
+
+
+                <div class="col-md-6">
+
+
+                    <p>
+                        <strong>Transmission:</strong>
+                        {{ car.transmission }}
+                    </p>
+
+
+                    <p>
+                        <strong>Engine:</strong>
+                        {{ car.engine }}
+                    </p>
+
+
+                    <p>
+                        <strong>Color:</strong>
+                        {{ car.color }}
+                    </p>
+
+
+                    <p>
+                        <strong>Location:</strong>
+                        {{ car.location }}
+                    </p>
+
+
+
+                    <p>
+
+                        <strong>Status:</strong>
+
+
+                        {% if car.status == "Approved" %}
+
+                            <span class="badge bg-success">
+                                Approved
+                            </span>
+
+
+                        {% elif car.status == "Pending" %}
+
+                            <span class="badge bg-warning text-dark">
+                                Pending
+                            </span>
+
+
+                        {% else %}
+
+                            <span class="badge bg-danger">
+                                Rejected
+                            </span>
+
+
+                        {% endif %}
+
+
+                    </p>
+
+
+
+                </div>
+
+
+
+            </div>
+
+
+
+
+            <hr>
+
+
+
+            <h5>
+                Description
+            </h5>
+
+
+
+            <p>
+
+                {{ car.description }}
+
+            </p>
+
+
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+
+    <!-- ========================= -->
+    <!-- CARVION CONTACT -->
+    <!-- ========================= -->
+
+
+    {% if current_user.is_authenticated %}
+
+
+
+        {% if current_user.id != car.seller_id %}
+
+
+
+        <div class="card shadow-sm mt-4">
+
+
+
+            <div class="card-header">
+
+
+                <h4>
+                    Request Vehicle Information
+                </h4>
+
+
+            </div>
+
+
+
+
+            <div class="card-body">
+
+
+                <p>
+
+                    Interested in this vehicle?
+
+                    Send your request to Carvion Motors.
+
+                    Our team will assist you with availability,
+                    viewing and purchase information.
+
+                </p>
+
+
+
+
+
+                <form
+
+                    method="POST"
+
+                    action="{{ url_for('cars.contact_seller', car_id=car.id) }}">
+
+
+
+
+
+                    <div class="mb-3">
+
+
+                        <label class="form-label">
+
+                            Message
+
+                        </label>
+
+
+
+
+                        <textarea
+
+                            name="message"
+
+                            rows="5"
+
+                            class="form-control"
+
+                            placeholder="I am interested in this vehicle. Please provide more information."
+
+                            required></textarea>
+
+
+
+                    </div>
+
+
+
+
+
+                    <button
+
+                        type="submit"
+
+                        class="btn btn-primary">
+
+
+                        Send Request
+
+
+                    </button>
+
+
+
+
+                </form>
+
+
+
+            </div>
+
+
+
+        </div>
+
+
+
+        {% endif %}
+
+
+
+
+    {% else %}
+
+
+
+
+    <div class="alert alert-info mt-4">
+
+
+        Please
+
+        <a href="{{ url_for('auth.login') }}">
+
+            login
+
+        </a>
+
+        to request vehicle information.
+
+
+
+    </div>
+
+
+
+
+    {% endif %}
+
+
+
+
+
+</div>
+
+
+{% endblock %}
+<p>
+    <strong>Registration:</strong>
+    {{ car.registration_number }}
+</p>
+<a 
+href="https://wa.me/254XXXXXXXXX?text=Hello%20Carvion%20Motors,%20I%20am%20interested%20in%20{{ car.brand }}%20{{ car.model }}"
+target="_blank"
+class="btn btn-success">
+
+<i class="bi bi-whatsapp"></i>
+Chat on WhatsApp
+
+</a>

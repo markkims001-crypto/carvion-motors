@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <title>Admin Users - Carvion Motors</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+
+<body>
+
+
+<h1>Carvion Motors - User Management</h1>
+
+
+<a href="{{ url_for('admin.dashboard') }}">
+    ← Back to Dashboard
+</a>
+
+
+<hr>
+
+
+
+<h2>Registered Users</h2>
+
+
+
+<table border="1" cellpadding="10">
+
+
+<tr>
+
+    <th>ID</th>
+
+    <th>Name</th>
+
+    <th>Email</th>
+
+    <th>Phone</th>
+
+    <th>Role</th>
+
+    <th>Change Role</th>
+
+    <th>Delete</th>
+
+</tr>
+
+
+
+{% for user in users %}
+
+
+<tr>
+
+
+<td>
+    {{ user.id }}
+</td>
+
+
+<td>
+    {{ user.name }}
+</td>
+
+
+<td>
+    {{ user.email }}
+</td>
+
+
+<td>
+    {{ user.phone }}
+</td>
+
+
+
+<td>
+
+    {% if user.role %}
+
+        {{ user.role }}
+
+    {% else %}
+
+        User
+
+    {% endif %}
+
+
+</td>
+
+
+
+<td>
+
+
+<form method="POST"
+action="{{ url_for('admin.change_role', user_id=user.id, role='seller') }}">
+
+
+<button type="submit">
+
+Make Seller
+
+</button>
+
+
+</form>
+
+
+
+<form method="POST"
+action="{{ url_for('admin.change_role', user_id=user.id, role='admin') }}">
+
+
+<button type="submit">
+
+Make Admin
+
+</button>
+
+
+</form>
+
+
+
+<form method="POST"
+action="{{ url_for('admin.change_role', user_id=user.id, role='buyer') }}">
+
+
+<button type="submit">
+
+Make Buyer
+
+</button>
+
+
+</form>
+
+
+
+</td>
+
+
+
+
+<td>
+
+
+<form method="POST"
+action="{{ url_for('admin.delete_user', user_id=user.id) }}">
+
+
+<button type="submit"
+onclick="return confirm('Delete this user?')">
+
+Delete
+
+</button>
+
+
+</form>
+
+
+</td>
+
+
+
+</tr>
+
+
+
+{% endfor %}
+
+
+
+</table>
+
+
+
+</body>
+
+</html>

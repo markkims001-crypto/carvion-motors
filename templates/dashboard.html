@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+
+<div class="container">
+
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+
+<h1>
+Dashboard
+</h1>
+
+
+
+</div>
+
+
+
+
+
+<!-- ===================== -->
+<!-- SELLER DASHBOARD -->
+<!-- ===================== -->
+
+
+{% if current_user.role.lower() == "seller" %}
+
+
+<div class="card shadow p-4 mb-4">
+
+
+<h3>
+Seller Panel
+</h3>
+
+
+<p>
+Manage your vehicle listings from here.
+</p>
+
+
+
+<a class="btn btn-primary"
+href="{{ url_for('cars.seller_dashboard') }}">
+
+My Cars
+
+</a>
+
+
+
+<a class="btn btn-success"
+href="{{ url_for('cars.add_car') }}">
+
+Add Vehicle
+
+</a>
+
+
+
+</div>
+
+
+
+{% endif %}
+
+
+
+
+
+
+
+<!-- ===================== -->
+<!-- BUYER DASHBOARD -->
+<!-- ===================== -->
+
+
+{% if current_user.role.lower() == "buyer" %}
+
+
+
+<div class="card shadow p-4 mb-4">
+
+
+<h3>
+Buyer Panel
+</h3>
+
+
+<p>
+View vehicles and manage your inquiries.
+</p>
+
+
+
+<a class="btn btn-info"
+href="{{ url_for('cars.buyer_inquiries') }}">
+
+My Inquiries
+
+</a>
+
+
+
+<a class="btn btn-primary"
+href="{{ url_for('home') }}">
+
+Browse Cars
+
+</a>
+
+
+
+</div>
+
+
+
+{% endif %}
+
+
+
+
+
+
+
+<!-- ===================== -->
+<!-- ADMIN DASHBOARD -->
+<!-- ===================== -->
+
+
+{% if current_user.role.lower() == "admin" %}
+
+
+
+<div class="card shadow p-4 mb-4">
+
+
+<h3>
+Admin Panel
+</h3>
+
+
+<p>
+Manage Carvion Motors platform.
+</p>
+
+
+
+<a class="btn btn-dark"
+href="{{ url_for('admin.dashboard') }}">
+
+Admin Dashboard
+
+</a>
+
+
+
+<a class="btn btn-warning"
+href="{{ url_for('admin.inquiries') }}">
+
+Manage Inquiries
+
+</a>
+
+
+
+<a class="btn btn-primary"
+href="{{ url_for('admin.cars') }}">
+
+Manage Cars
+
+</a>
+
+
+
+</div>
+
+
+
+{% endif %}
+
+
+
+
+
+
+</div>
+
+
+{% endblock %}

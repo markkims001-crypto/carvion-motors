@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Carvion Motors | Kenya's Trusted Car Marketplace</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial,Helvetica,sans-serif;
+        }
+
+        body{
+            background:#f7f7f7;
+            color:#222;
+            line-height:1.6;
+        }
+
+        img{
+            max-width:100%;
+        }
+
+        /*=========================
+                NAVBAR
+        =========================*/
+
+        nav{
+
+            background:#111;
+
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+
+            padding:18px 60px;
+
+            position:sticky;
+            top:0;
+            z-index:999;
+
+        }
+
+        .logo{
+
+            display:flex;
+            align-items:center;
+            gap:12px;
+
+            color:#f5b400;
+
+            font-size:30px;
+            font-weight:bold;
+
+        }
+
+        .logo img{
+
+            width:60px;
+            height:60px;
+            object-fit:contain;
+
+        }
+
+        nav ul{
+
+            list-style:none;
+            display:flex;
+            gap:25px;
+
+        }
+
+        nav a{
+
+            color:white;
+            text-decoration:none;
+            transition:.3s;
+
+        }
+
+        nav a:hover{
+
+            color:#f5b400;
+
+        }
+
+        /*=========================
+                HERO
+        =========================*/
+
+        .hero{
+
+            min-height:650px;
+
+            background:
+            linear-gradient(
+            rgba(0,0,0,.65),
+            rgba(0,0,0,.65)
+            ),
+            url("/static/images/car-banner.jpg");
+
+            background-size:cover;
+            background-position:center;
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            text-align:center;
+
+            color:white;
+
+            padding:40px;
+
+        }
+
+        .hero-content{
+
+            max-width:900px;
+
+        }
+
+        .hero-logo{
+
+            width:130px;
+            margin-bottom:25px;
+
+            filter:drop-shadow(0 5px 15px rgba(0,0,0,.5));
+
+        }
+
+        .hero h1{
+
+            font-size:60px;
+            margin-bottom:20px;
+
+        }
+
+        .hero p{
+
+            font-size:23px;
+            margin-bottom:35px;
+
+        }
+
+        .btn{
+
+            display:inline-block;
+
+            padding:16px 35px;
+
+            border-radius:8px;
+
+            text-decoration:none;
+
+            font-weight:bold;
+
+            margin:10px;
+
+            transition:.3s;
+
+        }
+
+        .primary{
+
+            background:#f5b400;
+            color:#111;
+
+        }
+
+        .primary:hover{
+
+            background:#ffca28;
+
+        }
+
+        .secondary{
+
+            border:2px solid white;
+            color:white;
+
+        }
+
+        .secondary:hover{
+
+            background:white;
+            color:#111;
+
+        }
+
+        .trust{
+
+            margin-top:35px;
+            font-size:18px;
+            color:#ddd;
+
+        }
+
+        /*=========================
+              SECTION
+        =========================*/
+
+        .section{
+
+            padding:70px 60px;
+
+        }
+
+        .title{
+
+            text-align:center;
+            font-size:40px;
+
+            margin-bottom:45px;
+
+        }
+
+        .cards{
+
+            display:grid;
+
+            grid-template-columns:
+            repeat(auto-fit,minmax(280px,1fr));
+
+            gap:30px;
+
+        }
+
+        .card{
+
+            background:white;
+
+            border-radius:15px;
+
+            padding:35px;
+
+            text-align:center;
+
+            transition:.3s;
+
+            box-shadow:
+            0 8px 20px rgba(0,0,0,.08);
+
+        }
+
+        .card:hover{
+
+            transform:translateY(-8px);
+
+        }
+
+        .card h2{
+
+            margin-bottom:15px;
+
+            color:#111;
+
+        }
+
+        .card p{
+
+            color:#555;
+
+        }
+
+        /*=========================
+            SELL SECTION
+        =========================*/
+
+        .sell{
+
+            text-align:center;
+
+        }
+
+        .sell p{
+
+            font-size:22px;
+
+            margin-bottom:30px;
+
+        }
+
+        /*=========================
+                FOOTER
+        =========================*/
+
+        footer{
+
+            background:#111;
+            color:white;
+
+            padding:40px;
+
+            text-align:center;
+
+        }
+
+        footer h3{
+
+            color:#f5b400;
+            margin-bottom:10px;
+
+        }
+
+        footer p{
+
+            margin:5px 0;
+
+        }
+
+        /*=========================
+             MOBILE
+        =========================*/
+
+        @media(max-width:768px){
+
+            nav{
+
+                flex-direction:column;
+
+                padding:20px;
+
+            }
+
+            nav ul{
+
+                flex-wrap:wrap;
+                justify-content:center;
+
+                margin-top:20px;
+
+            }
+
+            .logo{
+
+                font-size:24px;
+
+            }
+
+            .logo img{
+
+                width:50px;
+                height:50px;
+
+            }
+
+            .hero{
+
+                min-height:520px;
+
+            }
+
+            .hero h1{
+
+                font-size:40px;
+
+            }
+
+            .hero p{
+
+                font-size:18px;
+
+            }
+
+            .hero-logo{
+
+                width:95px;
+
+            }
+
+            .section{
+
+                padding:45px 20px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<nav>
+
+    <div class="logo">
+
+        <img src="/static/images/logo.png" alt="Carvion Logo">
+
+        <span>Carvion Motors</span>
+
+    </div>
+
+    <ul>
+
+        <li><a href="/">Home</a></li>
+
+        <li><a href="/cars">Cars</a></li>
+
+        <li><a href="/add_car">Sell Car</a></li>
+
+        <li><a href="/login">Login</a></li>
+
+    </ul>
+
+</nav>
+
+<section class="hero">
+
+    <div class="hero-content">
+
+        <img
+            src="/static/images/logo.png"
+            class="hero-logo"
+            alt="Carvion Logo"
+        >
+
+        <h1>
+            Buy. Sell. Drive with Confidence.
+        </h1>
+
+        <p>
+
+            Kenya's trusted online marketplace connecting buyers with verified vehicle sellers.
+
+        </p>
+
+        <a href="/cars" class="btn primary">
+
+            Browse Cars
+
+        </a>
+
+        <a href="/add_car" class="btn secondary">
+
+            Sell Your Car
+
+        </a>
+
+        <div class="trust">
+
+            ✔ Verified Listings &nbsp;&nbsp;
+            ✔ Secure Inquiries &nbsp;&nbsp;
+            ✔ Nationwide Marketplace
+
+        </div>
+
+    </div>
+
+</section>
+
+<section class="section">
+
+    <h1 class="title">
+
+        Why Choose Carvion Motors?
+
+    </h1>
+
+    <div class="cards">
+
+        <div class="card">
+
+            <h2>🚗 Thousands of Vehicles</h2>
+
+            <p>
+
+                Browse quality vehicles from trusted sellers throughout Kenya.
+
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <h2>📸 Detailed Listings</h2>
+
+            <p>
+
+                Every vehicle includes multiple photos, specifications and complete details.
+
+            </p>
+
+        </div>
+
+        <div class="card">
+
+            <h2>💬 Secure Communication</h2>
+
+            <p>
+
+                Buyers communicate safely with Carvion Admin before completing transactions.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+<section class="section sell">
+
+    <h1 class="title">
+
+        Ready to Sell?
+
+    </h1>
+
+    <p>
+
+        Reach thousands of serious buyers by listing your vehicle today.
+
+    </p>
+
+    <a href="/add_car" class="btn primary">
+
+        List Your Vehicle
+
+    </a>
+
+</section>
+
+<footer>
+
+    <h3>Carvion Motors</h3>
+
+    <p>Kenya's Trusted Online Car Marketplace</p>
+
+    <p>Email: info@carvion.co.ke</p>
+
+    <p>Phone: +254 XXX XXX XXX</p>
+
+    <p>
+
+        © 2026 Carvion Motors. All Rights Reserved.
+
+    </p>
+
+</footer>
+
+</body>
+
+</html>

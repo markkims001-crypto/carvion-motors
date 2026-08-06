@@ -2,7 +2,7 @@ from flask_migrate import Migrate
 import importlib.util
 import os
 
-from flask import Flask, app, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 
@@ -63,37 +63,38 @@ def create_app():
     app.register_blueprint(admin)
     app.register_blueprint(messages)
 
+    # ==========================
+    # DATABASE
+    # ==========================
 
-   # ==========================
-# DATABASE
-# ==========================
+    with app.app_context():
 
-with app.app_context():
+        db.create_all()
 
-    db.create_all()
+        admin_user = User.query.filter_by(
+            email="admin@carvion.com"
+        ).first()
 
-    admin_user = User.query.filter_by(
-        email="admin@carvion.com"
-    ).first()
+        if admin_user is None:
 
-    if admin_user is None:
+            admin_user = User(
+                name="Carvion Admin",
+                email="admin@carvion.com",
+                phone="0700000000",
+                password=generate_password_hash("admin123"),
+                role="admin"
+            )
 
-        admin_user = User(
-            name="Carvion Admin",
-            email="admin@carvion.com",
-            phone="0700000000",
-            password=generate_password_hash("admin123"),
-            role="admin"
-        )
+            db.session.add(admin_user)
+            db.session.commit()
 
-        db.session.add(admin_user)
-        db.session.commit()
+            print("=" * 40)
+            print("DEFAULT ADMIN CREATED")
+            print("Email: admin@carvion.com")
+            print("Password: admin123")
+            print("=" * 40)
 
-        print("=" * 40)
-        print("DEFAULT ADMIN CREATED")
-        print("Email: admin@carvion.com")
-        print("Password: admin123")
-        print("=" * 40)
+
     # ==========================
     # HOME
     # ==========================
@@ -102,7 +103,7 @@ with app.app_context():
     def home():
 
         cars = (
-           Car.query
+            Car.query
             .filter_by(status="Approved")
             .order_by(Car.created_at.desc())
             .limit(6)
@@ -113,6 +114,8 @@ with app.app_context():
             "index.html",
             cars=cars
         )
+
+
     # ==========================
     # DASHBOARD
     # ==========================
@@ -122,12 +125,15 @@ with app.app_context():
     def dashboard():
         return render_template("dashboard.html")
 
+
     # ==========================
     # ABOUT
     # ==========================
+
     @app.route("/about")
     def about():
         return render_template("about.html")
+
 
     # ==========================
     # CONTACT
@@ -137,15 +143,18 @@ with app.app_context():
     def contact():
         return render_template("contact.html")
 
+
     # ==========================
-# BUYER PAGE
-# ==========================
+    # BUYER PAGE
+    # ==========================
 
     @app.route("/buyer")
     @login_required
     def buyer_home():
+
         if current_user.role.lower() != "buyer":
             return redirect(url_for("home"))
+
         inquiries = (
             Inquiry.query
             .filter_by(buyer_id=current_user.id)
@@ -157,15 +166,6 @@ with app.app_context():
             "buyer_home.html",
             inquiries=inquiries
         )
-        return app
 
 
-app = create_app()
-
-
-if __name__ == "__main__":
-
-    app.run(
-        debug=True
-    )
-    
+    return app

@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 
 from config import Config
 from extensions import db, login_manager
-from models import Inquiry
+from models import Car, Inquiry
 
 
 def import_module_by_path(module_name):
@@ -65,33 +65,23 @@ def create_app():
 
 
     # Database
-    with app.app_context():
+from werkzeug.security import generate_password_hash
+from models import User
 
-        db.create_all()
+admin = User.query.filter_by(email="admin@carvion.com").first()
 
-        admin = User.query.filter_by(
-            email="admin@carvion.com"
-        ).first()
+if not admin:
+    admin = User(
+        name="Administrator",
+        email="admin@carvion.com",
+        password=generate_password_hash("Admin@123"),
+        role="admin"
+    )
 
-        if admin is None:
+    db.session.add(admin)
+    db.session.commit()
 
-            admin = User(
-                name="Carvion Admin",
-                email="admin@carvion.com",
-                phone="0700000000",
-                password=generate_password_hash("admin123"),
-                role="admin"
-            )
-
-            db.session.add(admin)
-            db.session.commit()
-
-            print("=" * 40)
-            print("DEFAULT ADMIN CREATED")
-            print("Email: admin@carvion.com")
-            print("Password: admin123")
-            print("=" * 40)
-
+    print("Default admin created.")
     # ==========================
     # HOME
     # ==========================
@@ -100,7 +90,7 @@ def create_app():
     def home():
 
         cars = (
-            Car.query
+           Car.query
             .filter_by(status="Approved")
             .order_by(Car.created_at.desc())
             .limit(6)
@@ -155,7 +145,7 @@ def create_app():
             "buyer_home.html",
             inquiries=inquiries
         )
-    return app
+        return app
 
 
 app = create_app()

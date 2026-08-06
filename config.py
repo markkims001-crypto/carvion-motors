@@ -7,27 +7,28 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    # -------------------------
+    # ==========================================
     # Flask Configuration
-    # -------------------------
+    # ==========================================
     SECRET_KEY = os.environ.get(
         "SECRET_KEY",
         "carvion_secret_key_2026"
     )
 
-    # -------------------------
+    # ==========================================
     # Database Configuration
-    # -------------------------
+    # ==========================================
+    # Uses PostgreSQL if DATABASE_URL is defined.
+    # Otherwise falls back to SQLite.
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        "sqlite:///" + os.path.join(BASE_DIR, "carvion.db")
-    )
+        "DATABASE_URL"
+    ) or "sqlite:///" + os.path.join(BASE_DIR, "carvion.db")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # -------------------------
+    # ==========================================
     # Upload Configuration
-    # -------------------------
+    # ==========================================
     UPLOAD_FOLDER = os.path.join(
         BASE_DIR,
         "static",
@@ -36,9 +37,9 @@ class Config:
 
     MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25 MB
 
-    # -------------------------
-    # Allowed Image Types
-    # -------------------------
+    # ==========================================
+    # Allowed Image Extensions
+    # ==========================================
     ALLOWED_EXTENSIONS = {
         "jpg",
         "jpeg",
@@ -46,13 +47,13 @@ class Config:
         "webp"
     }
 
-    # -------------------------
+    # ==========================================
     # Car Image Requirements
-    # -------------------------
+    # ==========================================
     REQUIRED_CAR_IMAGES = 7
 
-    # -------------------------
+    # ==========================================
     # Session Configuration
-    # -------------------------
+    # ==========================================
     SESSION_PERMANENT = False
     SESSION_TYPE = "filesystem"

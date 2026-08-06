@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 
 from config import Config
 from extensions import db, login_manager
-from models import Car, Inquiry
+from models import User, Car, Inquiry
 
 
 def import_module_by_path(module_name):
@@ -64,24 +64,36 @@ def create_app():
     app.register_blueprint(messages)
 
 
-    # Database
-from werkzeug.security import generate_password_hash
-from models import User
+   # ==========================
+# DATABASE
+# ==========================
 
-admin = User.query.filter_by(email="admin@carvion.com").first()
+with app.app_context():
 
-if not admin:
-    admin = User(
-        name="Administrator",
-        email="admin@carvion.com",
-        password=generate_password_hash("Admin@123"),
-        role="admin"
-    )
+    db.create_all()
 
-    db.session.add(admin)
-    db.session.commit()
+    admin_user = User.query.filter_by(
+        email="admin@carvion.com"
+    ).first()
 
-    print("Default admin created.")
+    if admin_user is None:
+
+        admin_user = User(
+            name="Carvion Admin",
+            email="admin@carvion.com",
+            phone="0700000000",
+            password=generate_password_hash("admin123"),
+            role="admin"
+        )
+
+        db.session.add(admin_user)
+        db.session.commit()
+
+        print("=" * 40)
+        print("DEFAULT ADMIN CREATED")
+        print("Email: admin@carvion.com")
+        print("Password: admin123")
+        print("=" * 40)
     # ==========================
     # HOME
     # ==========================

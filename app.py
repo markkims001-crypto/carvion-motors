@@ -59,6 +59,7 @@ def create_app():
     app.register_blueprint(cars)
     app.register_blueprint(admin)
     app.register_blueprint(messages)
+    from routes.chat import chat
 
 
     # ==========================================

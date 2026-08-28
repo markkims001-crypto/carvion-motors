@@ -630,10 +630,27 @@ def delete_image(image_id):
 @login_required
 def send_inquiry(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
+
+    # Only buyers can start buyer-seller inquiries
+
+    if current_user.role != "buyer":
+
+        flash(
+            "Only buyers can contact sellers about vehicles.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "cars.car_details",
+                car_id=car.id
+            )
+        )
+
+
+    # Seller cannot contact themselves
 
     if current_user.id == car.seller_id:
 
@@ -650,35 +667,95 @@ def send_inquiry(car_id):
         )
 
 
-    inquiry = Inquiry(
+    message_text = request.form.get(
+        "message",
+        ""
+    ).strip()
 
-        buyer_id=current_user.id,
 
-        seller_id=car.seller_id,
+    if not message_text:
+
+        flash(
+            "Message cannot be empty.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "cars.car_details",
+                car_id=car.id
+            )
+        )
+
+
+    # Find existing conversation
+
+    inquiry = Inquiry.query.filter_by(
 
         car_id=car.id,
 
-        message=request.form["message"],
+        buyer_id=current_user.id,
 
-        status="New"
+        seller_id=car.seller_id
+
+    ).first()
+
+
+    # Create inquiry if it doesn't exist
+
+    if not inquiry:
+
+        inquiry = Inquiry(
+
+            car_id=car.id,
+
+            buyer_id=current_user.id,
+
+            seller_id=car.seller_id,
+
+            status="Open"
+        )
+
+        db.session.add(inquiry)
+
+        db.session.commit()
+
+
+    # Create the actual message
+
+    message = InquiryMessage(
+
+        inquiry_id=inquiry.id,
+
+        sender_id=current_user.id,
+
+        receiver_id=car.seller_id,
+
+        sender_role=current_user.role,
+
+        message=message_text,
+
+        is_read=False
     )
 
 
-    db.session.add(inquiry)
+    db.session.add(message)
+
+    inquiry.status = "Open"
 
     db.session.commit()
 
 
     flash(
-        "Inquiry sent to seller.",
+        "Message sent to the seller.",
         "success"
     )
 
 
     return redirect(
         url_for(
-            "cars.car_details",
-            car_id=car.id
+            "chat.inquiry_chat",
+            inquiry_id=inquiry.id
         )
     )
 
@@ -817,102 +894,4 @@ def contact_seller(car_id):
             "cars.car_details",
             car_id=car.id
         )
-    )
-# =====================================================
-# BUYER CHAT WITH ADMIN
-# =====================================================
-
-@cars.route("/buyer/chat", methods=["GET", "POST"])
-@login_required
-def buyer_chat():
-
-    if current_user.role != "buyer":
-
-        flash(
-            "Only buyers can access chat.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("cars.all_cars")
-        )
-
-
-    admin = User.query.filter_by(
-        role="admin"
-    ).first()
-
-
-    if not admin:
-
-        flash(
-            "Admin account not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("cars.all_cars")
-        )
-
-
-
-    if request.method == "POST":
-
-        message = request.form.get(
-            "message"
-        )
-
-
-        if message:
-
-
-            chat = InquiryMessage(
-
-                sender_id=current_user.id,
-
-                receiver_id=admin.id,
-
-                sender_role="buyer",
-
-                message=message
-
-            )
-
-
-            db.session.add(chat)
-
-            db.session.commit()
-
-
-            flash(
-                "Message sent.",
-                "success"
-            )
-
-
-            return redirect(
-                url_for("cars.buyer_chat")
-            )
-
-
-
-    messages = InquiryMessage.query.filter(
-
-        (
-            InquiryMessage.sender_id == current_user.id
-        )
-        |
-        (
-            InquiryMessage.receiver_id == current_user.id
-        )
-
-    ).order_by(
-        InquiryMessage.created_at.asc()
-    ).all()
-
-
-
-    return render_template(
-        "buyer_chat.html",
-        messages=messages
     )

@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+
+```
+<div>
+
+    <h1>
+        ⚖️ Compare Cars
+    </h1>
+
+    <p class="text-muted">
+        Compare up to 4 vehicles side by side.
+    </p>
+
+</div>
+
+
+<div class="d-flex gap-2">
+
+    <a
+        href="{{ url_for('cars.all_cars') }}"
+        class="btn btn-primary">
+
+        🚗 Add Cars
+
+    </a>
+
+
+    {% if cars %}
+
+    <form
+        method="POST"
+        action="{{ url_for('cars.clear_compare') }}">
+
+        <button
+            type="submit"
+            class="btn btn-outline-danger">
+
+            Clear All
+
+        </button>
+
+    </form>
+
+    {% endif %}
+
+</div>
+```
+
+</div>
+
+{% if cars %}
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-hover bg-white shadow-sm align-middle">
+
+<thead class="table-dark">
+
+<tr>
+
+```
+<th>
+    Specification
+</th>
+
+
+{% for car in cars %}
+
+<th class="text-center">
+
+    {{ car.brand }} {{ car.model }}
+
+</th>
+
+{% endfor %}
+```
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<!-- IMAGE -->
+
+<tr>
+
+```
+<th>
+    Vehicle
+</th>
+
+
+{% for car in cars %}
+
+<td class="text-center">
+
+    {% if car.images %}
+
+    <img
+        src="{{ url_for(
+            'static',
+            filename=car.images[0].filename
+        ) }}"
+        style="
+            width:100%;
+            max-width:230px;
+            height:150px;
+            object-fit:cover;
+            border-radius:10px;
+        "
+        alt="{{ car.brand }} {{ car.model }}">
+
+    {% else %}
+
+    No Image
+
+    {% endif %}
+
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- BRAND -->
+
+<tr>
+
+```
+<th>
+    Brand
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.brand }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- MODEL -->
+
+<tr>
+
+```
+<th>
+    Model
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.model }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- YEAR -->
+
+<tr>
+
+```
+<th>
+    Year
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.year }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- PRICE -->
+
+<tr>
+
+```
+<th>
+    Price
+</th>
+
+{% for car in cars %}
+
+<td class="text-success fw-bold">
+    KSh {{ "{:,.0f}".format(car.price) }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- MILEAGE -->
+
+<tr>
+
+```
+<th>
+    Mileage
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ "{:,}".format(car.mileage) }} km
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- FUEL -->
+
+<tr>
+
+```
+<th>
+    Fuel
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.fuel }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- TRANSMISSION -->
+
+<tr>
+
+```
+<th>
+    Transmission
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.transmission }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- ENGINE -->
+
+<tr>
+
+```
+<th>
+    Engine
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.engine or "N/A" }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- COLOR -->
+
+<tr>
+
+```
+<th>
+    Color
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.color or "N/A" }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- CONDITION -->
+
+<tr>
+
+```
+<th>
+    Condition
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.condition or "N/A" }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- LOCATION -->
+
+<tr>
+
+```
+<th>
+    Location
+</th>
+
+{% for car in cars %}
+
+<td>
+    📍 {{ car.location }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- SELLER -->
+
+<tr>
+
+```
+<th>
+    Seller
+</th>
+
+{% for car in cars %}
+
+<td>
+    {{ car.seller.name }}
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+<!-- ACTIONS -->
+
+<tr>
+
+```
+<th>
+    Actions
+</th>
+
+{% for car in cars %}
+
+<td class="text-center">
+
+    <a
+        href="{{ url_for(
+            'cars.car_details',
+            car_id=car.id
+        ) }}"
+        class="btn btn-primary btn-sm">
+
+        View Details
+
+    </a>
+
+
+    <form
+        method="POST"
+        action="{{ url_for(
+            'cars.remove_compare',
+            car_id=car.id
+        ) }}"
+        class="d-inline">
+
+        <button
+            type="submit"
+            class="btn btn-outline-danger btn-sm">
+
+            Remove
+
+        </button>
+
+    </form>
+
+</td>
+
+{% endfor %}
+```
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+{% else %}
+
+<div class="text-center py-5">
+
+```
+<div style="font-size:60px;">
+    ⚖️
+</div>
+
+<h3>
+    No cars selected
+</h3>
+
+<p class="text-muted">
+    Select cars from the Cars page to compare them.
+</p>
+
+<a
+    href="{{ url_for('cars.all_cars') }}"
+    class="btn btn-primary">
+
+    Browse Cars
+
+</a>
+```
+
+</div>
+
+{% endif %}
+
+{% endblock %}

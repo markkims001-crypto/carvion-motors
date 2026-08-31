@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+
+```
+<div>
+
+    <h1>
+        🔔 Notifications
+    </h1>
+
+    <p class="text-muted">
+        Stay updated with everything happening on Carvion Motors.
+    </p>
+
+</div>
+
+
+{% if unread_notifications > 0 %}
+
+<form
+    method="POST"
+    action="{{ url_for('cars.mark_all_notifications_read') }}">
+
+    <button
+        type="submit"
+        class="btn btn-outline-primary">
+
+        ✓ Mark All as Read
+
+    </button>
+
+</form>
+
+{% endif %}
+```
+
+</div>
+
+<!-- ===================================================== -->
+
+<!-- ACTIVITY SUMMARY -->
+
+<!-- ===================================================== -->
+
+<div class="row g-3 mb-4">
+
+```
+<!-- TOTAL -->
+
+<div class="col-md-3">
+
+    <div class="card shadow-sm h-100">
+
+        <div class="card-body">
+
+            <h6 class="text-muted">
+                🔔 Unread
+            </h6>
+
+            <h2>
+                {{ unread_notifications }}
+            </h2>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- FAVORITES -->
+
+<div class="col-md-3">
+
+    <div class="card shadow-sm h-100">
+
+        <div class="card-body">
+
+            <h6 class="text-muted">
+                ❤️ Favorites
+            </h6>
+
+            <h2>
+                {{ unread_favorites }}
+            </h2>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- COMPARE -->
+
+<div class="col-md-3">
+
+    <div class="card shadow-sm h-100">
+
+        <div class="card-body">
+
+            <h6 class="text-muted">
+                ⚖️ Compare
+            </h6>
+
+            <h2>
+                {{ unread_compares }}
+            </h2>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- INQUIRIES -->
+
+<div class="col-md-3">
+
+    <div class="card shadow-sm h-100">
+
+        <div class="card-body">
+
+            <h6 class="text-muted">
+                💬 Inquiries
+            </h6>
+
+            <h2>
+                {{ unread_inquiries }}
+            </h2>
+
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+<!-- ===================================================== -->
+
+<!-- NOTIFICATIONS -->
+
+<!-- ===================================================== -->
+
+{% if notifications %}
+
+<div class="card shadow-sm">
+
+```
+<div class="list-group list-group-flush">
+
+
+    {% for notification in notifications %}
+
+    <div
+        class="list-group-item
+        {% if not notification.is_read %}
+            bg-light
+        {% endif %}">
+
+
+        <div class="d-flex align-items-start gap-3">
+
+
+            <!-- ICON -->
+
+            <div
+                class="rounded-circle bg-dark text-white
+                       d-flex align-items-center justify-content-center"
+                style="
+                    width:45px;
+                    height:45px;
+                    min-width:45px;
+                    font-size:20px;
+                ">
+
+                {% if notification.notification_type == "favorite" %}
+
+                    ❤️
+
+                {% elif notification.notification_type == "compare" %}
+
+                    ⚖️
+
+                {% elif notification.notification_type == "inquiry" %}
+
+                    💬
+
+                {% elif notification.notification_type in [
+                    "vehicle",
+                    "approval"
+                ] %}
+
+                    🚗
+
+                {% elif notification.notification_type == "rejection" %}
+
+                    ⚠️
+
+                {% else %}
+
+                    🔔
+
+                {% endif %}
+
+            </div>
+
+
+            <!-- CONTENT -->
+
+            <div class="flex-grow-1">
+
+
+                <div class="d-flex flex-wrap align-items-center gap-2">
+
+                    <h5 class="mb-0">
+
+                        {{ notification.title }}
+
+                    </h5>
+
+
+                    {% if not notification.is_read %}
+
+                    <span class="badge bg-primary">
+
+                        New
+
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <p class="mb-1 mt-2">
+
+                    {{ notification.message }}
+
+                </p>
+
+
+                {% if notification.created_at %}
+
+                <small class="text-muted">
+
+                    {{ notification.created_at.strftime(
+                        '%d %b %Y, %H:%M'
+                    ) }}
+
+                </small>
+
+                {% endif %}
+
+
+                <!-- ACTION -->
+
+                {% if not notification.is_read %}
+
+                <div class="mt-2">
+
+                    <form
+                        method="POST"
+                        action="{{ url_for(
+                            'cars.mark_notification_read',
+                            notification_id=notification.id
+                        ) }}">
+
+                        <button
+                            type="submit"
+                            class="btn btn-sm btn-outline-primary">
+
+                            Mark as read
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+```
+
+</div>
+
+{% else %}
+
+<div class="text-center py-5">
+
+```
+<div style="font-size:65px;">
+    🔔
+</div>
+
+<h3>
+    You're all caught up
+</h3>
+
+<p class="text-muted">
+    There are no notifications to display.
+</p>
+
+<a
+    href="{{ url_for('cars.all_cars') }}"
+    class="btn btn-primary">
+
+    🚗 Browse Cars
+
+</a>
+```
+
+</div>
+
+{% endif %}
+
+{% endblock %}

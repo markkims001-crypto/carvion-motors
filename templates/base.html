@@ -1,438 +1,653 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-<link rel="icon"
-href="{{ url_for('static',
-filename='images/favicon.png') }}">
+
+    <!-- ===================================================== -->
+    <!-- FAVICON -->
+    <!-- ===================================================== -->
+
+    <link
+        rel="icon"
+        href="{{ url_for('static', filename='images/favicon.png') }}"
+    >
+
+
+    <!-- ===================================================== -->
+    <!-- META -->
+    <!-- ===================================================== -->
+
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
 
-    <title>
-        Carvion Motors
-    </title>
+    <!-- ===================================================== -->
+    <!-- TITLE -->
+    <!-- ===================================================== -->
+
+    <title>Carvion Motors</title>
 
 
-    <link 
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    rel="stylesheet">
+    <!-- ===================================================== -->
+    <!-- BOOTSTRAP -->
+    <!-- ===================================================== -->
 
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+
+    <!-- ===================================================== -->
+    <!-- CUSTOM CSS -->
+    <!-- ===================================================== -->
 
     <style>
 
         body {
-            background:#f5f5f5;
+            background: #f5f5f5;
         }
 
 
         .navbar-brand {
-
-            font-size:24px;
-            font-weight:bold;
-
+            font-size: 24px;
+            font-weight: bold;
         }
 
 
         .card {
-
-            border-radius:15px;
-
+            border-radius: 15px;
         }
 
 
+        .navbar-logo {
+            width: 80px;
+            height: auto;
+            display: block;
+        }
+
+
+        .nav-link {
+            margin-left: 5px;
+        }
+
+
+        /* ================================================= */
+        /* NAVBAR BADGES */
+        /* ================================================= */
+
+        .notification-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+
+            min-width: 20px;
+            height: 20px;
+
+            padding: 2px 6px;
+
+            margin-left: 5px;
+
+            border-radius: 50px;
+
+            background: #dc3545;
+            color: white;
+
+            font-size: 11px;
+            font-weight: bold;
+
+            vertical-align: middle;
+        }
+
+
+        /* ================================================= */
+        /* NOTIFICATION ICON */
+        /* ================================================= */
+
+        .nav-notification-icon {
+            font-size: 18px;
+        }
+
+
+        /* ================================================= */
+        /* NAVBAR HOVER */
+        /* ================================================= */
+
+        .navbar-dark .navbar-nav .nav-link:hover {
+            color: #ffffff;
+        }
+
+
+        /* ================================================= */
+        /* UNREAD NAVIGATION */
+        /* ================================================= */
+
+        .nav-unread {
+            font-weight: 600;
+        }
+
     </style>
 
-
 </head>
-
 
 
 <body>
 
 
+<!-- ===================================================== -->
+<!-- NAVBAR -->
+<!-- ===================================================== -->
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
 
+    <div class="container">
 
-<div class="container">
 
+        <!-- ================================================= -->
+        <!-- LOGO -->
+        <!-- ================================================= -->
 
+        <a href="{{ url_for('home') }}">
 
-<img src="{{ url_for('static', filename='images/logo.png') }}"
-     alt="Carvion Motors"
-     style="width:80px !important; height:auto !important;">
+            <img
+                src="{{ url_for('static', filename='images/logo.png') }}"
+                alt="Carvion Motors"
+                class="navbar-logo"
+            >
 
+        </a>
 
 
+        <!-- ================================================= -->
+        <!-- MOBILE MENU BUTTON -->
+        <!-- ================================================= -->
 
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarMenu"
+            aria-controls="navbarMenu"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+        >
 
-<button class="navbar-toggler"
-type="button"
-data-bs-toggle="collapse"
-data-bs-target="#navbarMenu">
+            <span class="navbar-toggler-icon"></span>
 
+        </button>
 
-<span class="navbar-toggler-icon"></span>
 
+        <!-- ================================================= -->
+        <!-- NAVIGATION -->
+        <!-- ================================================= -->
 
-</button>
+        <div
+            class="collapse navbar-collapse"
+            id="navbarMenu"
+        >
 
+            <ul class="navbar-nav ms-auto">
 
 
+                <!-- ================================================= -->
+                <!-- HOME -->
+                <!-- ================================================= -->
 
+                <li class="nav-item">
 
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('home') }}"
+                    >
+                        Home
+                    </a>
 
-<div class="collapse navbar-collapse"
-id="navbarMenu">
+                </li>
 
 
+                <!-- ================================================= -->
+                <!-- AVAILABLE CARS -->
+                <!-- ================================================= -->
 
-<ul class="navbar-nav ms-auto">
+                <li class="nav-item">
 
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('cars.all_cars') }}"
+                    >
+                        🚗 Cars
+                    </a>
 
+                </li>
 
 
+                {% if current_user.is_authenticated %}
 
-<!-- HOME -->
 
-<li class="nav-item">
+                <!-- ================================================= -->
+                <!-- FAVORITES -->
+                <!-- ================================================= -->
 
-<a class="nav-link"
-href="{{ url_for('home') }}">
+                <li class="nav-item">
 
-Home
+                    <a
+                        class="nav-link {% if unread_favorites > 0 %}nav-unread{% endif %}"
+                        href="{{ url_for('cars.favorites') }}"
+                    >
 
-</a>
+                        ❤️ Favorites
 
-</li>
+                        {% if unread_favorites > 0 %}
 
+                            <span class="notification-badge">
+                                {{ unread_favorites }}
+                            </span>
 
+                        {% endif %}
 
+                    </a>
 
+                </li>
 
 
-{% if current_user.is_authenticated %}
+                <!-- ================================================= -->
+                <!-- COMPARE -->
+                <!-- ================================================= -->
 
+                <li class="nav-item">
 
+                    <a
+                        class="nav-link {% if unread_compares > 0 %}nav-unread{% endif %}"
+                        href="{{ url_for('cars.compare') }}"
+                    >
 
+                        ⚖️ Compare
 
-<!-- ================= -->
-<!-- ADMIN MENU -->
-<!-- ================= -->
+                        {% if unread_compares > 0 %}
 
+                            <span class="notification-badge">
+                                {{ unread_compares }}
+                            </span>
 
-{% if current_user.role.lower() == "admin" %}
+                        {% endif %}
 
+                    </a>
 
+                </li>
 
-<li class="nav-item">
 
-<a class="nav-link"
-href="{{ url_for('admin.dashboard') }}">
+                <!-- ================================================= -->
+                <!-- NOTIFICATIONS -->
+                <!-- ================================================= -->
 
-Dashboard
+                <li class="nav-item">
 
-</a>
+                    <a
+                        class="nav-link {% if unread_notifications > 0 %}nav-unread{% endif %}"
+                        href="{{ url_for('cars.notifications') }}"
+                    >
 
-</li>
+                        <span class="nav-notification-icon">
+                            🔔
+                        </span>
 
+                        Notifications
 
+                        {% if unread_notifications > 0 %}
 
+                            <span class="notification-badge">
+                                {{ unread_notifications }}
+                            </span>
 
-<li class="nav-item">
+                        {% endif %}
 
-<a class="nav-link"
-href="{{ url_for('admin.inquiries') }}">
+                    </a>
 
-Inquiries
+                </li>
 
-</a>
 
-</li>
+                <!-- ================================================= -->
+                <!-- ADMIN MENU -->
+                <!-- ================================================= -->
 
+                {% if current_user.role.lower() == "admin" %}
 
 
-<li class="nav-item">
+                    <!-- ADMIN DASHBOARD -->
 
-<a class="nav-link"
-href="{{ url_for('admin.cars') }}">
+                    <li class="nav-item">
 
-Cars
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('admin.dashboard') }}"
+                        >
+                            Dashboard
+                        </a>
 
-</a>
+                    </li>
 
-</li>
 
+                    <!-- ADMIN INQUIRIES -->
 
+                    <li class="nav-item">
 
-{% endif %}
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('admin.inquiries') }}"
+                        >
+                            Inquiries
 
+                            {% if unread_inquiries > 0 %}
 
+                                <span class="notification-badge">
+                                    {{ unread_inquiries }}
+                                </span>
 
+                            {% endif %}
 
+                        </a>
 
+                    </li>
 
 
-<!-- ================= -->
-<!-- SELLER MENU -->
-<!-- ================= -->
+                    <!-- ADMIN CARS -->
 
+                    <li class="nav-item">
 
-{% if current_user.role.lower() == "seller" %}
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('admin.cars') }}"
+                        >
+                            Cars
+                        </a>
 
+                    </li>
 
 
+                    <!-- ADMIN MESSAGES -->
 
-<li class="nav-item">
+                    <li class="nav-item">
 
-<a class="nav-link"
-href="{{ url_for('cars.seller_dashboard') }}">
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('chat.admin_chats') }}"
+                        >
+                            Messages
+                        </a>
 
-Dashboard
+                    </li>
 
-</a>
 
-</li>
+                {% endif %}
 
 
+                <!-- ================================================= -->
+                <!-- SELLER MENU -->
+                <!-- ================================================= -->
 
+                {% if current_user.role.lower() == "seller" %}
 
 
-<li class="nav-item">
+                    <!-- SELLER DASHBOARD -->
 
-<a class="nav-link"
-href="{{ url_for('cars.add_car') }}">
+                    <li class="nav-item">
 
-Add Car
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('cars.seller_dashboard') }}"
+                        >
+                            Dashboard
+                        </a>
 
-</a>
+                    </li>
 
-</li>
 
+                    <!-- ADD CAR -->
 
+                    <li class="nav-item">
 
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('cars.add_car') }}"
+                        >
+                            Add Car
+                        </a>
 
+                    </li>
 
-<li class="nav-item">
 
-<a class="nav-link"
-href="{{ url_for('cars.my_cars') }}">
+                    <!-- MY CARS -->
 
-My Cars
+                    <li class="nav-item">
 
-</a>
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('cars.my_cars') }}"
+                        >
+                            My Cars
+                        </a>
 
-</li>
+                    </li>
 
 
+                    <!-- SELLER INQUIRIES -->
 
-{% endif %}
+                    <li class="nav-item">
 
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('cars.seller_inquiries') }}"
+                        >
 
+                            Inquiries
 
+                            {% if unread_inquiries > 0 %}
 
+                                <span class="notification-badge">
+                                    {{ unread_inquiries }}
+                                </span>
 
+                            {% endif %}
 
+                        </a>
 
+                    </li>
 
 
-<!-- ================= -->
-<!-- BUYER MENU -->
-<!-- ================= -->
+                    <!-- SELLER CHAT -->
 
+                    <li class="nav-item">
 
-{% if current_user.role.lower() == "buyer" %}
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('chat.admin_chat') }}"
+                        >
+                            Messages
+                        </a>
 
-<a href="{{ url_for('cars.buyer_chat') }}"
-class="dropdown-item">
+                    </li>
 
-Chat Admin
 
-</a>
+                {% endif %}
 
-<li class="nav-item">
 
-<a class="nav-link"
-href="{{ url_for('cars.buyer_inquiries') }}">
+                <!-- ================================================= -->
+                <!-- BUYER MENU -->
+                <!-- ================================================= -->
 
-My Inquiries
+                {% if current_user.role.lower() == "buyer" %}
 
-</a>
 
-</li>
+                    <!-- MY INQUIRIES -->
 
+                    <li class="nav-item">
 
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('cars.buyer_inquiries') }}"
+                        >
 
-{% endif %}
+                            My Inquiries
 
+                            {% if unread_inquiries > 0 %}
 
+                                <span class="notification-badge">
+                                    {{ unread_inquiries }}
+                                </span>
 
+                            {% endif %}
 
+                        </a>
 
+                    </li>
 
 
+                    <!-- BUYER CHAT -->
 
-<!-- LOGOUT -->
+                    <li class="nav-item">
 
+                        <a
+                            class="nav-link"
+                            href="{{ url_for('chat.admin_chat') }}"
+                        >
+                            Chat Admin
+                        </a>
 
-<li class="nav-item">
+                    </li>
 
-<a class="nav-link text-danger"
-href="{{ url_for('auth.logout') }}">
 
-Logout
+                {% endif %}
 
-</a>
 
-</li>
+                <!-- ================================================= -->
+                <!-- LOGOUT -->
+                <!-- ================================================= -->
 
+                <li class="nav-item">
 
+                    <a
+                        class="nav-link text-danger"
+                        href="{{ url_for('auth.logout') }}"
+                    >
+                        Logout
+                    </a>
 
+                </li>
 
-{% else %}
 
+                {% else %}
 
 
+                <!-- ================================================= -->
+                <!-- LOGIN -->
+                <!-- ================================================= -->
 
+                <li class="nav-item">
 
-<li class="nav-item">
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('auth.login') }}"
+                    >
+                        Login
+                    </a>
 
-<a class="nav-link"
-href="{{ url_for('auth.login') }}">
+                </li>
 
-Login
 
-</a>
+                <!-- ================================================= -->
+                <!-- REGISTER -->
+                <!-- ================================================= -->
 
-</li>
+                <li class="nav-item">
 
+                    <a
+                        class="nav-link"
+                        href="{{ url_for('auth.register') }}"
+                    >
+                        Register
+                    </a>
 
+                </li>
 
 
+                {% endif %}
 
-<li class="nav-item">
 
-<a class="nav-link"
-href="{{ url_for('auth.register') }}">
+            </ul>
 
-Register
+        </div>
 
-</a>
-
-</li>
-
-
-
-
-{% endif %}
-
-
-
-
-
-</ul>
-
-
-</div>
-
-
-</div>
-
+    </div>
 
 </nav>
 
 
-
-
-
-
+<!-- ===================================================== -->
 <!-- FLASH MESSAGES -->
-
+<!-- ===================================================== -->
 
 <div class="container mt-3">
 
+    {% with messages = get_flashed_messages(with_categories=true) %}
 
-{% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
 
+            {% for category, message in messages %}
 
-{% if messages %}
+                <div class="alert alert-{{ category }}">
 
+                    {{ message }}
 
+                </div>
 
-{% for category,message in messages %}
+            {% endfor %}
 
+        {% endif %}
 
-<div class="alert alert-{{ category }}">
-
-{{ message }}
-
-</div>
-
-
-
-{% endfor %}
-
-
-
-{% endif %}
-
-
-{% endwith %}
-
+    {% endwith %}
 
 </div>
 
 
-
-
-
-
-
-
+<!-- ===================================================== -->
 <!-- PAGE CONTENT -->
-
+<!-- ===================================================== -->
 
 <div class="container mt-4">
 
+    {% block content %}
 
-{% block content %}
-
-
-{% endblock %}
-
+    {% endblock %}
 
 </div>
 
 
-
-
-
-
-
+<!-- ===================================================== -->
+<!-- FOOTER -->
+<!-- ===================================================== -->
 
 <footer class="bg-dark text-white text-center mt-5 p-3">
 
-
-Carvion Motors © 2026
-
+    Carvion Motors © 2026
 
 </footer>
 
 
+<!-- ===================================================== -->
+<!-- BOOTSTRAP JAVASCRIPT -->
+<!-- ===================================================== -->
 
-
-
-
-
-<script 
-src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
 </script>
-
 
 
 </body>
 
-
 </html>
+```

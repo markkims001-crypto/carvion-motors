@@ -4,83 +4,111 @@
 
 <div class="container py-4">
 
+```
+<!-- HEADER -->
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-        <h2>
+    <div>
+
+        <h2 class="fw-bold mb-1">
             My Vehicle Inquiries
         </h2>
 
-        <a href="{{ url_for('cars.all_cars') }}"
-           class="btn btn-secondary">
-
-            Browse Cars
-
-        </a>
+        <p class="text-muted mb-0">
+            View your conversations with vehicle sellers
+        </p>
 
     </div>
 
+    <a href="{{ url_for('cars.all_cars') }}"
+       class="btn btn-secondary">
+
+        <i class="bi bi-car-front"></i>
+        Browse Cars
+
+    </a>
+
+</div>
 
 
-    {% if inquiries %}
+{% if inquiries %}
 
+    {% for inquiry in inquiries %}
 
-        {% for inquiry in inquiries %}
+    <div class="card shadow-sm border-0 mb-4">
 
+        <!-- CARD HEADER -->
 
-        <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
 
+            <div>
 
-            <div class="card-header d-flex justify-content-between">
+                <h5 class="mb-1">
 
+                    {% if inquiry.car %}
 
-                <h5 class="mb-0">
+                        {{ inquiry.car.brand }}
+                        {{ inquiry.car.model }}
 
-                    {{ inquiry.car.brand }}
-                    {{ inquiry.car.model }}
+                        {% if inquiry.car.year %}
+                            ({{ inquiry.car.year }})
+                        {% endif %}
+
+                    {% else %}
+
+                        Vehicle
+
+                    {% endif %}
 
                 </h5>
 
-
-
-                {% if inquiry.status == "Open" %}
-
-                    <span class="badge bg-warning text-dark">
-                        Open
-                    </span>
-
-
-                {% elif inquiry.status == "Closed" %}
-
-                    <span class="badge bg-success">
-                        Closed
-                    </span>
-
-
-                {% else %}
-
-                    <span class="badge bg-secondary">
-                        {{ inquiry.status }}
-                    </span>
-
-
-                {% endif %}
-
-
+                <small>
+                    Inquiry #{{ inquiry.id }}
+                </small>
 
             </div>
 
 
+            {% if inquiry.status == "Open" %}
+
+                <span class="badge bg-warning text-dark">
+                    Open
+                </span>
+
+            {% elif inquiry.status == "Closed" %}
+
+                <span class="badge bg-success">
+                    Closed
+                </span>
+
+            {% else %}
+
+                <span class="badge bg-secondary">
+                    {{ inquiry.status }}
+                </span>
+
+            {% endif %}
+
+        </div>
 
 
-            <div class="card-body">
+        <!-- CARD BODY -->
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <!-- VEHICLE INFORMATION -->
+
+                <div class="col-md-6">
+
+                    <h6 class="fw-bold mb-3">
+                        Vehicle Information
+                    </h6>
 
 
-                <div class="row">
-
-
-                    <div class="col-md-6">
-
+                    {% if inquiry.car %}
 
                         <p>
 
@@ -92,7 +120,6 @@
                         </p>
 
 
-
                         <p>
 
                             <strong>Year:</strong>
@@ -102,15 +129,14 @@
                         </p>
 
 
-
                         <p>
 
                             <strong>Price:</strong>
 
-                            KSh {{ "{:,.0f}".format(inquiry.car.price) }}
+                            KSh
+                            {{ "{:,.0f}".format(inquiry.car.price) }}
 
                         </p>
-
 
 
                         <p>
@@ -121,75 +147,141 @@
 
                         </p>
 
+                    {% else %}
 
-                    </div>
+                        <p class="text-muted">
+                            Vehicle information unavailable.
+                        </p>
+
+                    {% endif %}
+
+                </div>
 
 
+                <!-- SELLER INFORMATION -->
+
+                <div class="col-md-6">
+
+                    <h6 class="fw-bold mb-3">
+                        Seller Information
+                    </h6>
 
 
+                    <p>
 
-                    <div class="col-md-6">
+                        <strong>Seller:</strong>
 
-
-                        <p>
-
-                            <strong>Seller:</strong>
+                        {% if inquiry.seller %}
 
                             {{ inquiry.seller.name }}
 
-                        </p>
+                        {% else %}
+
+                            Seller
+
+                        {% endif %}
+
+                    </p>
 
 
-
-                        <p>
-
-                            <strong>Submitted:</strong>
-
-                            {{ inquiry.created_at.strftime("%d %B %Y") }}
-
-                        </p>
-
-
+                    {% if inquiry.seller and inquiry.seller.email %}
 
                         <p>
 
-                            <strong>Messages:</strong>
+                            <strong>Email:</strong>
 
-                            {{ inquiry.messages|length }}
+                            {{ inquiry.seller.email }}
 
                         </p>
 
+                    {% endif %}
+
+
+                    <p>
+
+                        <strong>Submitted:</strong>
+
+                        {% if inquiry.created_at %}
+
+                            {{ inquiry.created_at.strftime(
+                                "%d %B %Y"
+                            ) }}
+
+                        {% endif %}
+
+                    </p>
+
+
+                    <p>
+
+                        <strong>Messages:</strong>
+
+                        {{ inquiry.messages|length }}
+
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <hr>
+
+
+            <!-- LATEST MESSAGE -->
+
+            <h6 class="fw-bold">
+                Latest Message
+            </h6>
+
+
+            {% if inquiry.messages %}
+
+                {% set latest_message = inquiry.messages[-1] %}
+
+                <div class="alert alert-light border">
+
+                    <div class="d-flex justify-content-between">
+
+                        <strong>
+
+                            {% if latest_message.sender_id == current_user.id %}
+
+                                You
+
+                            {% else %}
+
+                                Seller
+
+                            {% endif %}
+
+                        </strong>
+
+
+                        {% if latest_message.created_at %}
+
+                            <small class="text-muted">
+
+                                {{ latest_message.created_at.strftime(
+                                    "%d %b %Y %H:%M"
+                                ) }}
+
+                            </small>
+
+                        {% endif %}
 
                     </div>
 
 
-                </div>
+                    <div class="mt-2">
 
+                        {{ latest_message.message }}
 
-
-                <hr>
-
-
-
-                {% if inquiry.messages %}
-
-
-                <h6>
-                    Latest Message
-                </h6>
-
-
-                <div class="alert alert-light">
-
-
-                    {{ inquiry.messages[-1].message }}
-
+                    </div>
 
                 </div>
 
-
-                {% else %}
-
+            {% else %}
 
                 <div class="alert alert-info">
 
@@ -197,73 +289,74 @@
 
                 </div>
 
-
-                {% endif %}
-
+            {% endif %}
 
 
+            <!-- OPEN CHAT -->
 
+            <div class="d-flex justify-content-end">
 
                 <a href="{{ url_for(
-                    'cars.buyer_chat',
+                    'chat.inquiry_chat',
                     inquiry_id=inquiry.id
                 ) }}"
-                class="btn btn-primary">
+                   class="btn btn-primary">
 
+                    <i class="bi bi-chat-dots"></i>
 
                     Open Chat
 
-
                 </a>
-
-
 
             </div>
 
-
         </div>
 
+    </div>
 
-        {% endfor %}
-
-
-
-    {% else %}
+    {% endfor %}
 
 
+{% else %}
 
-        <div class="alert alert-info text-center">
+    <!-- NO INQUIRIES -->
+
+    <div class="card shadow-sm border-0">
+
+        <div class="card-body text-center py-5">
+
+            <i class="bi bi-chat-square-text"
+               style="font-size: 60px; color: #999;"></i>
 
 
-            <h5>
+            <h4 class="mt-3">
                 No inquiries found
-            </h5>
+            </h4>
 
 
-            <p>
+            <p class="text-muted">
+
                 You have not requested information about any vehicle yet.
-            </p>
 
+            </p>
 
 
             <a href="{{ url_for('cars.all_cars') }}"
                class="btn btn-primary">
 
+                <i class="bi bi-car-front"></i>
+
                 View Available Cars
 
             </a>
 
-
-
         </div>
 
+    </div>
 
-
-    {% endif %}
-
-
+{% endif %}
+```
 
 </div>
-
 
 {% endblock %}

@@ -1,21 +1,20 @@
-
 from extensions import db, login_manager
 from flask_login import UserMixin
 from datetime import datetime
 
 
-# ==========================================
+# ============================================================
 # LOGIN MANAGER
-# ==========================================
+# ============================================================
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
-# ==========================================
+# ============================================================
 # USER MODEL
-# ==========================================
+# ============================================================
 
 class User(UserMixin, db.Model):
 
@@ -58,10 +57,9 @@ class User(UserMixin, db.Model):
         server_default=db.func.now()
     )
 
-
-    # ==========================================
+    # ========================================================
     # SELLER CARS
-    # ==========================================
+    # ========================================================
 
     cars = db.relationship(
         "Car",
@@ -69,10 +67,9 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan"
     )
 
-
-    # ==========================================
+    # ========================================================
     # BUYER INQUIRIES
-    # ==========================================
+    # ========================================================
 
     buyer_inquiries = db.relationship(
         "Inquiry",
@@ -80,10 +77,9 @@ class User(UserMixin, db.Model):
         back_populates="buyer"
     )
 
-
-    # ==========================================
+    # ========================================================
     # SELLER INQUIRIES
-    # ==========================================
+    # ========================================================
 
     seller_inquiries = db.relationship(
         "Inquiry",
@@ -91,10 +87,9 @@ class User(UserMixin, db.Model):
         back_populates="seller"
     )
 
-
-    # ==========================================
+    # ========================================================
     # INQUIRY MESSAGES
-    # ==========================================
+    # ========================================================
 
     sent_messages = db.relationship(
         "InquiryMessage",
@@ -108,17 +103,16 @@ class User(UserMixin, db.Model):
         back_populates="receiver"
     )
 
-
-    # ==========================================
+    # ========================================================
     # DIRECT CONVERSATIONS
     #
-    # Used for:
     # Seller ↔ Admin
     # Buyer  ↔ Admin
     #
-    # Seller ↔ Seller and Buyer ↔ Buyer
-    # are blocked by the application logic.
-    # ==========================================
+    # Application logic should prevent:
+    # Seller ↔ Seller
+    # Buyer  ↔ Buyer
+    # ========================================================
 
     conversations_as_user1 = db.relationship(
         "Conversation",
@@ -134,10 +128,9 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan"
     )
 
-
-    # ==========================================
+    # ========================================================
     # DIRECT MESSAGES
-    # ==========================================
+    # ========================================================
 
     direct_messages_sent = db.relationship(
         "Message",
@@ -153,10 +146,41 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan"
     )
 
+    # ========================================================
+    # FAVORITE CARS
+    # ========================================================
 
-# ==========================================
+    favorites = db.relationship(
+        "Favorite",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    # ========================================================
+    # COMPARE CARS
+    # ========================================================
+
+    compare_cars = db.relationship(
+        "CompareCar",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
+
+    # ========================================================
+    # NOTIFICATIONS
+    # ========================================================
+
+    notifications = db.relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        order_by="Notification.created_at.desc()"
+    )
+
+
+# ============================================================
 # CAR MODEL
-# ==========================================
+# ============================================================
 
 class Car(db.Model):
 
@@ -250,20 +274,18 @@ class Car(db.Model):
         onupdate=db.func.now()
     )
 
-
-    # ==========================================
+    # ========================================================
     # SELLER
-    # ==========================================
+    # ========================================================
 
     seller = db.relationship(
         "User",
         back_populates="cars"
     )
 
-
-    # ==========================================
+    # ========================================================
     # IMAGES
-    # ==========================================
+    # ========================================================
 
     images = db.relationship(
         "CarImage",
@@ -271,10 +293,9 @@ class Car(db.Model):
         cascade="all, delete-orphan"
     )
 
-
-    # ==========================================
+    # ========================================================
     # INQUIRIES
-    # ==========================================
+    # ========================================================
 
     inquiries = db.relationship(
         "Inquiry",
@@ -282,10 +303,40 @@ class Car(db.Model):
         cascade="all, delete-orphan"
     )
 
+    # ========================================================
+    # FAVORITES
+    # ========================================================
 
-# ==========================================
+    favorites = db.relationship(
+        "Favorite",
+        back_populates="car",
+        cascade="all, delete-orphan"
+    )
+
+    # ========================================================
+    # COMPARE
+    # ========================================================
+
+    compare_cars = db.relationship(
+        "CompareCar",
+        back_populates="car",
+        cascade="all, delete-orphan"
+    )
+
+    # ========================================================
+    # NOTIFICATIONS
+    # ========================================================
+
+    notifications = db.relationship(
+        "Notification",
+        back_populates="car",
+        cascade="all, delete-orphan"
+    )
+
+
+# ============================================================
 # CAR IMAGE MODEL
-# ==========================================
+# ============================================================
 
 class CarImage(db.Model):
 
@@ -302,32 +353,42 @@ class CarImage(db.Model):
         nullable=False
     )
 
+    # Cloudinary secure image URL
     filename = db.Column(
-        db.String(255),
+        db.String(500),
         nullable=False
     )
 
+    # Cloudinary public ID
+    # Used when deleting the image from Cloudinary
+    public_id = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
     image_type = db.Column(
-        db.String(50)
+        db.String(50),
+        nullable=True
     )
 
     uploaded_at = db.Column(
         db.DateTime,
-        server_default=db.func.now()
+        default=datetime.utcnow
     )
 
+    # ========================================================
+    # CAR
+    # ========================================================
 
     car = db.relationship(
         "Car",
         back_populates="images"
     )
-
-
-# ==========================================
+# ============================================================
 # INQUIRY MODEL
 #
 # Buyer ↔ Seller communication about a car
-# ==========================================
+# ============================================================
 
 class Inquiry(db.Model):
 
@@ -380,20 +441,18 @@ class Inquiry(db.Model):
         onupdate=datetime.utcnow
     )
 
-
-    # ==========================================
+    # ========================================================
     # CAR
-    # ==========================================
+    # ========================================================
 
     car = db.relationship(
         "Car",
         back_populates="inquiries"
     )
 
-
-    # ==========================================
+    # ========================================================
     # BUYER
-    # ==========================================
+    # ========================================================
 
     buyer = db.relationship(
         "User",
@@ -401,10 +460,9 @@ class Inquiry(db.Model):
         back_populates="buyer_inquiries"
     )
 
-
-    # ==========================================
+    # ========================================================
     # SELLER
-    # ==========================================
+    # ========================================================
 
     seller = db.relationship(
         "User",
@@ -412,10 +470,9 @@ class Inquiry(db.Model):
         back_populates="seller_inquiries"
     )
 
-
-    # ==========================================
+    # ========================================================
     # INQUIRY MESSAGES
-    # ==========================================
+    # ========================================================
 
     messages = db.relationship(
         "InquiryMessage",
@@ -424,13 +481,13 @@ class Inquiry(db.Model):
     )
 
 
-# ==========================================
+# ============================================================
 # INQUIRY MESSAGE MODEL
 #
 # Buyer ↔ Seller
 #
-# This is kept for your existing inquiry system.
-# ==========================================
+# Existing inquiry messaging system
+# ============================================================
 
 class InquiryMessage(db.Model):
 
@@ -479,20 +536,18 @@ class InquiryMessage(db.Model):
         default=datetime.utcnow
     )
 
-
-    # ==========================================
+    # ========================================================
     # INQUIRY
-    # ==========================================
+    # ========================================================
 
     inquiry = db.relationship(
         "Inquiry",
         back_populates="messages"
     )
 
-
-    # ==========================================
+    # ========================================================
     # SENDER
-    # ==========================================
+    # ========================================================
 
     sender = db.relationship(
         "User",
@@ -500,10 +555,9 @@ class InquiryMessage(db.Model):
         back_populates="sent_messages"
     )
 
-
-    # ==========================================
+    # ========================================================
     # RECEIVER
-    # ==========================================
+    # ========================================================
 
     receiver = db.relationship(
         "User",
@@ -512,19 +566,16 @@ class InquiryMessage(db.Model):
     )
 
 
-# ==========================================
+# ============================================================
 # DIRECT CONVERSATION MODEL
-#
-# Used for:
 #
 # Seller ↔ Admin
 # Buyer  ↔ Admin
 #
 # NOT intended for:
-#
 # Seller ↔ Seller
 # Buyer  ↔ Buyer
-# ==========================================
+# ============================================================
 
 class Conversation(db.Model):
 
@@ -558,10 +609,9 @@ class Conversation(db.Model):
         onupdate=datetime.utcnow
     )
 
-
-    # ==========================================
+    # ========================================================
     # USER 1
-    # ==========================================
+    # ========================================================
 
     user1 = db.relationship(
         "User",
@@ -569,10 +619,9 @@ class Conversation(db.Model):
         back_populates="conversations_as_user1"
     )
 
-
-    # ==========================================
+    # ========================================================
     # USER 2
-    # ==========================================
+    # ========================================================
 
     user2 = db.relationship(
         "User",
@@ -580,10 +629,9 @@ class Conversation(db.Model):
         back_populates="conversations_as_user2"
     )
 
-
-    # ==========================================
+    # ========================================================
     # MESSAGES
-    # ==========================================
+    # ========================================================
 
     messages = db.relationship(
         "Message",
@@ -593,14 +641,12 @@ class Conversation(db.Model):
     )
 
 
-# ==========================================
+# ============================================================
 # DIRECT MESSAGE MODEL
-#
-# Used for:
 #
 # Seller ↔ Admin
 # Buyer  ↔ Admin
-# ==========================================
+# ============================================================
 
 class Message(db.Model):
 
@@ -645,20 +691,18 @@ class Message(db.Model):
         default=datetime.utcnow
     )
 
-
-    # ==========================================
+    # ========================================================
     # CONVERSATION
-    # ==========================================
+    # ========================================================
 
     conversation = db.relationship(
         "Conversation",
         back_populates="messages"
     )
 
-
-    # ==========================================
+    # ========================================================
     # SENDER
-    # ==========================================
+    # ========================================================
 
     sender = db.relationship(
         "User",
@@ -666,10 +710,9 @@ class Message(db.Model):
         back_populates="direct_messages_sent"
     )
 
-
-    # ==========================================
+    # ========================================================
     # RECEIVER
-    # ==========================================
+    # ========================================================
 
     receiver = db.relationship(
         "User",
@@ -677,3 +720,195 @@ class Message(db.Model):
         back_populates="direct_messages_received"
     )
 
+
+# ============================================================
+# FAVORITES MODEL
+# ============================================================
+
+class Favorite(db.Model):
+
+    __tablename__ = "favorites"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
+    car_id = db.Column(
+        db.Integer,
+        db.ForeignKey("cars.id"),
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    # ========================================================
+    # USER
+    # ========================================================
+
+    user = db.relationship(
+        "User",
+        back_populates="favorites"
+    )
+
+    # ========================================================
+    # CAR
+    # ========================================================
+
+    car = db.relationship(
+        "Car",
+        back_populates="favorites"
+    )
+
+    # ========================================================
+    # PREVENT DUPLICATES
+    # ========================================================
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "car_id",
+            name="unique_user_car_favorite"
+        ),
+    )
+
+
+# ============================================================
+# CAR COMPARE MODEL
+# ============================================================
+
+class CompareCar(db.Model):
+
+    __tablename__ = "compare_cars"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
+    car_id = db.Column(
+        db.Integer,
+        db.ForeignKey("cars.id"),
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    # ========================================================
+    # USER
+    # ========================================================
+
+    user = db.relationship(
+        "User",
+        back_populates="compare_cars"
+    )
+
+    # ========================================================
+    # CAR
+    # ========================================================
+
+    car = db.relationship(
+        "Car",
+        back_populates="compare_cars"
+    )
+
+    # ========================================================
+    # PREVENT DUPLICATES
+    # ========================================================
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "user_id",
+            "car_id",
+            name="unique_user_car_compare"
+        ),
+    )
+
+
+# ============================================================
+# NOTIFICATION MODEL
+# ============================================================
+
+class Notification(db.Model):
+
+    __tablename__ = "notifications"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False
+    )
+
+    car_id = db.Column(
+        db.Integer,
+        db.ForeignKey("cars.id"),
+        nullable=True
+    )
+
+    title = db.Column(
+        db.String(150),
+        nullable=False
+    )
+
+    message = db.Column(
+        db.Text,
+        nullable=False
+    )
+
+    notification_type = db.Column(
+        db.String(50),
+        nullable=False,
+        default="general"
+    )
+
+    is_read = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow
+    )
+
+    # ========================================================
+    # USER
+    # ========================================================
+
+    user = db.relationship(
+        "User",
+        back_populates="notifications"
+    )
+
+    # ========================================================
+    # CAR
+    # ========================================================
+
+    car = db.relationship(
+        "Car",
+        back_populates="notifications"
+    )

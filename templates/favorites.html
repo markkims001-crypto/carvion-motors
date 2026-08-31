@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+```
+<div>
+
+    <h1>
+        ❤️ My Favorites
+    </h1>
+
+    <p class="text-muted">
+        Vehicles you've saved.
+    </p>
+
+</div>
+
+
+<a
+    href="{{ url_for('cars.all_cars') }}"
+    class="btn btn-primary">
+
+    🚗 Browse Cars
+
+</a>
+```
+
+</div>
+
+{% if cars %}
+
+<div class="row g-4">
+
+{% for car in cars %}
+
+<div class="col-lg-4 col-md-6">
+
+```
+<div class="card shadow-sm h-100">
+
+
+    {% if car.images %}
+
+    <img
+        src="{{ url_for(
+            'static',
+            filename=car.images[0].filename
+        ) }}"
+        class="card-img-top car-card-image"
+        alt="{{ car.brand }} {{ car.model }}">
+
+    {% else %}
+
+    <div
+        class="d-flex align-items-center justify-content-center bg-light"
+        style="height:220px;">
+
+        No Image Available
+
+    </div>
+
+    {% endif %}
+
+
+    <div class="card-body">
+
+        <h3>
+            {{ car.brand }} {{ car.model }}
+        </h3>
+
+
+        <p>
+            <strong>Year:</strong>
+            {{ car.year }}
+        </p>
+
+
+        <p>
+            <strong>Mileage:</strong>
+            {{ "{:,}".format(car.mileage) }} km
+        </p>
+
+
+        <p>
+            <strong>Fuel:</strong>
+            {{ car.fuel }}
+        </p>
+
+
+        <p>
+            <strong>Transmission:</strong>
+            {{ car.transmission }}
+        </p>
+
+
+        <h4 class="text-success">
+            KSh {{ "{:,.0f}".format(car.price) }}
+        </h4>
+
+
+        <p>
+            📍 {{ car.location }}
+        </p>
+
+
+        <div class="d-flex gap-2 flex-wrap">
+
+            <a
+                href="{{ url_for(
+                    'cars.car_details',
+                    car_id=car.id
+                ) }}"
+                class="btn btn-primary">
+
+                View Details
+
+            </a>
+
+
+            <form
+                method="POST"
+                action="{{ url_for(
+                    'cars.remove_favorite',
+                    car_id=car.id
+                ) }}">
+
+                <button
+                    type="submit"
+                    class="btn btn-outline-danger">
+
+                    💔 Remove
+
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+```
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="text-center py-5">
+
+```
+<div style="font-size:60px;">
+    ❤️
+</div>
+
+<h3>
+    No favorite cars yet
+</h3>
+
+<p class="text-muted">
+    Save vehicles from the Cars page and they'll appear here.
+</p>
+
+<a
+    href="{{ url_for('cars.all_cars') }}"
+    class="btn btn-primary">
+
+    Browse Cars
+
+</a>
+```
+
+</div>
+
+{% endif %}
+
+{% endblock %}

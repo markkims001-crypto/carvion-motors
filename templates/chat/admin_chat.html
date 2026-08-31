@@ -1,0 +1,145 @@
+```html
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow">
+
+        <div class="card-header bg-dark text-white">
+            <h4 class="mb-0">Chat with Carvion Admin</h4>
+        </div>
+
+        <div
+            id="messages"
+            class="card-body"
+            style="height:450px; overflow-y:auto; background:#f5f5f5;"
+        >
+
+            {% if messages %}
+
+                {% for message in messages %}
+
+                    {% if message.sender_id == current_user.id %}
+
+                        <div class="text-end mb-3">
+
+                            <div
+                                class="d-inline-block bg-dark text-white p-3 rounded"
+                                style="max-width:75%;"
+                            >
+
+                                {{ message.message }}
+
+                                <div>
+                                    <small class="text-secondary">
+                                        {% if message.created_at %}
+                                            {{ message.created_at.strftime('%d %b %Y %H:%M') }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    {% else %}
+
+                        <div class="text-start mb-3">
+
+                            <div
+                                class="d-inline-block bg-white border p-3 rounded"
+                                style="max-width:75%;"
+                            >
+
+                                <strong>
+                                    {% if admin %}
+                                        {{ admin.name }}
+                                    {% else %}
+                                        Carvion Admin
+                                    {% endif %}
+                                </strong>
+
+                                <div>
+                                    {{ message.message }}
+                                </div>
+
+                                <small class="text-muted">
+                                    {% if message.created_at %}
+                                        {{ message.created_at.strftime('%d %b %Y %H:%M') }}
+                                    {% endif %}
+                                </small>
+
+                            </div>
+
+                        </div>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            {% else %}
+
+                <div class="text-center mt-5">
+
+                    <h5>No messages yet</h5>
+
+                    <p class="text-muted">
+                        Send a message to Carvion Motors administration.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="card-footer">
+
+            <form
+                method="POST"
+                action="{{ url_for('chat.admin_chat') }}"
+            >
+
+                <div class="input-group">
+
+                    <input
+                        type="text"
+                        name="message"
+                        class="form-control"
+                        placeholder="Type your message..."
+                        required
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-dark"
+                    >
+                        Send
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const messages = document.getElementById("messages");
+
+if (messages) {
+    messages.scrollTop = messages.scrollHeight;
+}
+
+</script>
+
+{% endblock %}
+```

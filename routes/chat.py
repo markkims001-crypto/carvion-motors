@@ -1,9 +1,22 @@
+
 # routes/chat.py
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash
+)
+
+from flask_login import (
+    login_required,
+    current_user
+)
 
 from extensions import db
+
 from models import (
     User,
     Car,
@@ -14,42 +27,58 @@ from models import (
 )
 
 
-chat = Blueprint("chat", __name__)
+# =====================================================
+# CHAT BLUEPRINT
+# =====================================================
+
+chat = Blueprint(
+    "chat",
+    __name__
+)
 
 
 # =====================================================
-# HELPER: CHECK IF USERS CAN DIRECTLY CHAT
+# HELPER
+# GET ADMIN
+# =====================================================
+
+def get_admin():
+
+    return User.query.filter_by(
+        role="admin"
+    ).first()
+
+
+# =====================================================
+# HELPER
+# CHECK DIRECT CHAT
+#
+# Allowed:
+# Buyer  ↔ Admin
+# Seller ↔ Admin
+#
+# Not allowed:
+# Buyer  ↔ Buyer
+# Seller ↔ Seller
+# Buyer  ↔ Seller
 # =====================================================
 
 def allowed_direct_chat(user_a, user_b):
 
-    roles = {user_a.role, user_b.role}
+    roles = {
+        user_a.role.lower(),
+        user_b.role.lower()
+    }
 
-    # Seller <-> Admin
-    if roles == {"seller", "admin"}:
-        return True
-
-    # Buyer <-> Admin
-    if roles == {"buyer", "admin"}:
-        return True
-
-    # Seller <-> Seller
-    if user_a.role == "seller" and user_b.role == "seller":
-        return False
-
-    # Buyer <-> Buyer
-    if user_a.role == "buyer" and user_b.role == "buyer":
-        return False
-
-    # Buyer <-> Seller uses InquiryMessage instead
-    if roles == {"buyer", "seller"}:
-        return False
-
-    return False
+    return roles in [
+        {"buyer", "admin"},
+        {"seller", "admin"}
+    ]
 
 
 # =====================================================
-# HELPER: GET OR CREATE DIRECT CONVERSATION
+# HELPER
+# GET OR CREATE CONVERSATION
 # =====================================================
 
 def get_or_create_conversation(user1_id, user2_id):
@@ -74,23 +103,33 @@ def get_or_create_conversation(user1_id, user2_id):
         )
 
         db.session.add(conversation)
+
         db.session.commit()
 
     return conversation
 
 
 # =====================================================
-# SELLER ↔ BUYER CHAT
+# CHANNEL 1
+# BUYER ↔ SELLER
+#
+# Uses Inquiry + InquiryMessage
 # =====================================================
 
-@chat.route("/chat/inquiry/<int:inquiry_id>", methods=["GET", "POST"])
+@chat.route(
+    "/chat/inquiry/<int:inquiry_id>",
+    methods=["GET", "POST"]
+)
 @login_required
 def inquiry_chat(inquiry_id):
 
-    inquiry = Inquiry.query.get_or_404(inquiry_id)
+    inquiry = Inquiry.query.get_or_404(
+        inquiry_id
+    )
 
-    # Only the buyer and seller belonging to this inquiry
-    # may access this conversation.
+
+    # Only the buyer and seller of this inquiry
+    # can access it.
 
     if current_user.id not in [
         inquiry.buyer_id,
@@ -102,8 +141,14 @@ def inquiry_chat(inquiry_id):
             "danger"
         )
 
-        return redirect(url_for("cars.all_cars"))
+        return redirect(
+            url_for("cars.all_cars")
+        )
 
+
+    # =================================================
+    # SEND MESSAGE
+    # =================================================
 
     if request.method == "POST":
 
@@ -128,11 +173,13 @@ def inquiry_chat(inquiry_id):
             )
 
 
-        # Determine receiver
+        # Buyer sends to seller
 
         if current_user.id == inquiry.buyer_id:
 
             receiver_id = inquiry.seller_id
+
+        # Seller sends to buyer
 
         else:
 
@@ -152,12 +199,15 @@ def inquiry_chat(inquiry_id):
             message=message_text,
 
             is_read=False
+
         )
 
 
         db.session.add(message)
 
+
         inquiry.status = "Open"
+
 
         db.session.commit()
 
@@ -170,7 +220,9 @@ def inquiry_chat(inquiry_id):
         )
 
 
-    # Mark messages received by current user as read
+    # =================================================
+    # MARK RECEIVED MESSAGES AS READ
+    # =================================================
 
     InquiryMessage.query.filter(
 
@@ -191,10 +243,18 @@ def inquiry_chat(inquiry_id):
     db.session.commit()
 
 
+    # =================================================
+    # GET MESSAGES
+    # =================================================
+
     messages = InquiryMessage.query.filter_by(
+
         inquiry_id=inquiry.id
+
     ).order_by(
+
         InquiryMessage.created_at.asc()
+
     ).all()
 
 
@@ -206,7 +266,8 @@ def inquiry_chat(inquiry_id):
 
 
 # =====================================================
-# BUYER ↔ SELLER: START CHAT FROM CAR
+# CHANNEL 1
+# START BUYER ↔ SELLER CHAT FROM CAR
 # =====================================================
 
 @chat.route(
@@ -216,28 +277,17 @@ def inquiry_chat(inquiry_id):
 @login_required
 def start_car_chat(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = Car.query.get_or_404(
+        car_id
+    )
 
 
-    if current_user.id == car.seller_id:
+    # Only buyers can start vehicle inquiries.
 
-        flash(
-            "You cannot chat with yourself.",
-            "warning"
-        )
-
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
-
-
-    if current_user.role != "buyer":
+    if current_user.role.lower() != "buyer":
 
         flash(
-            "Only buyers can start a vehicle inquiry.",
+            "Only buyers can contact sellers about vehicles.",
             "danger"
         )
 
@@ -249,14 +299,62 @@ def start_car_chat(car_id):
         )
 
 
-    # Look for an existing inquiry
+    # Buyer cannot contact themselves.
+
+    if current_user.id == car.seller_id:
+
+        flash(
+            "You cannot contact yourself.",
+            "warning"
+        )
+
+        return redirect(
+            url_for(
+                "cars.car_details",
+                car_id=car.id
+            )
+        )
+
+
+    message_text = request.form.get(
+        "message",
+        ""
+    ).strip()
+
+
+    if not message_text:
+
+        flash(
+            "Message cannot be empty.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "cars.car_details",
+                car_id=car.id
+            )
+        )
+
+
+    # =================================================
+    # FIND EXISTING INQUIRY
+    # =================================================
 
     inquiry = Inquiry.query.filter_by(
+
         car_id=car.id,
+
         buyer_id=current_user.id,
+
         seller_id=car.seller_id
+
     ).first()
 
+
+    # =================================================
+    # CREATE INQUIRY
+    # =================================================
 
     if not inquiry:
 
@@ -269,39 +367,42 @@ def start_car_chat(car_id):
             seller_id=car.seller_id,
 
             status="Open"
+
         )
 
         db.session.add(inquiry)
 
-        db.session.commit()
+        db.session.flush()
 
 
-    message_text = request.form.get(
-        "message",
-        ""
-    ).strip()
+    # =================================================
+    # CREATE FIRST MESSAGE
+    # =================================================
+
+    message = InquiryMessage(
+
+        inquiry_id=inquiry.id,
+
+        sender_id=current_user.id,
+
+        receiver_id=car.seller_id,
+
+        sender_role=current_user.role,
+
+        message=message_text,
+
+        is_read=False
+
+    )
 
 
-    if message_text:
+    db.session.add(message)
 
-        message = InquiryMessage(
 
-            inquiry_id=inquiry.id,
+    inquiry.status = "Open"
 
-            sender_id=current_user.id,
 
-            receiver_id=car.seller_id,
-
-            sender_role=current_user.role,
-
-            message=message_text,
-
-            is_read=False
-        )
-
-        db.session.add(message)
-
-        db.session.commit()
+    db.session.commit()
 
 
     return redirect(
@@ -313,14 +414,16 @@ def start_car_chat(car_id):
 
 
 # =====================================================
-# BUYER INQUIRY LIST
+# BUYER INQUIRIES
 # =====================================================
 
-@chat.route("/chat/my-inquiries")
+@chat.route(
+    "/chat/my-inquiries"
+)
 @login_required
 def my_inquiries():
 
-    if current_user.role != "buyer":
+    if current_user.role.lower() != "buyer":
 
         flash(
             "Buyer access required.",
@@ -333,9 +436,13 @@ def my_inquiries():
 
 
     inquiries = Inquiry.query.filter_by(
+
         buyer_id=current_user.id
+
     ).order_by(
+
         Inquiry.updated_at.desc()
+
     ).all()
 
 
@@ -346,14 +453,16 @@ def my_inquiries():
 
 
 # =====================================================
-# SELLER INQUIRY LIST
+# SELLER INQUIRIES
 # =====================================================
 
-@chat.route("/chat/seller-inquiries")
+@chat.route(
+    "/chat/seller-inquiries"
+)
 @login_required
 def seller_inquiries_chat():
 
-    if current_user.role != "seller":
+    if current_user.role.lower() != "seller":
 
         flash(
             "Seller access required.",
@@ -366,9 +475,13 @@ def seller_inquiries_chat():
 
 
     inquiries = Inquiry.query.filter_by(
+
         seller_id=current_user.id
+
     ).order_by(
+
         Inquiry.updated_at.desc()
+
     ).all()
 
 
@@ -379,26 +492,28 @@ def seller_inquiries_chat():
 
 
 # =====================================================
-# DIRECT CHAT WITH ADMIN
+# CHANNEL 2 & 3
 #
-# Seller ↔ Admin
-# Buyer  ↔ Admin
+# BUYER ↔ ADMIN
+# SELLER ↔ ADMIN
 # =====================================================
 
-@chat.route("/chat/admin", methods=["GET", "POST"])
+@chat.route(
+    "/chat/admin",
+    methods=["GET", "POST"]
+)
 @login_required
 def admin_chat():
 
-    # Admin himself doesn't need to use this route
-    # to start a conversation.
+    # Only buyers and sellers can use this page.
 
-    if current_user.role not in [
+    if current_user.role.lower() not in [
         "buyer",
         "seller"
     ]:
 
         flash(
-            "This chat is for buyers and sellers.",
+            "This chat is only for buyers and sellers.",
             "danger"
         )
 
@@ -407,15 +522,17 @@ def admin_chat():
         )
 
 
-    admin = User.query.filter_by(
-        role="admin"
-    ).first()
+    # =================================================
+    # FIND ADMIN
+    # =================================================
+
+    admin = get_admin()
 
 
     if not admin:
 
         flash(
-            "No administrator account is available.",
+            "Administrator account not found.",
             "danger"
         )
 
@@ -424,11 +541,22 @@ def admin_chat():
         )
 
 
+    # =================================================
+    # GET / CREATE CONVERSATION
+    # =================================================
+
     conversation = get_or_create_conversation(
+
         current_user.id,
+
         admin.id
+
     )
 
+
+    # =================================================
+    # SEND MESSAGE
+    # =================================================
 
     if request.method == "POST":
 
@@ -461,12 +589,15 @@ def admin_chat():
             message=message_text,
 
             is_read=False
+
         )
 
 
         db.session.add(message)
 
+
         conversation.updated_at = db.func.now()
+
 
         db.session.commit()
 
@@ -476,7 +607,9 @@ def admin_chat():
         )
 
 
-    # Mark admin messages received by current user as read
+    # =================================================
+    # MARK ADMIN MESSAGES AS READ
+    # =================================================
 
     Message.query.filter(
 
@@ -497,30 +630,50 @@ def admin_chat():
     db.session.commit()
 
 
+    # =================================================
+    # GET MESSAGES
+    # =================================================
+
     messages = Message.query.filter_by(
+
         conversation_id=conversation.id
+
     ).order_by(
+
         Message.created_at.asc()
+
     ).all()
 
 
     return render_template(
+
         "chat/admin_chat.html",
+
         conversation=conversation,
+
         messages=messages,
+
         admin=admin
+
     )
 
 
 # =====================================================
-# ADMIN: VIEW ALL DIRECT CONVERSATIONS
+# ADMIN
+# VIEW ALL DIRECT CHATS
+#
+# Shows:
+# Buyer ↔ Admin
+# Seller ↔ Admin
 # =====================================================
 
-@chat.route("/admin/chats")
+@chat.route(
+    "/admin/chats"
+)
 @login_required
 def admin_chats():
 
-    if current_user.role != "admin":
+    if current_user.role.lower() != "admin":
 
         flash(
             "Administrator access required.",
@@ -533,6 +686,7 @@ def admin_chats():
 
 
     conversations = Conversation.query.filter(
+
         (
             Conversation.user1_id == current_user.id
         )
@@ -540,19 +694,49 @@ def admin_chats():
         (
             Conversation.user2_id == current_user.id
         )
+
     ).order_by(
+
         Conversation.updated_at.desc()
+
     ).all()
 
 
+    # Only keep valid admin conversations.
+
+    valid_conversations = []
+
+
+    for conversation in conversations:
+
+        if conversation.user1_id == current_user.id:
+
+            other_user = conversation.user2
+
+        else:
+
+            other_user = conversation.user1
+
+
+        if other_user and allowed_direct_chat(
+            current_user,
+            other_user
+        ):
+
+            valid_conversations.append(
+                conversation
+            )
+
+
     return render_template(
-        "chat/admin_chats.html",
-        conversations=conversations
-    )
+    "chat/admin_chats.html",
+    conversations=valid_conversations
+)
 
 
 # =====================================================
-# ADMIN: OPEN DIRECT CONVERSATION
+# ADMIN
+# OPEN DIRECT CHAT
 # =====================================================
 
 @chat.route(
@@ -562,7 +746,7 @@ def admin_chats():
 @login_required
 def admin_conversation(conversation_id):
 
-    if current_user.role != "admin":
+    if current_user.role.lower() != "admin":
 
         flash(
             "Administrator access required.",
@@ -579,9 +763,14 @@ def admin_conversation(conversation_id):
     )
 
 
+    # Admin must belong to conversation.
+
     if current_user.id not in [
+
         conversation.user1_id,
+
         conversation.user2_id
+
     ]:
 
         flash(
@@ -594,7 +783,9 @@ def admin_conversation(conversation_id):
         )
 
 
-    # Find the other person
+    # =================================================
+    # FIND OTHER USER
+    # =================================================
 
     if conversation.user1_id == current_user.id:
 
@@ -605,7 +796,9 @@ def admin_conversation(conversation_id):
         other_user = conversation.user1
 
 
-    # Only Buyer <-> Admin and Seller <-> Admin
+    # =================================================
+    # CHECK CHANNEL
+    # =================================================
 
     if not allowed_direct_chat(
         current_user,
@@ -622,6 +815,10 @@ def admin_conversation(conversation_id):
         )
 
 
+    # =================================================
+    # ADMIN SENDS MESSAGE
+    # =================================================
+
     if request.method == "POST":
 
         message_text = request.form.get(
@@ -630,26 +827,12 @@ def admin_conversation(conversation_id):
         ).strip()
 
 
-        if message_text:
+        if not message_text:
 
-            message = Message(
-
-                conversation_id=conversation.id,
-
-                sender_id=current_user.id,
-
-                receiver_id=other_user.id,
-
-                message=message_text,
-
-                is_read=False
+            flash(
+                "Message cannot be empty.",
+                "danger"
             )
-
-
-            db.session.add(message)
-
-            db.session.commit()
-
 
             return redirect(
                 url_for(
@@ -658,6 +841,42 @@ def admin_conversation(conversation_id):
                 )
             )
 
+
+        message = Message(
+
+            conversation_id=conversation.id,
+
+            sender_id=current_user.id,
+
+            receiver_id=other_user.id,
+
+            message=message_text,
+
+            is_read=False
+
+        )
+
+
+        db.session.add(message)
+
+
+        conversation.updated_at = db.func.now()
+
+
+        db.session.commit()
+
+
+        return redirect(
+            url_for(
+                "chat.admin_conversation",
+                conversation_id=conversation.id
+            )
+        )
+
+
+    # =================================================
+    # MARK MESSAGES AS READ
+    # =================================================
 
     Message.query.filter(
 
@@ -679,32 +898,41 @@ def admin_conversation(conversation_id):
 
 
     messages = Message.query.filter_by(
+
         conversation_id=conversation.id
+
     ).order_by(
+
         Message.created_at.asc()
+
     ).all()
 
 
     return render_template(
+
         "chat/admin_conversation.html",
+
         conversation=conversation,
+
         other_user=other_user,
+
         messages=messages
+
     )
 
 
 # =====================================================
-# ADMIN: START CHAT WITH USER
+# ADMIN
+# START CHAT WITH USER
 # =====================================================
 
 @chat.route(
-    "/admin/start-chat/<int:user_id>",
-    methods=["GET"]
+    "/admin/start-chat/<int:user_id>"
 )
 @login_required
 def admin_start_chat(user_id):
 
-    if current_user.role != "admin":
+    if current_user.role.lower() != "admin":
 
         flash(
             "Administrator access required.",
@@ -716,10 +944,14 @@ def admin_start_chat(user_id):
         )
 
 
-    user = User.query.get_or_404(user_id)
+    user = User.query.get_or_404(
+        user_id
+    )
 
 
-    if user.role not in [
+    # Admin can only chat with buyers and sellers.
+
+    if user.role.lower() not in [
         "buyer",
         "seller"
     ]:
@@ -735,8 +967,11 @@ def admin_start_chat(user_id):
 
 
     conversation = get_or_create_conversation(
+
         current_user.id,
+
         user.id
+
     )
 
 

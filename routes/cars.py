@@ -3,10 +3,13 @@
 
 import os
 import uuid
-import traceback
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import cloudinary
 import cloudinary.uploader
+import cloudinary.api
 
 from flask import (
     Blueprint,
@@ -18,10 +21,7 @@ from flask import (
     current_app
 )
 
-from flask_login import (
-    login_required,
-    current_user
-)
+from flask_login import login_required, current_user
 
 from extensions import db
 
@@ -37,26 +37,94 @@ from models import (
 )
 
 
-# =====================================================
+# ============================================================
 # BLUEPRINT
-# =====================================================
+# ============================================================
 
-cars = Blueprint(
-    "cars",
-    __name__
-)
+cars = Blueprint("cars", __name__)
 
 
-# =====================================================
+# ============================================================
+# CLOUDINARY CONFIGURATION
+# ============================================================
+
+def configure_cloudinary():
+
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+    api_key = os.getenv("CLOUDINARY_API_KEY")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    upload_preset = os.getenv("CLOUDINARY_UPLOAD_PRESET")
+
+    if not cloud_name:
+        raise RuntimeError(
+            "CLOUDINARY_CLOUD_NAME is missing on the server."
+        )
+
+    if not api_key:
+        raise RuntimeError(
+            "CLOUDINARY_API_KEY is missing on the server."
+        )
+
+    if not api_secret:
+        raise RuntimeError(
+            "CLOUDINARY_API_SECRET is missing on the server."
+        )
+
+    if not upload_preset:
+        raise RuntimeError(
+            "CLOUDINARY_UPLOAD_PRESET is missing on the server."
+        )
+
+    cloudinary.config(
+        cloud_name=cloud_name,
+        api_key=api_key,
+        api_secret=api_secret,
+        secure=True
+    )
+
+    return {
+        "cloud_name": cloud_name,
+        "api_key": api_key,
+        "api_secret": api_secret,
+        "upload_preset": upload_preset
+    }
+
+
+# ============================================================
+# CLOUDINARY TEST
+# ============================================================
+
+def test_cloudinary():
+
+    configure_cloudinary()
+
+    result = cloudinary.api.ping()
+
+    if not result or result.get("status") != "ok":
+
+        raise RuntimeError(
+            f"Cloudinary ping failed: {result}"
+        )
+
+    return True
+
+
+# ============================================================
 # IMAGE VALIDATION
-# =====================================================
+# ============================================================
 
 def allowed_file(filename):
 
-    if not filename or "." not in filename:
+    if not filename:
         return False
 
-    extension = filename.rsplit(".", 1)[1].lower()
+    if "." not in filename:
+        return False
+
+    extension = filename.rsplit(
+        ".",
+        1
+    )[1].lower()
 
     allowed_extensions = current_app.config.get(
         "ALLOWED_EXTENSIONS",
@@ -66,54 +134,9 @@ def allowed_file(filename):
     return extension in allowed_extensions
 
 
-# =====================================================
-# CLOUDINARY CONFIGURATION
-# =====================================================
-
-def configure_cloudinary():
-
-    cloudinary_url = os.environ.get(
-        "CLOUDINARY_URL"
-    )
-
-    if not cloudinary_url:
-
-        raise RuntimeError(
-            "CLOUDINARY_URL environment variable is missing."
-        )
-
-    cloudinary.config(
-        cloudinary_url=cloudinary_url,
-        secure=True
-    )
-
-    config = cloudinary.config()
-
-    if not config.cloud_name:
-
-        raise RuntimeError(
-            "Cloudinary cloud name is missing."
-        )
-
-    if not config.api_key:
-
-        raise RuntimeError(
-            "Cloudinary API key is missing."
-        )
-
-    if not config.api_secret:
-
-        raise RuntimeError(
-            "Cloudinary API secret is missing."
-        )
-
-    return True
-
-
-# =====================================================
+# ============================================================
 # AVAILABLE CARS
-# PUBLIC + ADVANCED SEARCH
-# =====================================================
+# ============================================================
 
 @cars.route("/cars")
 def all_cars():
@@ -178,93 +201,64 @@ def all_cars():
         "newest"
     )
 
-    # -------------------------------------------------
-    # BASE QUERY
-    # -------------------------------------------------
-
     query = Car.query.filter_by(
         status="Approved"
     )
 
-    # -------------------------------------------------
-    # SEARCH FILTERS
-    # -------------------------------------------------
-
     if brand:
-
         query = query.filter(
-            Car.brand.ilike(
-                f"%{brand}%"
-            )
+            Car.brand.ilike(f"%{brand}%")
         )
 
     if model:
-
         query = query.filter(
-            Car.model.ilike(
-                f"%{model}%"
-            )
+            Car.model.ilike(f"%{model}%")
         )
 
     if location:
-
         query = query.filter(
-            Car.location.ilike(
-                f"%{location}%"
-            )
+            Car.location.ilike(f"%{location}%")
         )
 
     if fuel:
-
         query = query.filter(
             Car.fuel == fuel
         )
 
     if transmission:
-
         query = query.filter(
             Car.transmission == transmission
         )
 
     if min_price is not None:
-
         query = query.filter(
             Car.price >= min_price
         )
 
     if max_price is not None:
-
         query = query.filter(
             Car.price <= max_price
         )
 
     if min_year is not None:
-
         query = query.filter(
             Car.year >= min_year
         )
 
     if max_year is not None:
-
         query = query.filter(
             Car.year <= max_year
         )
 
     if min_mileage is not None:
-
         query = query.filter(
             Car.mileage >= min_mileage
         )
 
     if max_mileage is not None:
-
         query = query.filter(
             Car.mileage <= max_mileage
         )
-
-    # -------------------------------------------------
-    # SORTING
-    # -------------------------------------------------
 
     if sort == "price_low":
 
@@ -304,25 +298,21 @@ def all_cars():
 
     cars_list = query.all()
 
-    # -------------------------------------------------
-    # FAVORITES + COMPARE
-    # -------------------------------------------------
-
     favorite_ids = set()
     compare_ids = set()
 
     if current_user.is_authenticated:
 
         favorite_ids = {
-            favorite.car_id
-            for favorite in Favorite.query.filter_by(
+            item.car_id
+            for item in Favorite.query.filter_by(
                 user_id=current_user.id
             ).all()
         }
 
         compare_ids = {
-            comparison.car_id
-            for comparison in CompareCar.query.filter_by(
+            item.car_id
+            for item in CompareCar.query.filter_by(
                 user_id=current_user.id
             ).all()
         }
@@ -349,16 +339,14 @@ def all_cars():
     )
 
 
-# =====================================================
+# ============================================================
 # CAR DETAILS
-# =====================================================
+# ============================================================
 
 @cars.route("/car/<int:car_id>")
 def car_details(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if car.status != "Approved":
 
@@ -405,9 +393,9 @@ def car_details(car_id):
     )
 
 
-# =====================================================
+# ============================================================
 # ADD CAR
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/add_car",
@@ -422,14 +410,86 @@ def add_car():
             "add_car.html"
         )
 
-    # -------------------------------------------------
-    # BASIC FORM DATA
-    # -------------------------------------------------
+    print("================================================")
+    print("ADD CAR ROUTE WAS CALLED")
+    print("METHOD:", request.method)
+    print("USER:", current_user.id)
+    print("================================================")
 
-    registration_number = request.form.get(
-        "registration_number",
-        ""
-    ).strip().upper()
+    # ========================================================
+    # FORM DATA
+    # ========================================================
+
+    try:
+
+        registration_number = request.form.get(
+            "registration_number",
+            ""
+        ).strip().upper()
+
+        brand = request.form.get(
+            "brand",
+            ""
+        ).strip()
+
+        model = request.form.get(
+            "model",
+            ""
+        ).strip()
+
+        year = int(
+            request.form.get(
+                "year",
+                0
+            )
+        )
+
+        price = int(
+            request.form.get(
+                "price",
+                0
+            )
+        )
+
+        mileage = int(
+            request.form.get(
+                "mileage",
+                0
+            )
+        )
+
+        fuel = request.form.get(
+            "fuel",
+            ""
+        ).strip()
+
+        transmission = request.form.get(
+            "transmission",
+            ""
+        ).strip()
+
+        location = request.form.get(
+            "location",
+            ""
+        ).strip()
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        flash(
+            "Please enter valid vehicle information.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("cars.add_car")
+        )
+
+    # ========================================================
+    # REQUIRED FIELDS
+    # ========================================================
 
     if not registration_number:
 
@@ -442,30 +502,10 @@ def add_car():
             url_for("cars.add_car")
         )
 
-    # -------------------------------------------------
-    # GET IMAGES
-    # -------------------------------------------------
-
-    images = request.files.getlist(
-        "images"
-    )
-
-    images = [
-        image
-        for image in images
-        if image
-        and image.filename
-        and image.filename.strip()
-    ]
-
-    # -------------------------------------------------
-    # MINIMUM 5 IMAGES
-    # -------------------------------------------------
-
-    if len(images) < 5:
+    if not brand or not model:
 
         flash(
-            "Please upload at least 5 images.",
+            "Brand and model are required.",
             "danger"
         )
 
@@ -473,19 +513,86 @@ def add_car():
             url_for("cars.add_car")
         )
 
-    # -------------------------------------------------
-    # VALIDATE IMAGES
-    # -------------------------------------------------
+    if year <= 0:
+
+        flash(
+            "Please enter a valid year.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("cars.add_car")
+        )
+
+    if price <= 0:
+
+        flash(
+            "Please enter a valid price.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("cars.add_car")
+        )
+
+    # ========================================================
+    # GET IMAGES
+    # ========================================================
+
+    images = request.files.getlist("images")
+
+    valid_images = []
 
     for image in images:
 
-        if not allowed_file(
-            image.filename
+        if (
+            image
+            and image.filename
+            and image.filename.strip()
         ):
 
+            valid_images.append(image)
+
+    print("================================================")
+    print("CAR IMAGE UPLOAD START")
+    print("Number of received files:", len(valid_images))
+
+    for image in valid_images:
+
+        print(
+            "Received image:",
+            image.filename
+        )
+
+    print("================================================")
+
+    # ========================================================
+    # MINIMUM 5 IMAGES
+    # ========================================================
+
+    if len(valid_images) < 5:
+
+        flash(
+            f"Please upload at least 5 images. "
+            f"You selected {len(valid_images)}.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("cars.add_car")
+        )
+
+    # ========================================================
+    # VALIDATE IMAGE TYPES
+    # ========================================================
+
+    for image in valid_images:
+
+        if not allowed_file(image.filename):
+
             flash(
-                "Invalid image file. "
-                "Allowed formats: JPG, JPEG, PNG and WEBP.",
+                f"Invalid image file: {image.filename}. "
+                "Allowed formats are JPG, JPEG, PNG and WEBP.",
                 "danger"
             )
 
@@ -493,9 +600,9 @@ def add_car():
                 url_for("cars.add_car")
             )
 
-    # -------------------------------------------------
-    # CHECK DUPLICATE REGISTRATION
-    # -------------------------------------------------
+    # ========================================================
+    # CHECK REGISTRATION
+    # ========================================================
 
     existing_car = Car.query.filter_by(
         registration_number=registration_number
@@ -512,113 +619,57 @@ def add_car():
             url_for("cars.add_car")
         )
 
-    # -------------------------------------------------
-    # UPGRADE BUYER TO SELLER
-    # -------------------------------------------------
+    # ========================================================
+    # CLOUDINARY CONFIGURATION
+    # ========================================================
 
-    if current_user.role == "buyer":
-
-        current_user.role = "seller"
-
-        db.session.commit()
-
-    # -------------------------------------------------
-    # CREATE CAR
-    # -------------------------------------------------
+    cloudinary_settings = None
 
     try:
 
-        car = Car(
+        print("Testing Cloudinary connection...")
 
-            registration_number=registration_number,
+        cloudinary_settings = configure_cloudinary()
 
-            seller_id=current_user.id,
-
-            brand=request.form.get(
-                "brand",
-                ""
-            ).strip(),
-
-            model=request.form.get(
-                "model",
-                ""
-            ).strip(),
-
-            year=int(
-                request.form.get(
-                    "year"
-                )
-            ),
-
-            price=int(
-                request.form.get(
-                    "price"
-                )
-            ),
-
-            mileage=int(
-                request.form.get(
-                    "mileage"
-                )
-            ),
-
-            fuel=request.form.get(
-                "fuel",
-                ""
-            ).strip(),
-
-            transmission=request.form.get(
-                "transmission",
-                ""
-            ).strip(),
-
-            engine=request.form.get(
-                "engine",
-                ""
-            ).strip(),
-
-            color=request.form.get(
-                "color",
-                ""
-            ).strip(),
-
-            condition=request.form.get(
-                "condition",
-                ""
-            ).strip(),
-
-            location=request.form.get(
-                "location",
-                ""
-            ).strip(),
-
-            description=request.form.get(
-                "description",
-                ""
-            ).strip(),
-
-            status="Pending"
+        print("Cloudinary configuration loaded.")
+        print(
+            "Cloud name:",
+            cloudinary_settings["cloud_name"]
+        )
+        print(
+            "Upload preset:",
+            cloudinary_settings["upload_preset"]
         )
 
-        db.session.add(
-            car
+        ping_result = cloudinary.api.ping()
+
+        print(
+            "Cloudinary ping:",
+            ping_result
         )
 
-        db.session.commit()
+        if (
+            not ping_result
+            or ping_result.get("status") != "ok"
+        ):
+
+            raise RuntimeError(
+                f"Cloudinary ping failed: {ping_result}"
+            )
+
+        print("Cloudinary connection OK.")
 
     except Exception as error:
 
-        db.session.rollback()
-
-        print(
-            "CAR CREATION ERROR:",
-            repr(error)
-        )
-
-        traceback.print_exc()
+        print("================================================")
+        print("CLOUDINARY CONNECTION ERROR")
+        print("ERROR TYPE:", type(error).__name__)
+        print("ERROR:", str(error))
+        print("ERROR REPR:", repr(error))
+        print("================================================")
 
         flash(
-            "There was a problem creating the vehicle listing.",
+            f"Cloudinary connection error: {error}",
             "danger"
         )
 
@@ -626,114 +677,242 @@ def add_car():
             url_for("cars.add_car")
         )
 
-    # -------------------------------------------------
-    # CLOUDINARY UPLOAD
-    # -------------------------------------------------
+    # ========================================================
+    # CREATE CAR
+    # ========================================================
 
-    uploaded_images = []
+    car = Car(
+
+        registration_number=registration_number,
+
+        seller_id=current_user.id,
+
+        brand=brand,
+
+        model=model,
+
+        year=year,
+
+        price=price,
+
+        mileage=mileage,
+
+        fuel=fuel,
+
+        transmission=transmission,
+
+        engine=request.form.get("engine"),
+
+        color=request.form.get("color"),
+
+        condition=request.form.get("condition"),
+
+        location=location,
+
+        description=request.form.get("description"),
+
+        status="Pending"
+    )
+
+    uploaded_public_ids = []
 
     try:
 
-        configure_cloudinary()
+        # ====================================================
+        # SAVE CAR FIRST
+        # ====================================================
+
+        db.session.add(car)
+
+        db.session.flush()
 
         print(
-            "Cloudinary configuration successful."
+            "Created temporary car ID:",
+            car.id
         )
 
-        for image in images:
+        # ====================================================
+        # UPLOAD EVERY IMAGE
+        # ====================================================
 
+        upload_preset = cloudinary_settings["upload_preset"]
+
+        print(
+            "Using Cloudinary upload preset:",
+            upload_preset
+        )
+
+        for index, image in enumerate(
+            valid_images,
+            start=1
+        ):
+
+            print("------------------------------------------------")
             print(
-                "Uploading image:",
+                f"Uploading image "
+                f"{index}/{len(valid_images)}"
+            )
+            print(
+                "Filename:",
                 image.filename
             )
 
-            result = cloudinary.uploader.upload(
+            image.stream.seek(0)
 
-                image,
+            public_id = (
+                f"car_{car.id}_"
+                f"{uuid.uuid4().hex}"
+            )
 
-                folder="carvion_motors/cars",
+            print(
+                "Cloudinary public ID:",
+                public_id
+            )
 
-                public_id=uuid.uuid4().hex,
+            try:
 
-                resource_type="image",
+                result = cloudinary.uploader.upload(
 
-                overwrite=False
+                    image.stream,
+
+                    upload_preset=upload_preset,
+
+                    folder="carvion_motors/cars",
+
+                    public_id=public_id,
+
+                    resource_type="image",
+
+                    overwrite=False,
+
+                    use_filename=False,
+
+                    unique_filename=False,
+
+                    secure=True
+                )
+
+            except Exception as upload_error:
+
+                print("------------------------------------------------")
+                print("INDIVIDUAL CLOUDINARY UPLOAD FAILED")
+                print(
+                    "IMAGE:",
+                    image.filename
+                )
+                print(
+                    "ERROR TYPE:",
+                    type(upload_error).__name__
+                )
+                print(
+                    "ERROR:",
+                    str(upload_error)
+                )
+                print(
+                    "ERROR REPR:",
+                    repr(upload_error)
+                )
+                print("------------------------------------------------")
+
+                raise
+
+            print(
+                "Cloudinary upload successful."
             )
 
             image_url = result.get(
                 "secure_url"
             )
 
-            public_id = result.get(
+            cloudinary_public_id = result.get(
                 "public_id"
             )
 
             print(
-                "Cloudinary URL:",
+                "Secure URL:",
                 image_url
+            )
+
+            print(
+                "Public ID:",
+                cloudinary_public_id
             )
 
             if not image_url:
 
                 raise RuntimeError(
-                    "Cloudinary did not return secure_url."
+                    "Cloudinary upload succeeded "
+                    "but secure_url was missing."
+                )
+
+            if not cloudinary_public_id:
+
+                raise RuntimeError(
+                    "Cloudinary upload succeeded "
+                    "but public_id was missing."
                 )
 
             car_image = CarImage(
 
                 car_id=car.id,
 
-                filename=image_url
+                filename=image_url,
+
+                public_id=cloudinary_public_id
+
             )
 
-            if hasattr(
-                car_image,
-                "public_id"
-            ):
+            db.session.add(car_image)
 
-                car_image.public_id = public_id
-
-            db.session.add(
-                car_image
+            uploaded_public_ids.append(
+                cloudinary_public_id
             )
 
-            uploaded_images.append(
-                public_id
-            )
+        # ====================================================
+        # VERIFY IMAGE COUNT
+        # ====================================================
 
-        if len(uploaded_images) < 5:
+        if len(uploaded_public_ids) < 5:
 
             raise RuntimeError(
-                "Fewer than 5 images uploaded successfully."
+                "Fewer than 5 images were uploaded."
             )
+
+        # ====================================================
+        # COMMIT
+        # ====================================================
 
         db.session.commit()
 
+        print("================================================")
+        print("CAR CREATED SUCCESSFULLY")
+        print("Car ID:", car.id)
+        print("Images:", len(uploaded_public_ids))
+        print("================================================")
+
     except Exception as error:
+
+        print("================================================")
+        print("CAR IMAGE UPLOAD ERROR")
+        print("ERROR TYPE:", type(error).__name__)
+        print("ERROR:", str(error))
+        print("ERROR REPR:", repr(error))
+        print("================================================")
 
         db.session.rollback()
 
-        print("=" * 70)
-        print(
-            "CLOUDINARY UPLOAD FAILED"
-        )
-        print(
-            "ERROR:",
-            repr(error)
-        )
-        traceback.print_exc()
-        print("=" * 70)
+        # ====================================================
+        # CLOUDINARY CLEANUP
+        # ====================================================
 
-        # -------------------------------------------------
-        # CLEAN CLOUDINARY FILES
-        # -------------------------------------------------
-
-        for public_id in uploaded_images:
-
-            if not public_id:
-                continue
+        for public_id in uploaded_public_ids:
 
             try:
+
+                print(
+                    "Deleting uploaded Cloudinary image:",
+                    public_id
+                )
 
                 cloudinary.uploader.destroy(
                     public_id,
@@ -743,34 +922,13 @@ def add_car():
             except Exception as cleanup_error:
 
                 print(
-                    "CLOUDINARY CLEANUP ERROR:",
+                    "Cloudinary cleanup error:",
                     repr(cleanup_error)
                 )
 
-        # -------------------------------------------------
-        # DELETE CAR
-        # -------------------------------------------------
-
-        try:
-
-            db.session.delete(
-                car
-            )
-
-            db.session.commit()
-
-        except Exception as delete_error:
-
-            db.session.rollback()
-
-            print(
-                "CAR CLEANUP ERROR:",
-                repr(delete_error)
-            )
-
+        # Show the actual error during troubleshooting.
         flash(
-            "There was a problem uploading the vehicle images. "
-            "Please check your Cloudinary configuration.",
+            f"Cloudinary upload error: {error}",
             "danger"
         )
 
@@ -778,9 +936,9 @@ def add_car():
             url_for("cars.add_car")
         )
 
-    # -------------------------------------------------
+    # ========================================================
     # SUCCESS
-    # -------------------------------------------------
+    # ========================================================
 
     flash(
         "Car submitted for approval successfully.",
@@ -792,9 +950,9 @@ def add_car():
     )
 
 
-# =====================================================
+# ============================================================
 # SELLER DASHBOARD
-# =====================================================
+# ============================================================
 
 @cars.route("/seller/dashboard")
 @login_required
@@ -846,9 +1004,9 @@ def seller_dashboard():
     )
 
 
-# =====================================================
+# ============================================================
 # MY CARS
-# =====================================================
+# ============================================================
 
 @cars.route("/my_cars")
 @login_required
@@ -877,9 +1035,9 @@ def my_cars():
     )
 
 
-# =====================================================
+# ============================================================
 # EDIT CAR
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/edit_car/<int:car_id>",
@@ -888,9 +1046,7 @@ def my_cars():
 @login_required
 def edit_car(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if car.seller_id != current_user.id:
 
@@ -919,46 +1075,40 @@ def edit_car(car_id):
 
             car.year = int(
                 request.form.get(
-                    "year"
+                    "year",
+                    car.year
                 )
             )
 
             car.price = int(
                 request.form.get(
-                    "price"
+                    "price",
+                    car.price
                 )
             )
 
             car.mileage = int(
                 request.form.get(
-                    "mileage"
+                    "mileage",
+                    car.mileage
                 )
             )
 
             car.fuel = request.form.get(
                 "fuel",
-                ""
-            ).strip()
+                car.fuel
+            )
 
             car.transmission = request.form.get(
                 "transmission",
-                ""
-            ).strip()
+                car.transmission
+            )
 
-            car.engine = request.form.get(
-                "engine",
-                ""
-            ).strip()
+            car.engine = request.form.get("engine")
 
-            car.color = request.form.get(
-                "color",
-                ""
-            ).strip()
+            car.color = request.form.get("color")
 
-            car.condition = request.form.get(
-                "condition",
-                ""
-            ).strip()
+            car.condition = request.form.get("condition")
 
             car.location = request.form.get(
                 "location",
@@ -966,9 +1116,8 @@ def edit_car(car_id):
             ).strip()
 
             car.description = request.form.get(
-                "description",
-                ""
-            ).strip()
+                "description"
+            )
 
             db.session.commit()
 
@@ -991,7 +1140,7 @@ def edit_car(car_id):
             )
 
             flash(
-                "There was a problem updating the vehicle.",
+                f"Unable to update vehicle: {error}",
                 "danger"
             )
 
@@ -1001,9 +1150,9 @@ def edit_car(car_id):
     )
 
 
-# =====================================================
+# ============================================================
 # DELETE CAR
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/delete_car/<int:car_id>",
@@ -1012,9 +1161,7 @@ def edit_car(car_id):
 @login_required
 def delete_car(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if car.seller_id != current_user.id:
 
@@ -1027,11 +1174,16 @@ def delete_car(car_id):
             url_for("cars.seller_dashboard")
         )
 
-    configure_cloudinary()
+    try:
 
-    # -------------------------------------------------
-    # DELETE IMAGES
-    # -------------------------------------------------
+        configure_cloudinary()
+
+    except Exception as error:
+
+        print(
+            "CLOUDINARY CONFIG ERROR:",
+            repr(error)
+        )
 
     for image in list(car.images):
 
@@ -1057,14 +1209,6 @@ def delete_car(car_id):
                 repr(error)
             )
 
-        db.session.delete(
-            image
-        )
-
-    # -------------------------------------------------
-    # DELETE RELATED DATA
-    # -------------------------------------------------
-
     Favorite.query.filter_by(
         car_id=car.id
     ).delete(
@@ -1083,13 +1227,7 @@ def delete_car(car_id):
         synchronize_session=False
     )
 
-    # -------------------------------------------------
-    # DELETE CAR
-    # -------------------------------------------------
-
-    db.session.delete(
-        car
-    )
+    db.session.delete(car)
 
     db.session.commit()
 
@@ -1103,9 +1241,9 @@ def delete_car(car_id):
     )
 
 
-# =====================================================
-# DELETE SINGLE IMAGE
-# =====================================================
+# ============================================================
+# DELETE IMAGE
+# ============================================================
 
 @cars.route(
     "/delete_image/<int:image_id>",
@@ -1114,13 +1252,9 @@ def delete_car(car_id):
 @login_required
 def delete_image(image_id):
 
-    image = CarImage.query.get_or_404(
-        image_id
-    )
+    image = CarImage.query.get_or_404(image_id)
 
-    car = Car.query.get_or_404(
-        image.car_id
-    )
+    car = Car.query.get_or_404(image.car_id)
 
     if car.seller_id != current_user.id:
 
@@ -1157,9 +1291,7 @@ def delete_image(image_id):
             repr(error)
         )
 
-    db.session.delete(
-        image
-    )
+    db.session.delete(image)
 
     db.session.commit()
 
@@ -1176,9 +1308,9 @@ def delete_image(image_id):
     )
 
 
-# =====================================================
+# ============================================================
 # FAVORITES
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/favorite/<int:car_id>",
@@ -1187,14 +1319,11 @@ def delete_image(image_id):
 @login_required
 def toggle_favorite(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if (
         car.status != "Approved"
-        and
-        current_user.role != "admin"
+        and current_user.role != "admin"
     ):
 
         flash(
@@ -1204,8 +1333,7 @@ def toggle_favorite(car_id):
 
         return redirect(
             request.referrer
-            or
-            url_for("cars.all_cars")
+            or url_for("cars.all_cars")
         )
 
     favorite = Favorite.query.filter_by(
@@ -1215,14 +1343,13 @@ def toggle_favorite(car_id):
 
     if favorite:
 
-        db.session.delete(
-            favorite
-        )
+        db.session.delete(favorite)
 
         db.session.commit()
 
         flash(
-            f"{car.brand} {car.model} removed from favorites.",
+            f"{car.brand} {car.model} "
+            "removed from favorites.",
             "info"
         )
 
@@ -1233,47 +1360,38 @@ def toggle_favorite(car_id):
             car_id=car.id
         )
 
-        db.session.add(
-            favorite
-        )
+        db.session.add(favorite)
 
         notification = Notification(
-
             user_id=current_user.id,
-
             car_id=car.id,
-
             title="Car Added to Favorites",
-
             message=(
                 f"{car.brand} {car.model} "
                 "has been saved to your favorites."
             ),
-
             notification_type="favorite"
         )
 
-        db.session.add(
-            notification
-        )
+        db.session.add(notification)
 
         db.session.commit()
 
         flash(
-            f"{car.brand} {car.model} added to favorites.",
+            f"{car.brand} {car.model} "
+            "added to favorites.",
             "success"
         )
 
     return redirect(
         request.referrer
-        or
-        url_for("cars.all_cars")
+        or url_for("cars.all_cars")
     )
 
 
-# =====================================================
+# ============================================================
 # FAVORITES PAGE
-# =====================================================
+# ============================================================
 
 @cars.route("/favorites")
 @login_required
@@ -1286,14 +1404,10 @@ def favorites():
     ).all()
 
     cars_list = [
-
         favorite.car
-
         for favorite in favorite_records
-
         if favorite.car is not None
         and favorite.car.status == "Approved"
-
     ]
 
     return render_template(
@@ -1302,9 +1416,9 @@ def favorites():
     )
 
 
-# =====================================================
+# ============================================================
 # REMOVE FAVORITE
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/favorite/remove/<int:car_id>",
@@ -1320,9 +1434,7 @@ def remove_favorite(car_id):
 
     if favorite:
 
-        db.session.delete(
-            favorite
-        )
+        db.session.delete(favorite)
 
         db.session.commit()
 
@@ -1333,14 +1445,13 @@ def remove_favorite(car_id):
 
     return redirect(
         request.referrer
-        or
-        url_for("cars.favorites")
+        or url_for("cars.favorites")
     )
 
 
-# =====================================================
+# ============================================================
 # COMPARE
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/compare/<int:car_id>",
@@ -1349,14 +1460,11 @@ def remove_favorite(car_id):
 @login_required
 def toggle_compare(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if (
         car.status != "Approved"
-        and
-        current_user.role != "admin"
+        and current_user.role != "admin"
     ):
 
         flash(
@@ -1366,8 +1474,7 @@ def toggle_compare(car_id):
 
         return redirect(
             request.referrer
-            or
-            url_for("cars.all_cars")
+            or url_for("cars.all_cars")
         )
 
     existing = CompareCar.query.filter_by(
@@ -1377,14 +1484,13 @@ def toggle_compare(car_id):
 
     if existing:
 
-        db.session.delete(
-            existing
-        )
+        db.session.delete(existing)
 
         db.session.commit()
 
         flash(
-            f"{car.brand} {car.model} removed from comparison.",
+            f"{car.brand} {car.model} "
+            "removed from comparison.",
             "info"
         )
 
@@ -1403,8 +1509,7 @@ def toggle_compare(car_id):
 
             return redirect(
                 request.referrer
-                or
-                url_for("cars.all_cars")
+                or url_for("cars.all_cars")
             )
 
         comparison = CompareCar(
@@ -1412,47 +1517,38 @@ def toggle_compare(car_id):
             car_id=car.id
         )
 
-        db.session.add(
-            comparison
-        )
+        db.session.add(comparison)
 
         notification = Notification(
-
             user_id=current_user.id,
-
             car_id=car.id,
-
             title="Car Added to Compare",
-
             message=(
                 f"{car.brand} {car.model} "
                 "has been added to your comparison list."
             ),
-
             notification_type="compare"
         )
 
-        db.session.add(
-            notification
-        )
+        db.session.add(notification)
 
         db.session.commit()
 
         flash(
-            f"{car.brand} {car.model} added to comparison.",
+            f"{car.brand} {car.model} "
+            "added to comparison.",
             "success"
         )
 
     return redirect(
         request.referrer
-        or
-        url_for("cars.all_cars")
+        or url_for("cars.all_cars")
     )
 
 
-# =====================================================
+# ============================================================
 # COMPARE PAGE
-# =====================================================
+# ============================================================
 
 @cars.route("/compare")
 @login_required
@@ -1465,14 +1561,10 @@ def compare():
     ).all()
 
     cars_list = [
-
         record.car
-
         for record in records
-
         if record.car is not None
         and record.car.status == "Approved"
-
     ]
 
     return render_template(
@@ -1481,9 +1573,9 @@ def compare():
     )
 
 
-# =====================================================
+# ============================================================
 # REMOVE COMPARE
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/compare/remove/<int:car_id>",
@@ -1499,9 +1591,7 @@ def remove_compare(car_id):
 
     if comparison:
 
-        db.session.delete(
-            comparison
-        )
+        db.session.delete(comparison)
 
         db.session.commit()
 
@@ -1512,14 +1602,13 @@ def remove_compare(car_id):
 
     return redirect(
         request.referrer
-        or
-        url_for("cars.compare")
+        or url_for("cars.compare")
     )
 
 
-# =====================================================
+# ============================================================
 # CLEAR COMPARE
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/compare/clear",
@@ -1546,9 +1635,9 @@ def clear_compare():
     )
 
 
-# =====================================================
+# ============================================================
 # NOTIFICATIONS
-# =====================================================
+# ============================================================
 
 @cars.route("/notifications")
 @login_required
@@ -1566,9 +1655,9 @@ def notifications():
     )
 
 
-# =====================================================
+# ============================================================
 # MARK NOTIFICATION READ
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/notification/<int:notification_id>/read",
@@ -1596,15 +1685,13 @@ def mark_notification_read(notification_id):
         )
 
     return redirect(
-        url_for(
-            "cars.notifications"
-        )
+        url_for("cars.notifications")
     )
 
 
-# =====================================================
+# ============================================================
 # MARK ALL NOTIFICATIONS READ
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/notifications/read-all",
@@ -1631,15 +1718,13 @@ def mark_all_notifications_read():
     )
 
     return redirect(
-        url_for(
-            "cars.notifications"
-        )
+        url_for("cars.notifications")
     )
 
 
-# =====================================================
+# ============================================================
 # BUYER SENDS INQUIRY
-# =====================================================
+# ============================================================
 
 @cars.route(
     "/inquiry/<int:car_id>",
@@ -1648,9 +1733,7 @@ def mark_all_notifications_read():
 @login_required
 def send_inquiry(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     if current_user.role != "buyer":
 
@@ -1714,53 +1797,36 @@ def send_inquiry(car_id):
             status="Open"
         )
 
-        db.session.add(
-            inquiry
-        )
+        db.session.add(inquiry)
 
         db.session.commit()
 
     message = InquiryMessage(
-
         inquiry_id=inquiry.id,
-
         sender_id=current_user.id,
-
         receiver_id=car.seller_id,
-
         sender_role=current_user.role,
-
         message=message_text,
-
         is_read=False
     )
 
-    db.session.add(
-        message
-    )
+    db.session.add(message)
 
     inquiry.status = "Open"
 
     notification = Notification(
-
         user_id=car.seller_id,
-
         car_id=car.id,
-
         title="New Vehicle Inquiry",
-
         message=(
             f"{current_user.name} sent you a "
             f"new inquiry about "
             f"{car.brand} {car.model}."
         ),
-
         notification_type="inquiry"
     )
 
-    db.session.add(
-        notification
-    )
+    db.session.add(notification)
 
     db.session.commit()
 
@@ -1777,9 +1843,9 @@ def send_inquiry(car_id):
     )
 
 
-# =====================================================
+# ============================================================
 # BUYER INQUIRIES
-# =====================================================
+# ============================================================
 
 @cars.route("/buyer_inquiries")
 @login_required
@@ -1797,9 +1863,9 @@ def buyer_inquiries():
     )
 
 
-# =====================================================
+# ============================================================
 # SELLER INQUIRIES
-# =====================================================
+# ============================================================
 
 @cars.route("/seller_inquiries")
 @login_required
@@ -1817,9 +1883,9 @@ def seller_inquiries():
     )
 
 
-# =====================================================
-# CONTACT SELLER / ADMIN
-# =====================================================
+# ============================================================
+# CONTACT SELLER
+# ============================================================
 
 @cars.route(
     "/contact_seller/<int:car_id>",
@@ -1828,9 +1894,7 @@ def seller_inquiries():
 @login_required
 def contact_seller(car_id):
 
-    car = Car.query.get_or_404(
-        car_id
-    )
+    car = Car.query.get_or_404(car_id)
 
     message_text = request.form.get(
         "message",
@@ -1852,19 +1916,13 @@ def contact_seller(car_id):
         )
 
     inquiry = Inquiry(
-
         car_id=car.id,
-
         buyer_id=current_user.id,
-
         seller_id=car.seller_id,
-
         status="Open"
     )
 
-    db.session.add(
-        inquiry
-    )
+    db.session.add(inquiry)
 
     db.session.commit()
 
@@ -1887,44 +1945,29 @@ def contact_seller(car_id):
         )
 
     message = InquiryMessage(
-
         inquiry_id=inquiry.id,
-
         sender_id=current_user.id,
-
         receiver_id=admin.id,
-
         sender_role=current_user.role,
-
         message=message_text,
-
         is_read=False
     )
 
-    db.session.add(
-        message
-    )
+    db.session.add(message)
 
     notification = Notification(
-
         user_id=admin.id,
-
         car_id=car.id,
-
         title="New Contact Request",
-
         message=(
             f"{current_user.name} contacted "
             f"you regarding "
             f"{car.brand} {car.model}."
         ),
-
         notification_type="inquiry"
     )
 
-    db.session.add(
-        notification
-    )
+    db.session.add(notification)
 
     db.session.commit()
 
@@ -1939,4 +1982,3 @@ def contact_seller(car_id):
             car_id=car.id
         )
     )
-

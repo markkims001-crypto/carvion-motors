@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
@@ -7,196 +6,181 @@ import os
 
 from config import Config
 from extensions import db, login_manager
+
 from models import (
     User,
     Car,
     Inquiry,
+    InquiryMessage,
+    Message,
     Notification
 )
 
 
-# =====================================================
+# ============================================================
 # CREATE APPLICATION
-# =====================================================
+# ============================================================
 
 def create_app():
 
     app = Flask(__name__)
-
     app.config.from_object(Config)
 
-
-    # =================================================
+    # ========================================================
     # UPLOAD FOLDER
-    # =================================================
+    # ========================================================
 
     upload_folder = app.config.get("UPLOAD_FOLDER")
 
     if upload_folder:
-        os.makedirs(
-            upload_folder,
-            exist_ok=True
-        )
+        os.makedirs(upload_folder, exist_ok=True)
 
-
-    # =================================================
-    # EXTENSIONS
-    # =================================================
+    # ========================================================
+    # DATABASE
+    # ========================================================
 
     db.init_app(app)
 
-    Migrate(
-        app,
-        db
-    )
+    # ========================================================
+    # FLASK MIGRATE
+    # ========================================================
+
+    Migrate(app, db)
+
+    # ========================================================
+    # LOGIN
+    # ========================================================
 
     login_manager.init_app(app)
 
     login_manager.login_view = "auth.login"
+    login_manager.login_message = "Please log in first."
 
-    login_manager.login_message = (
-        "Please log in first."
-    )
-
-
-    # =================================================
+    # ========================================================
     # LOGIN MANAGER
-    # =================================================
+    # ========================================================
 
     @login_manager.user_loader
     def load_user(user_id):
 
         try:
-
-            return db.session.get(
-                User,
-                int(user_id)
-            )
-
+            return db.session.get(User, int(user_id))
         except (ValueError, TypeError):
-
             return None
 
-
-    # =================================================
-    # GLOBAL NOTIFICATION DATA
-    # =================================================
-    #
-    # These variables are available in ALL templates.
-    #
-    # unread_notifications
-    # unread_favorites
-    # unread_compares
-    # unread_inquiries
-    # unread_vehicle_updates
-    #
-    # =================================================
+    # ========================================================
+    # GLOBAL HEADER COUNTS
+    # ========================================================
 
     @app.context_processor
     def inject_notification_data():
 
-        # -------------------------------------------------
-        # LOGGED OUT USERS
-        # -------------------------------------------------
+        data = {
+            "unread_notifications": 0,
+            "unread_favorites": 0,
+            "unread_compares": 0,
+            "unread_inquiries": 0,
+            "unread_vehicle_updates": 0,
+            "unread_messages": 0
+        }
 
         if not current_user.is_authenticated:
+            return data
 
-            return {
-                "unread_notifications": 0,
-                "unread_favorites": 0,
-                "unread_compares": 0,
-                "unread_inquiries": 0,
-                "unread_vehicle_updates": 0
-            }
-
-
-        # -------------------------------------------------
-        # GET UNREAD NOTIFICATIONS
-        # -------------------------------------------------
+        # ====================================================
+        # GENERAL NOTIFICATIONS
+        # ====================================================
 
         notifications = (
             Notification.query
-            .filter_by(
-                user_id=current_user.id,
-                is_read=False
+            .filter(
+                Notification.user_id == current_user.id,
+                Notification.is_read.is_(False)
             )
             .all()
         )
 
+        data["unread_notifications"] = len(notifications)
 
-        # -------------------------------------------------
-        # TOTAL UNREAD
-        # -------------------------------------------------
-
-        unread_notifications = len(
-            notifications
-        )
-
-
-        # -------------------------------------------------
+        # ====================================================
         # FAVORITES
-        # -------------------------------------------------
+        # ====================================================
 
-        unread_favorites = sum(
+        data["unread_favorites"] = sum(
             1
             for notification in notifications
             if notification.notification_type == "favorite"
         )
 
-
-        # -------------------------------------------------
+        # ====================================================
         # COMPARE
-        # -------------------------------------------------
+        # ====================================================
 
-        unread_compares = sum(
+        data["unread_compares"] = sum(
             1
             for notification in notifications
             if notification.notification_type == "compare"
         )
 
-
-        # -------------------------------------------------
-        # INQUIRIES
-        # -------------------------------------------------
-
-        unread_inquiries = sum(
-            1
-            for notification in notifications
-            if notification.notification_type == "inquiry"
-        )
-
-
-        # -------------------------------------------------
+        # ====================================================
         # VEHICLE UPDATES
-        # -------------------------------------------------
+        # ====================================================
 
-        unread_vehicle_updates = sum(
+        data["unread_vehicle_updates"] = sum(
             1
             for notification in notifications
-            if notification.notification_type in [
+            if notification.notification_type in (
                 "vehicle",
                 "approval",
                 "rejection"
-            ]
+            )
         )
 
+        # ====================================================
+        # INQUIRIES
+        # ====================================================
 
-        # -------------------------------------------------
-        # SEND DATA TO ALL TEMPLATES
-        # -------------------------------------------------
+        if current_user.role.lower() == "admin":
 
-        return {
-            "unread_notifications": unread_notifications,
-            "unread_favorites": unread_favorites,
-            "unread_compares": unread_compares,
-            "unread_inquiries": unread_inquiries,
-            "unread_vehicle_updates": unread_vehicle_updates
-        }
+            data["unread_inquiries"] = (
+                Notification.query
+                .filter(
+                    Notification.user_id == current_user.id,
+                    Notification.notification_type == "inquiry",
+                    Notification.is_read.is_(False)
+                )
+                .count()
+            )
 
+        else:
 
-    # =================================================
+            data["unread_inquiries"] = (
+                InquiryMessage.query
+                .filter(
+                    InquiryMessage.receiver_id == current_user.id,
+                    InquiryMessage.is_read.is_(False)
+                )
+                .count()
+            )
+
+        # ====================================================
+        # DIRECT CHAT MESSAGES
+        # ====================================================
+
+        data["unread_messages"] = (
+            Message.query
+            .filter(
+                Message.receiver_id == current_user.id,
+                Message.is_read.is_(False)
+            )
+            .count()
+        )
+
+        return data
+
+    # ========================================================
     # BLUEPRINTS
-    # =================================================
+    # ========================================================
 
     from routes.auth import auth
     from routes.cars import cars
@@ -204,158 +188,142 @@ def create_app():
     from routes.messages import messages
     from routes.chat import chat
 
-
     app.register_blueprint(auth)
-
     app.register_blueprint(cars)
-
     app.register_blueprint(admin)
-
     app.register_blueprint(messages)
-
     app.register_blueprint(chat)
 
-
-    # =================================================
+    # ========================================================
     # DATABASE INITIALIZATION
-    # =================================================
+    # ========================================================
 
     with app.app_context():
 
-        db.create_all()
+        try:
 
+            # ------------------------------------------------
+            # CREATE ALL TABLES
+            # ------------------------------------------------
 
-        # -------------------------------------------------
-        # DEFAULT ADMIN
-        # -------------------------------------------------
+            db.create_all()
 
-        admin_user = User.query.filter_by(
-            email="admin@carvion.com"
-        ).first()
+            print("=" * 60)
+            print("DATABASE INITIALIZATION COMPLETE")
+            print("=" * 60)
 
+            # ------------------------------------------------
+            # SHOW DATABASE TYPE
+            # ------------------------------------------------
 
-        if admin_user is None:
-
-            admin_user = User(
-                name="Carvion Admin",
-                email="admin@carvion.com",
-                phone="0700000000",
-                password=generate_password_hash(
-                    "admin123"
-                ),
-                role="admin"
+            database_url = app.config.get(
+                "SQLALCHEMY_DATABASE_URI",
+                ""
             )
 
+            if database_url.startswith("postgresql"):
+                print("DATABASE: PostgreSQL")
+            elif database_url.startswith("sqlite"):
+                print("DATABASE: SQLite")
+            else:
+                print("DATABASE: Connected")
 
-            db.session.add(
-                admin_user
-            )
+            print("=" * 60)
 
-            db.session.commit()
+            # ------------------------------------------------
+            # DEFAULT ADMIN
+            # ------------------------------------------------
 
+            admin_user = User.query.filter_by(
+                email="admin@carvion.com"
+            ).first()
 
-            print("=" * 50)
+            if admin_user is None:
 
-            print(
-                "DEFAULT ADMIN CREATED"
-            )
+                admin_user = User(
+                    name="Carvion Admin",
+                    email="admin@carvion.com",
+                    phone="0700000000",
+                    password=generate_password_hash("admin123"),
+                    role="admin"
+                )
 
-            print(
-                "Email: admin@carvion.com"
-            )
+                db.session.add(admin_user)
+                db.session.commit()
 
-            print(
-                "Password: admin123"
-            )
+                print("=" * 60)
+                print("DEFAULT ADMIN CREATED")
+                print("Email: admin@carvion.com")
+                print("Password: admin123")
+                print("=" * 60)
 
-            print("=" * 50)
+        except Exception as e:
 
+            db.session.rollback()
 
-    # =================================================
+            print("=" * 60)
+            print("DATABASE INITIALIZATION ERROR")
+            print(str(e))
+            print("=" * 60)
+
+    # ========================================================
     # HOME
-    # =================================================
+    # ========================================================
 
     @app.route("/")
     def home():
 
         cars = (
             Car.query
-            .filter_by(
-                status="Approved"
-            )
-            .order_by(
-                Car.created_at.desc()
-            )
+            .filter_by(status="Approved")
+            .order_by(Car.created_at.desc())
             .limit(6)
             .all()
         )
-
 
         return render_template(
             "index.html",
             cars=cars
         )
 
-
-    # =================================================
+    # ========================================================
     # DASHBOARD
-    # =================================================
+    # ========================================================
 
     @app.route("/dashboard")
     @login_required
     def dashboard():
 
-        return render_template(
-            "dashboard.html"
-        )
+        return render_template("dashboard.html")
 
-
-    # =================================================
+    # ========================================================
     # ABOUT
-    # =================================================
+    # ========================================================
 
     @app.route("/about")
     def about():
 
-        return render_template(
-            "about.html"
-        )
+        return render_template("about.html")
 
-
-    # =================================================
+    # ========================================================
     # CONTACT
-    # =================================================
+    # ========================================================
 
     @app.route("/contact")
     def contact():
 
-        return render_template(
-            "contact.html"
-        )
+        return render_template("contact.html")
 
-
-    # =================================================
+    # ========================================================
     # BUYER HOME
-    # =================================================
+    # ========================================================
 
     @app.route("/buyer")
     @login_required
     def buyer_home():
 
-        # -------------------------------------------------
-        # ONLY BUYERS
-        # -------------------------------------------------
-
         if current_user.role.lower() != "buyer":
-
-            return redirect(
-                url_for("home")
-            )
-
-
-        # -------------------------------------------------
-        # BUYER INQUIRIES
-        # -------------------------------------------------
+            return redirect(url_for("home"))
 
         inquiries = (
             Inquiry.query
@@ -368,50 +336,33 @@ def create_app():
             .all()
         )
 
-
         return render_template(
             "buyer_home.html",
             inquiries=inquiries
         )
 
-
-    # =================================================
-    # RETURN APPLICATION
-    # =================================================
-
     return app
 
 
-# =====================================================
-# CREATE FLASK APPLICATION
-# =====================================================
+# ============================================================
+# CREATE APPLICATION
+# ============================================================
 
 app = create_app()
 
-
-print(
-    "CARVION APP STARTED"
-)
+print("CARVION APP STARTED")
 
 
-# =====================================================
-# RUN FLASK DEVELOPMENT SERVER
-# =====================================================
+# ============================================================
+# DEVELOPMENT SERVER
+# ============================================================
 
 if __name__ == "__main__":
 
-    print(
-        "RUNNING FLASK SERVER"
-    )
+    print("RUNNING FLASK SERVER")
 
     app.run(
         host="0.0.0.0",
-        port=int(
-            os.environ.get(
-                "PORT",
-                5000
-            )
-        ),
+        port=int(os.environ.get("PORT", 5000)),
         debug=True
     )
-

@@ -32,12 +32,13 @@ from itsdangerous import (
 from extensions import db
 from models import User
 
+import importlib
 import os
-import socket
-import smtplib
 
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+try:
+    resend = importlib.import_module("resend")
+except ImportError:
+    resend = None
 
 
 # ============================================================
@@ -89,102 +90,84 @@ def verify_reset_token(token, max_age=3600):
 
 
 # ============================================================
-# SEND PASSWORD RESET EMAIL
+# SEND PASSWORD RESET EMAIL USING RESEND API
 # ============================================================
 
 def send_reset_email(user, reset_url):
 
-    smtp_server = os.environ.get(
-        "MAIL_SERVER",
-        ""
-    ).strip()
+    if resend is None:
 
-    smtp_port_raw = os.environ.get(
-        "MAIL_PORT",
-        "587"
-    ).strip()
+        print("PASSWORD RESET EMAIL ERROR: resend package is not installed.")
 
-    smtp_username = os.environ.get(
-        "MAIL_USERNAME",
-        ""
-    ).strip()
+        return False
 
-    smtp_password = os.environ.get(
-        "MAIL_PASSWORD",
-        ""
-    ).strip()
+    # --------------------------------------------------------
+    # GET RESEND API KEY
+    # --------------------------------------------------------
 
-    mail_sender = os.environ.get(
-        "MAIL_DEFAULT_SENDER",
+    resend_api_key = os.environ.get(
+        "RESEND_API_KEY",
         ""
     ).strip()
 
 
     # --------------------------------------------------------
-    # VALIDATE PORT
+    # GET SENDER EMAIL
     # --------------------------------------------------------
 
-    try:
+    resend_from_email = os.environ.get(
+        "RESEND_FROM_EMAIL",
+        ""
+    ).strip()
 
-        smtp_port = int(smtp_port_raw)
 
-    except ValueError:
+    # --------------------------------------------------------
+    # CHECK API KEY
+    # --------------------------------------------------------
+
+    if not resend_api_key:
 
         print("=" * 60)
         print("PASSWORD RESET EMAIL ERROR")
-        print("MAIL_PORT must be a number.")
-        print("Current MAIL_PORT:", smtp_port_raw)
+        print("RESEND_API_KEY is missing.")
         print("=" * 60)
 
         return False
 
 
     # --------------------------------------------------------
-    # VALIDATE SMTP SETTINGS
+    # CHECK SENDER
     # --------------------------------------------------------
 
-    if not smtp_server:
+    if not resend_from_email:
 
         print("=" * 60)
         print("PASSWORD RESET EMAIL ERROR")
-        print("MAIL_SERVER is missing.")
+        print("RESEND_FROM_EMAIL is missing.")
         print("=" * 60)
 
         return False
-
-
-    if not smtp_username:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("MAIL_USERNAME is missing.")
-        print("=" * 60)
-
-        return False
-
-
-    if not smtp_password:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("MAIL_PASSWORD is missing.")
-        print("=" * 60)
-
-        return False
-
-
-    if not mail_sender:
-
-        mail_sender = smtp_username
 
 
     # --------------------------------------------------------
-    # EMAIL CONTENT
+    # SET RESEND API KEY
+    # --------------------------------------------------------
+
+    resend.api_key = resend_api_key
+
+
+    # --------------------------------------------------------
+    # EMAIL SUBJECT
     # --------------------------------------------------------
 
     subject = "Carvion Motors - Password Reset"
 
-    body = f"""
+
+    # --------------------------------------------------------
+    # PLAIN TEXT EMAIL
+    # --------------------------------------------------------
+
+    text_body = f"""
 Hello {user.name},
 
 We received a request to reset your Carvion Motors password.
@@ -205,139 +188,249 @@ Carvion Motors
 
 
     # --------------------------------------------------------
-    # CREATE EMAIL MESSAGE
+    # HTML EMAIL
     # --------------------------------------------------------
 
-    message = MIMEMultipart()
+    html_body = f"""
+<!DOCTYPE html>
 
-    message["From"] = mail_sender
-    message["To"] = user.email
-    message["Subject"] = subject
+<html>
 
-    message.attach(
-        MIMEText(
-            body,
-            "plain"
-        )
-    )
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Carvion Motors Password Reset
+    </title>
+
+</head>
 
 
-    server = None
+<body
+    style="
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+        font-family: Arial, Helvetica, sans-serif;
+    "
+>
+
+
+    <div
+        style="
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        "
+    >
+
+
+        <!-- HEADER -->
+
+        <div
+            style="
+                background: #111111;
+                color: #ffffff;
+                padding: 25px;
+                text-align: center;
+            "
+        >
+
+            <h1
+                style="
+                    margin: 0;
+                    font-size: 28px;
+                "
+            >
+                Carvion Motors
+            </h1>
+
+            <p
+                style="
+                    margin: 8px 0 0;
+                    color: #cccccc;
+                "
+            >
+                Password Reset
+            </p>
+
+        </div>
+
+
+        <!-- CONTENT -->
+
+        <div
+            style="
+                padding: 35px 30px;
+                color: #333333;
+            "
+        >
+
+            <h2>
+                Hello {user.name},
+            </h2>
+
+
+            <p
+                style="
+                    font-size: 16px;
+                    line-height: 1.6;
+                "
+            >
+                We received a request to reset your
+                Carvion Motors account password.
+            </p>
+
+
+            <p
+                style="
+                    font-size: 16px;
+                    line-height: 1.6;
+                "
+            >
+                Click the button below to create a new password:
+            </p>
+
+
+            <div
+                style="
+                    text-align: center;
+                    margin: 30px 0;
+                "
+            >
+
+                <a
+                    href="{reset_url}"
+                    style="
+                        display: inline-block;
+                        background: #111111;
+                        color: #ffffff;
+                        text-decoration: none;
+                        padding: 14px 28px;
+                        border-radius: 6px;
+                        font-weight: bold;
+                        font-size: 16px;
+                    "
+                >
+                    Reset My Password
+                </a>
+
+            </div>
+
+
+            <p
+                style="
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #666666;
+                "
+            >
+                This password reset link will expire in
+                <strong>1 hour</strong>.
+            </p>
+
+
+            <p
+                style="
+                    font-size: 14px;
+                    line-height: 1.6;
+                    color: #666666;
+                "
+            >
+                If you did not request a password reset,
+                you can safely ignore this email.
+            </p>
+
+
+        </div>
+
+
+        <!-- FOOTER -->
+
+        <div
+            style="
+                background: #f7f7f7;
+                padding: 20px;
+                text-align: center;
+                color: #777777;
+                font-size: 13px;
+            "
+        >
+
+            <p style="margin: 0;">
+                Carvion Motors
+            </p>
+
+            <p style="margin: 6px 0 0;">
+                Your trusted automotive marketplace
+            </p>
+
+        </div>
+
+
+    </div>
+
+</body>
+
+</html>
+"""
 
 
     # --------------------------------------------------------
-    # CONNECT AND SEND
+    # SEND THROUGH RESEND
     # --------------------------------------------------------
 
     try:
 
         print("=" * 60)
         print("PASSWORD RESET EMAIL")
-        print("Connecting to SMTP server...")
-        print("SMTP SERVER:", smtp_server)
-        print("SMTP PORT:", smtp_port)
-        print("=" * 60)
-
-
-        # IMPORTANT:
-        # Timeout prevents the Render worker from hanging
-        # indefinitely while connecting to the SMTP server.
-
-        server = smtplib.SMTP(
-            host=smtp_server,
-            port=smtp_port,
-            timeout=10
-        )
-
-
-        # SMTP handshake
-
-        server.ehlo()
-
-
-        # Start encrypted connection
-
-        server.starttls()
-
-        server.ehlo()
-
-
-        # Authenticate
-
-        server.login(
-            smtp_username,
-            smtp_password
-        )
-
-
-        # Send email
-
-        server.sendmail(
-            mail_sender,
-            user.email,
-            message.as_string()
-        )
-
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL SENT SUCCESSFULLY")
+        print("Using Resend Email API")
         print("Recipient:", user.email)
+        print("Sender:", resend_from_email)
         print("=" * 60)
+
+
+        params = {
+            "from": resend_from_email,
+
+            "to": [
+                user.email
+            ],
+
+            "subject": subject,
+
+            "html": html_body,
+
+            "text": text_body
+        }
+
+
+        response = resend.Emails.send(
+            params
+        )
+
+
+        print("=" * 60)
+        print("PASSWORD RESET EMAIL SENT")
+        print("Resend response:", response)
+        print("=" * 60)
+
 
         return True
-
-
-    except smtplib.SMTPAuthenticationError as e:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("SMTP AUTHENTICATION FAILED")
-        print("Check your MAIL_USERNAME and MAIL_PASSWORD.")
-        print("Error:", str(e))
-        print("=" * 60)
-
-        return False
-
-
-    except smtplib.SMTPConnectError as e:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("SMTP CONNECTION FAILED")
-        print("Could not connect to the mail server.")
-        print("Error:", str(e))
-        print("=" * 60)
-
-        return False
-
-
-    except (TimeoutError, socket.timeout) as e:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("SMTP CONNECTION TIMED OUT")
-        print("The SMTP server could not be reached within 10 seconds.")
-        print("Error:", str(e))
-        print("=" * 60)
-
-        return False
-
-
-    except OSError as e:
-
-        print("=" * 60)
-        print("PASSWORD RESET EMAIL ERROR")
-        print("NETWORK ERROR")
-        print("Error:", str(e))
-        print("=" * 60)
-
-        return False
 
 
     except Exception as e:
 
         print("=" * 60)
         print("PASSWORD RESET EMAIL ERROR")
+        print("RESEND API ERROR")
         print("ERROR TYPE:", type(e).__name__)
         print("ERROR:", str(e))
         print("=" * 60)
@@ -345,24 +438,14 @@ Carvion Motors
         return False
 
 
-    finally:
-
-        if server is not None:
-
-            try:
-
-                server.quit()
-
-            except Exception:
-
-                pass
-
-
 # ============================================================
 # REGISTER
 # ============================================================
 
-@auth.route("/register", methods=["GET", "POST"])
+@auth.route(
+    "/register",
+    methods=["GET", "POST"]
+)
 def register():
 
     if current_user.is_authenticated:
@@ -460,7 +543,7 @@ def register():
 
 
         # ----------------------------------------------------
-        # CHECK EXISTING ACCOUNT
+        # CHECK EXISTING USER
         # ----------------------------------------------------
 
         existing_user = User.query.filter_by(
@@ -491,7 +574,7 @@ def register():
         )
 
 
-        # Buyers are the default role.
+        # Default role
 
         if hasattr(user, "role"):
 
@@ -544,7 +627,10 @@ def register():
 # LOGIN
 # ============================================================
 
-@auth.route("/login", methods=["GET", "POST"])
+@auth.route(
+    "/login",
+    methods=["GET", "POST"]
+)
 def login():
 
     if current_user.is_authenticated:
@@ -593,7 +679,7 @@ def login():
 
 
             # ------------------------------------------------
-            # ROLE REDIRECTION
+            # ADMIN
             # ------------------------------------------------
 
             if getattr(
@@ -607,6 +693,10 @@ def login():
                 )
 
 
+            # ------------------------------------------------
+            # SELLER
+            # ------------------------------------------------
+
             if getattr(
                 user,
                 "role",
@@ -617,6 +707,10 @@ def login():
                     url_for("cars.seller_dashboard")
                 )
 
+
+            # ------------------------------------------------
+            # BUYER
+            # ------------------------------------------------
 
             return redirect(
                 url_for("home")
@@ -693,7 +787,7 @@ def forgot_password():
             if user:
 
                 # --------------------------------------------
-                # GENERATE RESET TOKEN
+                # CREATE TOKEN
                 # --------------------------------------------
 
                 try:
@@ -751,25 +845,13 @@ def forgot_password():
 
 
                 # --------------------------------------------
-                # SEND RESET EMAIL
+                # SEND EMAIL
                 # --------------------------------------------
 
-                try:
-
-                    sent = send_reset_email(
-                        user,
-                        reset_url
-                    )
-
-                except Exception as e:
-
-                    print("=" * 60)
-                    print("UNEXPECTED PASSWORD RESET ERROR")
-                    print("ERROR TYPE:", type(e).__name__)
-                    print("ERROR:", str(e))
-                    print("=" * 60)
-
-                    sent = False
+                sent = send_reset_email(
+                    user,
+                    reset_url
+                )
 
 
                 if not sent:
@@ -781,9 +863,9 @@ def forgot_password():
 
 
         # ----------------------------------------------------
-        # SECURITY:
-        # Do not reveal whether an email exists.
+        # SECURITY
         # ----------------------------------------------------
+        # Do not reveal whether the email exists.
 
         flash(
             "If an account exists for that email, "
@@ -854,7 +936,7 @@ def reset_password(token):
 
 
     # --------------------------------------------------------
-    # PROCESS NEW PASSWORD
+    # NEW PASSWORD
     # --------------------------------------------------------
 
     if request.method == "POST":
@@ -999,3 +1081,4 @@ def force_logout():
     return redirect(
         url_for("auth.login")
     )
+

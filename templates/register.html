@@ -5,246 +5,349 @@
 
 {% block content %}
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
+<style>
+    .register-page {
+        min-height: 75vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 15px;
+        background: #f8fafc;
+    }
 
-            <div class="card shadow-sm border-0 rounded-4">
-                <div class="card-body p-4 p-md-5">
+    .register-card {
+        width: 100%;
+        max-width: 540px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 35px;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.07);
+    }
 
-                    <div class="text-center mb-4">
-                        <h2 class="fw-bold">Create Your Account</h2>
-                        <p class="text-muted">
-                            Join Carvion Motors to buy and sell cars.
-                        </p>
-                    </div>
+    .register-heading {
+        text-align: center;
+        margin-bottom: 28px;
+    }
 
-                    <!-- Flash messages -->
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                        {% if messages %}
-                            {% for category, message in messages %}
-                                <div
-                                    class="alert alert-{{ category }} alert-dismissible fade show"
-                                    role="alert"
-                                >
-                                    {{ message }}
-                                    <button
-                                        type="button"
-                                        class="btn-close"
-                                        data-bs-dismiss="alert"
-                                        aria-label="Close"
-                                    ></button>
-                                </div>
-                            {% endfor %}
-                        {% endif %}
-                    {% endwith %}
+    .register-heading h1 {
+        color: #111827;
+        font-size: 1.9rem;
+        font-weight: 750;
+        margin-bottom: 8px;
+    }
 
-                    <!-- Registration form -->
-                    <form
-                        method="POST"
-                        action="{{ url_for('auth.register') }}"
-                        id="register-form"
+    .register-heading p {
+        color: #6b7280;
+        margin: 0;
+    }
+
+    .register-card .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 7px;
+    }
+
+    .register-card .form-control,
+    .register-card .form-select {
+        min-height: 47px;
+        border: 1px solid #d1d5db;
+        border-radius: 9px;
+        padding: 10px 12px;
+    }
+
+    .register-card .form-control:focus,
+    .register-card .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .account-type-help {
+        color: #6b7280;
+        font-size: 0.85rem;
+        margin-top: 7px;
+    }
+
+    .register-button {
+        width: 100%;
+        min-height: 49px;
+        background: #111827;
+        color: #fff;
+        border: none;
+        border-radius: 9px;
+        font-weight: 700;
+        font-size: 1rem;
+        transition: background 0.2s ease;
+    }
+
+    .register-button:hover {
+        background: #2563eb;
+    }
+
+    .register-footer {
+        text-align: center;
+        margin-top: 22px;
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+    .register-footer a {
+        color: #2563eb;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .register-footer a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 576px) {
+        .register-page {
+            padding: 25px 12px;
+        }
+
+        .register-card {
+            padding: 25px 20px;
+        }
+
+        .register-heading h1 {
+            font-size: 1.6rem;
+        }
+    }
+</style>
+
+<div class="register-page">
+    <div class="register-card">
+
+        <div class="register-heading">
+            <h1>Create Your Account</h1>
+            <p>Join Carvion Motors to buy or sell vehicles.</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+
+                    {% set alert_type = category if category in [
+                        'success', 'danger', 'warning', 'info', 'primary',
+                        'secondary'
+                    ] else 'info' %}
+
+                    <div
+                        class="alert alert-{{ alert_type }} alert-dismissible fade show"
+                        role="alert"
                     >
+                        {{ message }}
 
-                        <!-- Full Name -->
-                        <div class="mb-3">
-                            <label for="name" class="form-label">
-                                Full Name
-                            </label>
-
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                class="form-control"
-                                placeholder="Enter your full name"
-                                autocomplete="name"
-                                value="{{ request.form.get('name', '') }}"
-                                required
-                            >
-                        </div>
-
-                        <!-- Email -->
-                        <div class="mb-3">
-                            <label for="email" class="form-label">
-                                Email Address
-                            </label>
-
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                class="form-control"
-                                placeholder="Enter your email"
-                                autocomplete="email"
-                                value="{{ request.form.get('email', '') }}"
-                                required
-                            >
-                        </div>
-
-                        <!-- Phone Number -->
-                        <div class="mb-3">
-                            <label for="phone" class="form-label">
-                                Phone Number
-                            </label>
-
-                            <input
-                                type="tel"
-                                id="phone"
-                                name="phone"
-                                class="form-control"
-                                placeholder="e.g. 0712345678"
-                                autocomplete="tel"
-                                inputmode="tel"
-                                value="{{ request.form.get('phone', '') }}"
-                                required
-                            >
-
-                            <div class="form-text">
-                                Enter the phone number you use to contact buyers or sellers.
-                            </div>
-                        </div>
-
-                        <!-- Password -->
-                        <div class="mb-3">
-                            <label for="password" class="form-label">
-                                Password
-                            </label>
-
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                class="form-control"
-                                placeholder="Create Password"
-                                minlength="6"
-                                autocomplete="new-password"
-                                required
-                            >
-
-                            <div class="form-text">
-                                Use at least 6 characters.
-                            </div>
-                        </div>
-
-                        <!-- Confirm Password -->
-                        <div class="mb-3">
-                            <label
-                                for="confirm_password"
-                                class="form-label"
-                            >
-                                Confirm Password
-                            </label>
-
-                            <input
-                                type="password"
-                                id="confirm_password"
-                                name="confirm_password"
-                                class="form-control"
-                                placeholder="Re-enter Password"
-                                minlength="6"
-                                autocomplete="new-password"
-                                required
-                            >
-
-                            <div
-                                id="password-error"
-                                class="text-danger small mt-2"
-                                role="alert"
-                                hidden
-                            >
-                                Passwords do not match.
-                            </div>
-                        </div>
-
-                        <!-- Show Passwords -->
-                        <div class="form-check mb-4">
-                            <input
-                                type="checkbox"
-                                id="show-passwords"
-                                class="form-check-input"
-                            >
-
-                            <label
-                                for="show-passwords"
-                                class="form-check-label"
-                            >
-                                Show passwords
-                            </label>
-                        </div>
-
-                        <!-- Submit -->
                         <button
-                            type="submit"
-                            class="btn btn-dark w-100 py-2"
-                        >
-                            Create Account
-                        </button>
-
-                    </form>
-
-                    <!-- Login Link -->
-                    <div class="text-center mt-4">
-                        <span class="text-muted">
-                            Already have an account?
-                        </span>
-
-                        <a
-                            href="{{ url_for('auth.login') }}"
-                            class="text-decoration-none fw-semibold"
-                        >
-                            Log In
-                        </a>
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Close"
+                        ></button>
                     </div>
 
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form
+            method="POST"
+            action="{{ url_for('auth.register') }}"
+            id="registerForm"
+        >
+
+            <!-- Full name -->
+            <div class="mb-3">
+                <label for="name" class="form-label">
+                    Full Name
+                </label>
+
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    class="form-control"
+                    placeholder="Enter your full name"
+                    autocomplete="name"
+                    maxlength="120"
+                    required
+                >
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+                <label for="email" class="form-label">
+                    Email Address
+                </label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    class="form-control"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                    maxlength="254"
+                    required
+                >
+            </div>
+
+            <!-- Phone -->
+            <div class="mb-3">
+                <label for="phone" class="form-label">
+                    Phone Number
+                </label>
+
+                <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    class="form-control"
+                    placeholder="e.g. 0712345678"
+                    autocomplete="tel"
+                    maxlength="30"
+                    required
+                >
+            </div>
+
+            <!-- Account type -->
+            <div class="mb-3">
+                <label for="role" class="form-label">
+                    Account Type
+                </label>
+
+                <select
+                    name="role"
+                    id="role"
+                    class="form-select"
+                    required
+                >
+                    <option value="buyer" selected>
+                        Buyer — I want to buy vehicles
+                    </option>
+
+                    <option value="seller">
+                        Seller — I want to list and sell vehicles
+                    </option>
+                </select>
+
+                <div class="account-type-help" id="roleHelp">
+                    Browse vehicles, contact sellers and manage your inquiries.
                 </div>
             </div>
 
+            <!-- Password -->
+            <div class="mb-3">
+                <label for="password" class="form-label">
+                    Password
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    class="form-control"
+                    placeholder="Create a password"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                >
+
+                <div class="account-type-help">
+                    Use at least 6 characters.
+                </div>
+            </div>
+
+            <!-- Confirm password -->
+            <div class="mb-4">
+                <label for="confirm_password" class="form-label">
+                    Confirm Password
+                </label>
+
+                <input
+                    type="password"
+                    id="confirm_password"
+                    name="confirm_password"
+                    class="form-control"
+                    placeholder="Enter your password again"
+                    autocomplete="new-password"
+                    minlength="6"
+                    required
+                >
+
+                <div
+                    id="passwordError"
+                    class="text-danger small mt-2"
+                    role="alert"
+                    hidden
+                >
+                    Your passwords do not match.
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="register-button">
+                Create Account
+            </button>
+
+        </form>
+
+        <div class="register-footer">
+            Already have an account?
+            <a href="{{ url_for('auth.login') }}">Log in</a>
         </div>
+
     </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("register-form");
-    const password = document.getElementById("password");
-    const confirmPassword =
-        document.getElementById("confirm_password");
-    const error = document.getElementById("password-error");
-    const showPasswords =
-        document.getElementById("show-passwords");
+    document.addEventListener("DOMContentLoaded", function () {
+        const roleSelect = document.getElementById("role");
+        const roleHelp = document.getElementById("roleHelp");
+        const form = document.getElementById("registerForm");
 
-    function validatePasswords() {
-        const mismatch =
-            confirmPassword.value !== "" &&
-            password.value !== confirmPassword.value;
+        const password = document.getElementById("password");
+        const confirmPassword = document.getElementById("confirm_password");
+        const passwordError = document.getElementById("passwordError");
 
-        error.hidden = !mismatch;
-
-        confirmPassword.setCustomValidity(
-            mismatch ? "Passwords do not match." : ""
-        );
-
-        return !mismatch;
-    }
-
-    password.addEventListener("input", validatePasswords);
-    confirmPassword.addEventListener("input", validatePasswords);
-
-    showPasswords.addEventListener("change", function () {
-        const type = this.checked ? "text" : "password";
-
-        password.type = type;
-        confirmPassword.type = type;
-    });
-
-    form.addEventListener("submit", function (event) {
-        if (!validatePasswords()) {
-            event.preventDefault();
-            confirmPassword.reportValidity();
+        function updateRoleHelp() {
+            if (roleSelect.value === "seller") {
+                roleHelp.textContent =
+                    "List vehicles for sale, manage your listings and respond to buyer inquiries.";
+            } else {
+                roleHelp.textContent =
+                    "Browse vehicles, contact sellers and manage your inquiries.";
+            }
         }
+
+        roleSelect.addEventListener("change", updateRoleHelp);
+
+        function checkPasswords() {
+            const mismatch =
+                confirmPassword.value.length > 0 &&
+                password.value !== confirmPassword.value;
+
+            passwordError.hidden = !mismatch;
+            confirmPassword.setCustomValidity(
+                mismatch ? "Passwords do not match." : ""
+            );
+
+            return !mismatch;
+        }
+
+        password.addEventListener("input", checkPasswords);
+        confirmPassword.addEventListener("input", checkPasswords);
+
+        form.addEventListener("submit", function (event) {
+            if (!checkPasswords()) {
+                event.preventDefault();
+                confirmPassword.reportValidity();
+                confirmPassword.focus();
+            }
+        });
     });
-});
 </script>
 
 {% endblock %}

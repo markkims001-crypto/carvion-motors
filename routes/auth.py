@@ -72,7 +72,6 @@ def verify_reset_token(token, max_age=3600):
     )
 
     try:
-
         email = serializer.loads(
             token,
             salt="carvion-password-reset",
@@ -81,11 +80,7 @@ def verify_reset_token(token, max_age=3600):
 
         return email
 
-    except SignatureExpired:
-
-        return None
-
-    except BadSignature:
+    except (SignatureExpired, BadSignature):
 
         return None
 
@@ -97,67 +92,35 @@ def verify_reset_token(token, max_age=3600):
 def send_reset_email(user, reset_url):
 
     if resend is None:
-
         current_app.logger.error(
             "Password reset email error: "
             "resend package is not installed."
         )
-
         return False
 
-    # --------------------------------------------------------
-    # GET RESEND API KEY
-    # --------------------------------------------------------
-
     resend_api_key = os.environ.get(
-        "RESEND_API_KEY",
-        ""
+        "RESEND_API_KEY", ""
     ).strip()
-
-    # --------------------------------------------------------
-    # GET SENDER EMAIL
-    # --------------------------------------------------------
 
     resend_from_email = os.environ.get(
-        "RESEND_FROM_EMAIL",
-        ""
+        "RESEND_FROM_EMAIL", ""
     ).strip()
 
-    # --------------------------------------------------------
-    # CHECK API KEY
-    # --------------------------------------------------------
-
     if not resend_api_key:
-
         current_app.logger.error(
             "Password reset email error: "
             "RESEND_API_KEY is missing."
         )
-
         return False
 
-    # --------------------------------------------------------
-    # CHECK SENDER
-    # --------------------------------------------------------
-
     if not resend_from_email:
-
         current_app.logger.error(
             "Password reset email error: "
             "RESEND_FROM_EMAIL is missing."
         )
-
         return False
 
-    # --------------------------------------------------------
-    # SET RESEND API KEY
-    # --------------------------------------------------------
-
     resend.api_key = resend_api_key
-
-    # --------------------------------------------------------
-    # EMAIL CONTENT
-    # --------------------------------------------------------
 
     subject = "Carvion Motors - Password Reset"
 
@@ -180,17 +143,13 @@ Regards,
 Carvion Motors
 """
 
-    # --------------------------------------------------------
-    # HTML EMAIL
-    # --------------------------------------------------------
-
     html_body = f"""
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
     <title>Carvion Motors Password Reset</title>
 </head>
 
@@ -210,15 +169,12 @@ Carvion Motors
         box-shadow: 0 3px 15px rgba(0,0,0,0.08);
     ">
 
-        <!-- HEADER -->
-
         <div style="
             background: #111111;
             color: #ffffff;
             padding: 25px;
             text-align: center;
         ">
-
             <h1 style="margin: 0; font-size: 28px;">
                 Carvion Motors
             </h1>
@@ -226,10 +182,7 @@ Carvion Motors
             <p style="margin: 8px 0 0; color: #cccccc;">
                 Password Reset
             </p>
-
         </div>
-
-        <!-- CONTENT -->
 
         <div style="padding: 35px 30px; color: #333333;">
 
@@ -245,7 +198,6 @@ Carvion Motors
             </p>
 
             <div style="text-align: center; margin: 30px 0;">
-
                 <a href="{reset_url}" style="
                     display: inline-block;
                     background: #111111;
@@ -258,7 +210,6 @@ Carvion Motors
                 ">
                     Reset My Password
                 </a>
-
             </div>
 
             <p style="
@@ -281,8 +232,6 @@ Carvion Motors
 
         </div>
 
-        <!-- FOOTER -->
-
         <div style="
             background: #f7f7f7;
             padding: 20px;
@@ -290,15 +239,11 @@ Carvion Motors
             color: #777777;
             font-size: 13px;
         ">
-
-            <p style="margin: 0;">
-                Carvion Motors
-            </p>
+            <p style="margin: 0;">Carvion Motors</p>
 
             <p style="margin: 6px 0 0;">
                 Your trusted automotive marketplace
             </p>
-
         </div>
 
     </div>
@@ -307,12 +252,7 @@ Carvion Motors
 </html>
 """
 
-    # --------------------------------------------------------
-    # SEND THROUGH RESEND
-    # --------------------------------------------------------
-
     try:
-
         params = {
             "from": resend_from_email,
             "to": [user.email],
@@ -331,11 +271,9 @@ Carvion Motors
         return bool(response)
 
     except Exception:
-
         current_app.logger.exception(
             "Password reset email could not be sent."
         )
-
         return False
 
 
@@ -343,133 +281,72 @@ Carvion Motors
 # REGISTER
 # ============================================================
 
-@auth.route(
-    "/register",
-    methods=["GET", "POST"]
-)
+@auth.route("/register", methods=["GET", "POST"])
 def register():
 
     if current_user.is_authenticated:
-
-        return redirect(
-            url_for("home")
-        )
+        return redirect(url_for("home"))
 
     if request.method == "POST":
 
-        # ----------------------------------------------------
-        # COLLECT FORM DATA
-        # ----------------------------------------------------
+        # Collect form data.
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
 
-        name = request.form.get(
-            "name",
-            ""
-        ).strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get(
+            "confirm_password", ""
+        )
 
-        email = request.form.get(
-            "email",
-            ""
+        # Default to buyer if the role field is missing.
+        role = request.form.get(
+            "role", "buyer"
         ).strip().lower()
 
-        # FIX: Collect the required phone number
-        phone = request.form.get(
-            "phone",
-            ""
-        ).strip()
-
-        password = request.form.get(
-            "password",
-            ""
-        )
-
-        confirm_password = request.form.get(
-            "confirm_password",
-            ""
-        )
-
-        # ----------------------------------------------------
-        # VALIDATION
-        # ----------------------------------------------------
-
+        # Validate required fields.
         if not name:
-
-            flash(
-                "Please enter your name.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            flash("Please enter your name.", "danger")
+            return redirect(url_for("auth.register"))
 
         if not email:
+            flash("Please enter your email.", "danger")
+            return redirect(url_for("auth.register"))
 
-            flash(
-                "Please enter your email.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("auth.register")
-            )
-
-        # FIX: Prevent a NULL phone value reaching PostgreSQL
         if not phone:
-
-            flash(
-                "Please enter your phone number.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            flash("Please enter your phone number.", "danger")
+            return redirect(url_for("auth.register"))
 
         if not password:
-
-            flash(
-                "Please enter a password.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            flash("Please enter a password.", "danger")
+            return redirect(url_for("auth.register"))
 
         if len(password) < 6:
-
             flash(
                 "Password must be at least 6 characters.",
                 "danger"
             )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            return redirect(url_for("auth.register"))
 
         if password != confirm_password:
+            flash("Passwords do not match.", "danger")
+            return redirect(url_for("auth.register"))
 
+        # Only public buyer and seller roles are permitted.
+        if role not in ("buyer", "seller"):
             flash(
-                "Passwords do not match.",
+                "Please select a valid account type.",
                 "danger"
             )
+            return redirect(url_for("auth.register"))
 
-            return redirect(
-                url_for("auth.register")
-            )
-
-        # ----------------------------------------------------
-        # CHECK EXISTING USER
-        # ----------------------------------------------------
-
+        # Check for an existing account.
         try:
-
             existing_user = User.query.filter_by(
                 email=email
             ).first()
 
         except Exception:
-
             current_app.logger.exception(
                 "Could not check for an existing user."
             )
@@ -479,41 +356,29 @@ def register():
                 "Please try again.",
                 "danger"
             )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            return redirect(url_for("auth.register"))
 
         if existing_user:
-
             flash(
                 "An account with that email already exists.",
                 "warning"
             )
+            return redirect(url_for("auth.login"))
 
-            return redirect(
-                url_for("auth.login")
-            )
-
-        # ----------------------------------------------------
-        # CREATE USER
-        # ----------------------------------------------------
-
+        # Create the account using the selected role.
         try:
-
             user = User(
                 name=name,
                 email=email,
                 phone=phone,
                 password=generate_password_hash(password),
-                role="buyer"
+                role=role
             )
 
             db.session.add(user)
             db.session.commit()
 
         except Exception:
-
             db.session.rollback()
 
             current_app.logger.exception(
@@ -525,72 +390,50 @@ def register():
                 "Please check your details and try again.",
                 "danger"
             )
-
-            return redirect(
-                url_for("auth.register")
-            )
+            return redirect(url_for("auth.register"))
 
         flash(
-            "Account created successfully. You can now log in.",
+            f"{role.capitalize()} account created successfully. "
+            "You can now log in.",
             "success"
         )
 
-        return redirect(
-            url_for("auth.login")
-        )
+        return redirect(url_for("auth.login"))
 
-    return render_template(
-        "register.html"
-    )
+    return render_template("register.html")
 
 
 # ============================================================
 # LOGIN
 # ============================================================
 
-@auth.route(
-    "/login",
-    methods=["GET", "POST"]
-)
+@auth.route("/login", methods=["GET", "POST"])
 def login():
 
     if current_user.is_authenticated:
-
-        return redirect(
-            url_for("home")
-        )
+        return redirect(url_for("home"))
 
     if request.method == "POST":
 
         email = request.form.get(
-            "email",
-            ""
+            "email", ""
         ).strip().lower()
 
-        password = request.form.get(
-            "password",
-            ""
-        )
+        password = request.form.get("password", "")
 
         if not email or not password:
-
             flash(
                 "Please enter your email and password.",
                 "danger"
             )
-
-            return redirect(
-                url_for("auth.login")
-            )
+            return redirect(url_for("auth.login"))
 
         try:
-
             user = User.query.filter_by(
                 email=email
             ).first()
 
         except Exception:
-
             current_app.logger.exception(
                 "Login database lookup failed."
             )
@@ -599,57 +442,37 @@ def login():
                 "Unable to log in right now. Please try again.",
                 "danger"
             )
-
-            return redirect(
-                url_for("auth.login")
-            )
+            return redirect(url_for("auth.login"))
 
         if user and check_password_hash(
-            user.password,
-            password
+            user.password, password
         ):
 
             login_user(user)
 
-            # ADMIN
-            if getattr(
-                user,
-                "role",
-                "buyer"
-            ) == "admin":
+            role = (
+                getattr(user, "role", "buyer") or "buyer"
+            ).strip().lower()
 
+            if role == "admin":
                 return redirect(
                     url_for("admin.dashboard")
                 )
 
-            # SELLER
-            if getattr(
-                user,
-                "role",
-                "buyer"
-            ) == "seller":
-
+            if role == "seller":
                 return redirect(
                     url_for("cars.seller_dashboard")
                 )
 
-            # BUYER
-            return redirect(
-                url_for("home")
-            )
+            return redirect(url_for("home"))
 
         flash(
             "Invalid email or password.",
             "danger"
         )
+        return redirect(url_for("auth.login"))
 
-        return redirect(
-            url_for("auth.login")
-        )
-
-    return render_template(
-        "login.html"
-    )
+    return render_template("login.html")
 
 
 # ============================================================
@@ -667,9 +490,7 @@ def logout():
         "success"
     )
 
-    return redirect(
-        url_for("auth.login")
-    )
+    return redirect(url_for("auth.login"))
 
 
 # ============================================================
@@ -683,66 +504,31 @@ def logout():
 def forgot_password():
 
     if current_user.is_authenticated:
-
-        return redirect(
-            url_for("home")
-        )
+        return redirect(url_for("home"))
 
     if request.method == "POST":
 
         email = request.form.get(
-            "email",
-            ""
+            "email", ""
         ).strip().lower()
 
         if email:
 
             try:
-
                 user = User.query.filter_by(
                     email=email
                 ).first()
 
             except Exception:
-
                 current_app.logger.exception(
                     "Forgot-password database lookup failed."
                 )
-
                 user = None
 
             if user:
 
-                # --------------------------------------------
-                # CREATE TOKEN
-                # --------------------------------------------
-
                 try:
-
-                    token = generate_reset_token(
-                        user.email
-                    )
-
-                except Exception:
-
-                    current_app.logger.exception(
-                        "Password reset token creation failed."
-                    )
-
-                    flash(
-                        "Unable to create the password reset link.",
-                        "danger"
-                    )
-
-                    return redirect(
-                        url_for("auth.forgot_password")
-                    )
-
-                # --------------------------------------------
-                # CREATE RESET URL
-                # --------------------------------------------
-
-                try:
+                    token = generate_reset_token(user.email)
 
                     reset_url = url_for(
                         "auth.reset_password",
@@ -751,49 +537,35 @@ def forgot_password():
                     )
 
                 except Exception:
-
                     current_app.logger.exception(
-                        "Password reset URL creation failed."
+                        "Password reset link creation failed."
                     )
 
                     flash(
                         "Unable to create the password reset link.",
                         "danger"
                     )
-
                     return redirect(
                         url_for("auth.forgot_password")
                     )
 
-                # --------------------------------------------
-                # SEND EMAIL
-                # --------------------------------------------
-
-                sent = send_reset_email(
-                    user,
-                    reset_url
-                )
+                sent = send_reset_email(user, reset_url)
 
                 if not sent:
-
                     current_app.logger.error(
                         "Password reset email was not sent."
                     )
 
-        # Do not reveal whether the email exists.
+        # Do not disclose whether the account exists.
         flash(
             "If an account exists for that email, "
             "a password reset link has been sent.",
             "info"
         )
 
-        return redirect(
-            url_for("auth.login")
-        )
+        return redirect(url_for("auth.login"))
 
-    return render_template(
-        "forgot_password.html"
-    )
+    return render_template("forgot_password.html")
 
 
 # ============================================================
@@ -806,116 +578,60 @@ def forgot_password():
 )
 def reset_password(token):
 
-    # --------------------------------------------------------
-    # VERIFY TOKEN
-    # --------------------------------------------------------
-
-    email = verify_reset_token(
-        token
-    )
+    email = verify_reset_token(token)
 
     if not email:
-
         flash(
             "The password reset link is invalid or has expired.",
             "danger"
         )
+        return redirect(url_for("auth.forgot_password"))
 
-        return redirect(
-            url_for("auth.forgot_password")
-        )
-
-    # --------------------------------------------------------
-    # FIND USER
-    # --------------------------------------------------------
-
-    user = User.query.filter_by(
-        email=email
-    ).first()
+    user = User.query.filter_by(email=email).first()
 
     if not user:
-
-        flash(
-            "Account not found.",
-            "danger"
-        )
-
-        return redirect(
-            url_for("auth.forgot_password")
-        )
-
-    # --------------------------------------------------------
-    # NEW PASSWORD
-    # --------------------------------------------------------
+        flash("Account not found.", "danger")
+        return redirect(url_for("auth.forgot_password"))
 
     if request.method == "POST":
 
-        password = request.form.get(
-            "password",
-            ""
-        )
-
+        password = request.form.get("password", "")
         confirm_password = request.form.get(
-            "confirm_password",
-            ""
+            "confirm_password", ""
         )
 
         if not password:
-
             flash(
                 "Please enter a new password.",
                 "danger"
             )
-
             return redirect(
-                url_for(
-                    "auth.reset_password",
-                    token=token
-                )
+                url_for("auth.reset_password", token=token)
             )
 
         if len(password) < 6:
-
             flash(
                 "Password must be at least 6 characters.",
                 "danger"
             )
-
             return redirect(
-                url_for(
-                    "auth.reset_password",
-                    token=token
-                )
+                url_for("auth.reset_password", token=token)
             )
 
         if password != confirm_password:
-
             flash(
                 "Passwords do not match.",
                 "danger"
             )
-
             return redirect(
-                url_for(
-                    "auth.reset_password",
-                    token=token
-                )
+                url_for("auth.reset_password", token=token)
             )
-
-        # ----------------------------------------------------
-        # SAVE PASSWORD
-        # ----------------------------------------------------
 
         try:
-
-            user.password = generate_password_hash(
-                password
-            )
-
+            user.password = generate_password_hash(password)
             db.session.commit()
 
         except Exception:
-
             db.session.rollback()
 
             current_app.logger.exception(
@@ -926,12 +642,8 @@ def reset_password(token):
                 "Something went wrong while resetting your password.",
                 "danger"
             )
-
             return redirect(
-                url_for(
-                    "auth.reset_password",
-                    token=token
-                )
+                url_for("auth.reset_password", token=token)
             )
 
         flash(
@@ -940,9 +652,7 @@ def reset_password(token):
             "success"
         )
 
-        return redirect(
-            url_for("auth.login")
-        )
+        return redirect(url_for("auth.login"))
 
     return render_template(
         "reset_password.html",
@@ -978,6 +688,4 @@ def force_logout():
         "info"
     )
 
-    return redirect(
-        url_for("auth.login")
-    )
+    return redirect(url_for("auth.login"))

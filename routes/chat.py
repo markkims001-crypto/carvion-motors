@@ -10,6 +10,7 @@ from flask import (
     redirect,
     url_for,
     flash,
+    current_app,
 )
 
 from flask_login import login_required, current_user
@@ -38,37 +39,43 @@ chat = Blueprint("chat", __name__)
 # HELPERS
 # ============================================================
 
+def normalized_role(user):
+    """Return a normalized role for consistent permission checks."""
+    return (getattr(user, "role", "") or "").strip().lower()
+
+
 def get_admin():
     """Get the first registered administrator."""
-    return User.query.filter_by(role="admin").first()
+    return User.query.filter(
+        db.func.lower(User.role) == "admin"
+    ).first()
 
 
 def allowed_direct_chat(user1, user2):
-    """Allow buyer/admin and seller/admin direct chats only."""
-
+    """Allow administrator chats with buyers and sellers."""
     if not user1 or not user2:
         return False
 
-    roles = {user1.role, user2.role}
+    roles = {normalized_role(user1), normalized_role(user2)}
 
     return (
         "admin" in roles
-        and ("buyer" in roles or "seller" in roles)
+        and bool(roles.intersection({"buyer", "seller"}))
     )
 
 
 def get_or_create_conversation(user1_id, user2_id):
-    """Find or create a conversation between two users."""
-
+    """Find an existing conversation or create one."""
     conversation = Conversation.query.filter(
-        (
-            (Conversation.user1_id == user1_id)
-            & (Conversation.user2_id == user2_id)
-        )
-        |
-        (
-            (Conversation.user1_id == user2_id)
-            & (Conversation.user2_id == user1_id)
+        db.or_(
+            db.and_(
+                Conversation.user1_id == user1_id,
+                Conversation.user2_id == user2_id,
+            ),
+            db.and_(
+                Conversation.user1_id == user2_id,
+                Conversation.user2_id == user1_id,
+            ),
         )
     ).first()
 
@@ -86,8 +93,88 @@ def get_or_create_conversation(user1_id, user2_id):
     return conversation
 
 
+def get_or_create_inquiry(car, buyer_id):
+    """
+    Return the existing inquiry for this buyer and vehicle,
+    or create and flush a new one.
+    """
+    inquiry = Inquiry.query.filter_by(
+        car_id=car.id,
+        buyer_id=buyer_id,
+        seller_id=car.seller_id,
+    ).first()
+
+    if inquiry is None:
+        inquiry = Inquiry(
+            car_id=car.id,
+            buyer_id=buyer_id,
+            seller_id=car.seller_id,
+            status="Open",
+        )
+        db.session.add(inquiry)
+        db.session.flush()
+
+    return inquiry
+
+
+def send_inquiry_message(inquiry, sender, message_text):
+    """
+    Save a message and notify the other participant.
+    The caller must commit the transaction.
+    """
+    if sender.id == inquiry.buyer_id:
+        receiver_id = inquiry.seller_id
+    elif sender.id == inquiry.seller_id:
+        receiver_id = inquiry.buyer_id
+    else:
+        raise PermissionError(
+            "You are not a participant in this inquiry."
+        )
+
+    message = InquiryMessage(
+        inquiry_id=inquiry.id,
+        sender_id=sender.id,
+        receiver_id=receiver_id,
+        sender_role=normalized_role(sender),
+        message=message_text,
+        is_read=False,
+    )
+
+    db.session.add(message)
+
+    inquiry.status = "Open"
+    inquiry.updated_at = datetime.utcnow()
+
+    notification = Notification(
+        user_id=receiver_id,
+        car_id=inquiry.car_id,
+        title="New Inquiry Message",
+        message=(
+            f"{sender.name} sent you a message about "
+            f"{inquiry.car.brand} {inquiry.car.model}."
+        ),
+        notification_type="inquiry",
+        is_read=False,
+    )
+
+    db.session.add(notification)
+
+    return message
+
+
+def safe_flash_error(message, error):
+    """Log database errors without exposing technical details to users."""
+    db.session.rollback()
+    current_app.logger.exception(
+        "%s: %s",
+        message,
+        str(error),
+    )
+    flash(message, "danger")
+
+
 # ============================================================
-# BUYER <-> SELLER INQUIRY CHAT
+# BUYER / SELLER INQUIRY CHAT
 # ============================================================
 
 @chat.route(
@@ -96,15 +183,12 @@ def get_or_create_conversation(user1_id, user2_id):
 )
 @login_required
 def inquiry_chat(inquiry_id):
-
     inquiry = db.session.get(Inquiry, inquiry_id)
 
-    if not inquiry:
+    if inquiry is None:
         flash("Inquiry not found.", "danger")
         return redirect(url_for("cars.all_cars"))
 
-    # Only the buyer or seller belonging to this inquiry
-    # may access its conversation.
     if current_user.id not in (
         inquiry.buyer_id,
         inquiry.seller_id,
@@ -115,12 +199,7 @@ def inquiry_chat(inquiry_id):
         )
         return redirect(url_for("cars.all_cars"))
 
-    # --------------------------------------------------------
-    # SEND MESSAGE
-    # --------------------------------------------------------
-
     if request.method == "POST":
-
         message_text = request.form.get("message", "").strip()
 
         if not message_text:
@@ -132,83 +211,54 @@ def inquiry_chat(inquiry_id):
                 )
             )
 
-        if current_user.id == inquiry.buyer_id:
-            receiver_id = inquiry.seller_id
-        else:
-            receiver_id = inquiry.buyer_id
-
         try:
-            new_message = InquiryMessage(
-                inquiry_id=inquiry.id,
-                sender_id=current_user.id,
-                receiver_id=receiver_id,
-                sender_role=current_user.role,
-                message=message_text,
-                is_read=False,
+            send_inquiry_message(
+                inquiry,
+                current_user,
+                message_text,
             )
 
-            db.session.add(new_message)
-
-            inquiry.status = "Open"
-            inquiry.updated_at = datetime.utcnow()
-
-            notification = Notification(
-                user_id=receiver_id,
-                car_id=inquiry.car_id,
-                title="New Inquiry Message",
-                message=(
-                    f"{current_user.name} sent you a new message "
-                    f"about {inquiry.car.brand} {inquiry.car.model}."
-                ),
-                notification_type="inquiry",
-                is_read=False,
-            )
-
-            db.session.add(notification)
             db.session.commit()
-
             flash("Message sent successfully.", "success")
 
-        except Exception:
-            db.session.rollback()
-            flash(
+        except Exception as error:
+            safe_flash_error(
                 "Your message could not be sent. Please try again.",
-                "danger",
+                error,
             )
 
         return redirect(
             url_for(
                 "chat.inquiry_chat",
-                inquiry_id=inquiry.id,
+                inquiry_id=inquiry_id,
             )
         )
 
-    # --------------------------------------------------------
-    # MARK RECEIVED MESSAGES AS READ
-    # --------------------------------------------------------
-
-    unread_messages = InquiryMessage.query.filter(
-        InquiryMessage.inquiry_id == inquiry.id,
-        InquiryMessage.receiver_id == current_user.id,
-        InquiryMessage.is_read.is_(False),
-    ).all()
-
-    if unread_messages:
-        for message in unread_messages:
-            message.is_read = True
+    try:
+        InquiryMessage.query.filter(
+            InquiryMessage.inquiry_id == inquiry.id,
+            InquiryMessage.receiver_id == current_user.id,
+            InquiryMessage.is_read.is_(False),
+        ).update(
+            {"is_read": True},
+            synchronize_session=False,
+        )
 
         db.session.commit()
 
-    # --------------------------------------------------------
-    # LOAD MESSAGES
-    # --------------------------------------------------------
+        messages = InquiryMessage.query.filter_by(
+            inquiry_id=inquiry.id,
+        ).order_by(
+            InquiryMessage.created_at.asc(),
+            InquiryMessage.id.asc(),
+        ).all()
 
-    messages = InquiryMessage.query.filter_by(
-        inquiry_id=inquiry.id,
-    ).order_by(
-        InquiryMessage.created_at.asc(),
-        InquiryMessage.id.asc(),
-    ).all()
+    except Exception as error:
+        safe_flash_error(
+            "Unable to load the conversation.",
+            error,
+        )
+        return redirect(url_for("cars.all_cars"))
 
     return render_template(
         "chat/inquiry_chat.html",
@@ -218,7 +268,7 @@ def inquiry_chat(inquiry_id):
 
 
 # ============================================================
-# START INQUIRY CHAT FROM A CAR
+# START OR CONTINUE A VEHICLE INQUIRY
 # ============================================================
 
 @chat.route(
@@ -227,15 +277,13 @@ def inquiry_chat(inquiry_id):
 )
 @login_required
 def start_car_chat(car_id):
-
     car = db.session.get(Car, car_id)
 
-    if not car:
+    if car is None:
         flash("Vehicle not found.", "danger")
         return redirect(url_for("cars.all_cars"))
 
-    # Only buyers may start vehicle inquiries.
-    if current_user.role != "buyer":
+    if normalized_role(current_user) != "buyer":
         flash(
             "Only buyers can start vehicle inquiries.",
             "warning",
@@ -244,8 +292,8 @@ def start_car_chat(car_id):
             url_for("cars.car_details", car_id=car.id)
         )
 
-    if not car.seller:
-        flash("This vehicle does not have a seller.", "danger")
+    if not car.seller_id or not car.seller:
+        flash("This vehicle has no assigned seller.", "danger")
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -260,40 +308,18 @@ def start_car_chat(car_id):
         )
 
     try:
-        # Find an inquiry for this buyer and this vehicle.
-        inquiry = Inquiry.query.filter_by(
-            car_id=car.id,
-            buyer_id=current_user.id,
-            seller_id=car.seller_id,
-        ).first()
-
-        # Create and save the inquiry if it does not exist.
-        if not inquiry:
-            inquiry = Inquiry(
-                car_id=car.id,
-                buyer_id=current_user.id,
-                seller_id=car.seller_id,
-                status="Open",
-            )
-
-            db.session.add(inquiry)
-            db.session.flush()
-
-        # ----------------------------------------------------
-        # HANDLE FIRST MESSAGE
-        # ----------------------------------------------------
+        inquiry = get_or_create_inquiry(
+            car,
+            current_user.id,
+        )
 
         if request.method == "POST":
-
             message_text = request.form.get(
                 "message", ""
             ).strip()
 
             if not message_text:
-                # Save a newly created inquiry before redirecting
-                # to its conversation.
                 db.session.commit()
-
                 flash("Message cannot be empty.", "warning")
                 return redirect(
                     url_for(
@@ -302,38 +328,13 @@ def start_car_chat(car_id):
                     )
                 )
 
-            new_message = InquiryMessage(
-                inquiry_id=inquiry.id,
-                sender_id=current_user.id,
-                receiver_id=car.seller_id,
-                sender_role=current_user.role,
-                message=message_text,
-                is_read=False,
+            send_inquiry_message(
+                inquiry,
+                current_user,
+                message_text,
             )
 
-            db.session.add(new_message)
-
-            inquiry.status = "Open"
-            inquiry.updated_at = datetime.utcnow()
-
-            notification = Notification(
-                user_id=car.seller_id,
-                car_id=car.id,
-                title="New Vehicle Inquiry",
-                message=(
-                    f"{current_user.name} sent you a message "
-                    f"about {car.brand} {car.model}."
-                ),
-                notification_type="inquiry",
-                is_read=False,
-            )
-
-            db.session.add(notification)
-
-        # IMPORTANT:
-        # Commit the inquiry even when this is a GET request.
-        # Otherwise a newly created inquiry may not persist
-        # after the redirect.
+        # Commit the inquiry even if this request is a GET.
         db.session.commit()
 
         if request.method == "POST":
@@ -346,14 +347,11 @@ def start_car_chat(car_id):
             )
         )
 
-    except Exception:
-        db.session.rollback()
-
-        flash(
+    except Exception as error:
+        safe_flash_error(
             "We could not process your inquiry. Please try again.",
-            "danger",
+            error,
         )
-
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -366,8 +364,7 @@ def start_car_chat(car_id):
 @chat.route("/chat/my-inquiries")
 @login_required
 def my_inquiries():
-
-    if current_user.role != "buyer":
+    if normalized_role(current_user) != "buyer":
         flash("Buyer access required.", "warning")
         return redirect(url_for("cars.all_cars"))
 
@@ -391,8 +388,7 @@ def my_inquiries():
 @chat.route("/chat/seller-inquiries")
 @login_required
 def seller_inquiries_chat():
-
-    if current_user.role != "seller":
+    if normalized_role(current_user) != "seller":
         flash("Seller access required.", "danger")
         return redirect(url_for("cars.all_cars"))
 
@@ -416,13 +412,12 @@ def seller_inquiries_chat():
 @chat.route("/chat/admin", methods=["GET", "POST"])
 @login_required
 def admin_chat():
-
-    if current_user.role == "admin":
+    if normalized_role(current_user) == "admin":
         return redirect(url_for("chat.admin_chats"))
 
     admin = get_admin()
 
-    if not admin:
+    if admin is None:
         flash(
             "No administrator is currently available.",
             "danger",
@@ -439,20 +434,17 @@ def admin_chat():
             admin.id,
         )
 
-        # Persist a newly created conversation on GET.
-        db.session.commit()
-
         if request.method == "POST":
-
             message_text = request.form.get(
                 "message", ""
             ).strip()
 
             if not message_text:
+                db.session.commit()
                 flash("Message cannot be empty.", "warning")
                 return redirect(url_for("chat.admin_chat"))
 
-            new_message = Message(
+            message = Message(
                 conversation_id=conversation.id,
                 sender_id=current_user.id,
                 receiver_id=admin.id,
@@ -460,23 +452,25 @@ def admin_chat():
                 is_read=False,
             )
 
-            db.session.add(new_message)
+            db.session.add(message)
+            conversation.updated_at = datetime.utcnow()
             db.session.commit()
 
             flash("Message sent.", "success")
             return redirect(url_for("chat.admin_chat"))
 
-        unread_messages = Message.query.filter(
+        db.session.commit()
+
+        Message.query.filter(
             Message.conversation_id == conversation.id,
             Message.receiver_id == current_user.id,
             Message.is_read.is_(False),
-        ).all()
+        ).update(
+            {"is_read": True},
+            synchronize_session=False,
+        )
 
-        if unread_messages:
-            for message in unread_messages:
-                message.is_read = True
-
-            db.session.commit()
+        db.session.commit()
 
         messages = Message.query.filter_by(
             conversation_id=conversation.id,
@@ -491,9 +485,11 @@ def admin_chat():
             admin=admin,
         )
 
-    except Exception:
-        db.session.rollback()
-        flash("Unable to open the administrator chat.", "danger")
+    except Exception as error:
+        safe_flash_error(
+            "Unable to open the administrator chat.",
+            error,
+        )
         return redirect(url_for("dashboard"))
 
 
@@ -504,18 +500,14 @@ def admin_chat():
 @chat.route("/admin/chats")
 @login_required
 def admin_chats():
-
-    if current_user.role != "admin":
+    if normalized_role(current_user) != "admin":
         flash("Admin access required.", "danger")
         return redirect(url_for("dashboard"))
 
     conversations = Conversation.query.filter(
-        (
-            Conversation.user1_id == current_user.id
-        )
-        |
-        (
-            Conversation.user2_id == current_user.id
+        db.or_(
+            Conversation.user1_id == current_user.id,
+            Conversation.user2_id == current_user.id,
         )
     ).order_by(
         Conversation.updated_at.desc(),
@@ -525,19 +517,16 @@ def admin_chats():
     valid_conversations = []
 
     for conversation in conversations:
-
         if conversation.user1_id == current_user.id:
             other_user = conversation.user2
         else:
             other_user = conversation.user1
 
-        if not other_user:
-            continue
-
-        if other_user.role not in ("buyer", "seller"):
-            continue
-
-        valid_conversations.append(conversation)
+        if (
+            other_user
+            and normalized_role(other_user) in ("buyer", "seller")
+        ):
+            valid_conversations.append(conversation)
 
     return render_template(
         "chat/admin_chats.html",
@@ -555,8 +544,7 @@ def admin_chats():
 )
 @login_required
 def admin_conversation(conversation_id):
-
-    if current_user.role != "admin":
+    if normalized_role(current_user) != "admin":
         flash("Admin access required.", "danger")
         return redirect(url_for("dashboard"))
 
@@ -565,7 +553,7 @@ def admin_conversation(conversation_id):
         conversation_id,
     )
 
-    if not conversation:
+    if conversation is None:
         flash("Conversation not found.", "danger")
         return redirect(url_for("chat.admin_chats"))
 
@@ -584,16 +572,14 @@ def admin_conversation(conversation_id):
     else:
         other_user = conversation.user1
 
-    if not other_user:
-        flash("Chat user not found.", "danger")
-        return redirect(url_for("chat.admin_chats"))
-
-    if other_user.role not in ("buyer", "seller"):
+    if (
+        other_user is None
+        or normalized_role(other_user) not in ("buyer", "seller")
+    ):
         flash("Invalid chat conversation.", "danger")
         return redirect(url_for("chat.admin_chats"))
 
     if request.method == "POST":
-
         message_text = request.form.get(
             "message", ""
         ).strip()
@@ -608,7 +594,7 @@ def admin_conversation(conversation_id):
             )
 
         try:
-            new_message = Message(
+            message = Message(
                 conversation_id=conversation.id,
                 sender_id=current_user.id,
                 receiver_id=other_user.id,
@@ -616,7 +602,7 @@ def admin_conversation(conversation_id):
                 is_read=False,
             )
 
-            db.session.add(new_message)
+            db.session.add(message)
 
             notification = Notification(
                 user_id=other_user.id,
@@ -628,14 +614,15 @@ def admin_conversation(conversation_id):
 
             db.session.add(notification)
             conversation.updated_at = datetime.utcnow()
-
             db.session.commit()
 
             flash("Message sent.", "success")
 
-        except Exception:
-            db.session.rollback()
-            flash("Unable to send the message.", "danger")
+        except Exception as error:
+            safe_flash_error(
+                "Unable to send the message.",
+                error,
+            )
 
         return redirect(
             url_for(
@@ -644,23 +631,30 @@ def admin_conversation(conversation_id):
             )
         )
 
-    unread_messages = Message.query.filter(
-        Message.conversation_id == conversation.id,
-        Message.receiver_id == current_user.id,
-        Message.is_read.is_(False),
-    ).all()
-
-    if unread_messages:
-        for message in unread_messages:
-            message.is_read = True
+    try:
+        Message.query.filter(
+            Message.conversation_id == conversation.id,
+            Message.receiver_id == current_user.id,
+            Message.is_read.is_(False),
+        ).update(
+            {"is_read": True},
+            synchronize_session=False,
+        )
 
         db.session.commit()
 
-    messages = Message.query.filter_by(
-        conversation_id=conversation.id,
-    ).order_by(
-        Message.created_at.asc(),
-    ).all()
+        messages = Message.query.filter_by(
+            conversation_id=conversation.id,
+        ).order_by(
+            Message.created_at.asc(),
+        ).all()
+
+    except Exception as error:
+        safe_flash_error(
+            "Unable to load the conversation.",
+            error,
+        )
+        return redirect(url_for("chat.admin_chats"))
 
     return render_template(
         "chat/admin_chat.html",
@@ -677,18 +671,17 @@ def admin_conversation(conversation_id):
 @chat.route("/admin/start-chat/<int:user_id>")
 @login_required
 def admin_start_chat(user_id):
-
-    if current_user.role != "admin":
+    if normalized_role(current_user) != "admin":
         flash("Admin access required.", "danger")
         return redirect(url_for("dashboard"))
 
     user = db.session.get(User, user_id)
 
-    if not user:
+    if user is None:
         flash("User not found.", "danger")
         return redirect(url_for("chat.admin_chats"))
 
-    if user.role not in ("buyer", "seller"):
+    if normalized_role(user) not in ("buyer", "seller"):
         flash(
             "You can only chat with buyers or sellers.",
             "warning",
@@ -710,7 +703,9 @@ def admin_start_chat(user_id):
             )
         )
 
-    except Exception:
-        db.session.rollback()
-        flash("Unable to start the conversation.", "danger")
+    except Exception as error:
+        safe_flash_error(
+            "Unable to start the conversation.",
+            error,
+        )
         return redirect(url_for("chat.admin_chats"))

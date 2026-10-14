@@ -1,52 +1,604 @@
+
 {% extends "base.html" %}
 
-{% block title %}
-Forgot Password
-{% endblock %}
+{% block title %}Sell Your Car | Carvion Motors{% endblock %}
 
 {% block content %}
 
-<div class="container py-5">
+<style>
+    .add-car-page {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 35px 15px 60px;
+    }
 
-```
-<div class="form-box">
+    .page-heading {
+        margin-bottom: 28px;
+    }
 
-    <h2 class="mb-3">
-        Forgot Password?
-    </h2>
+    .page-heading h1 {
+        font-weight: 800;
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+    }
 
-    <p class="text-muted mb-4">
-        Enter your email address and we'll send you a link to reset your password.
-    </p>
+    .page-heading p {
+        color: #777;
+    }
 
-    <form method="POST">
+    .form-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 14px;
+        padding: 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.035);
+    }
 
-        <input
-            type="email"
-            name="email"
-            placeholder="Email Address"
-            required
-        >
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 750;
+        margin-bottom: 8px;
+    }
 
-        <button
-            type="submit"
-            class="btn btn-primary w-100"
-        >
-            Send Reset Link
-        </button>
+    .section-description {
+        color: #777;
+        font-size: .92rem;
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .required {
+        color: #dc3545;
+    }
+
+    .form-control,
+    .form-select {
+        min-height: 48px;
+        border-radius: 8px;
+    }
+
+    textarea.form-control {
+        min-height: 145px;
+        resize: vertical;
+    }
+
+    .upload-box {
+        border: 2px dashed #bbb;
+        background: #fafafa;
+        border-radius: 12px;
+        padding: 30px 20px;
+        text-align: center;
+    }
+
+    .upload-box p {
+        color: #777;
+    }
+
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .photo-item img {
+        width: 100%;
+        height: 110px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    .photo-item small {
+        display: block;
+        overflow-wrap: anywhere;
+        margin-top: 5px;
+    }
+
+    .photo-status {
+        margin-top: 15px;
+        font-weight: 600;
+        font-size: .9rem;
+    }
+
+    .listing-notice {
+        background: #f5f5f5;
+        border-radius: 10px;
+        padding: 18px;
+        margin-bottom: 24px;
+    }
+
+    .submit-btn {
+        min-height: 52px;
+        font-weight: 700;
+        border-radius: 8px;
+    }
+
+    @media (max-width: 576px) {
+        .form-card {
+            padding: 20px 16px;
+        }
+    }
+</style>
+
+<div class="add-car-page">
+
+    <div class="page-heading">
+        <h1>Sell Your Car</h1>
+        <p>
+            List your vehicle on Carvion Motors and connect
+            with potential buyers across Kenya.
+        </p>
+    </div>
+
+    <!-- FLASH MESSAGES -->
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show"
+                     role="alert">
+                    {{ message }}
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form id="addCarForm"
+          method="POST"
+          enctype="multipart/form-data">
+
+        <!-- VEHICLE INFORMATION -->
+
+        <div class="form-card">
+
+            <h2 class="section-title">Vehicle Information</h2>
+
+            <p class="section-description">
+                Enter the vehicle's identification and basic details.
+            </p>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <label for="registration_number" class="form-label">
+                        Registration Number <span class="required">*</span>
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="registration_number"
+                           name="registration_number"
+                           placeholder="e.g. KDA 123A"
+                           maxlength="30"
+                           autocomplete="off"
+                           required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="brand" class="form-label">
+                        Make / Brand <span class="required">*</span>
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="brand"
+                           name="brand"
+                           placeholder="e.g. BMW, Toyota"
+                           maxlength="80"
+                           required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="model" class="form-label">
+                        Model <span class="required">*</span>
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="model"
+                           name="model"
+                           placeholder="e.g. M5, Harrier"
+                           maxlength="100"
+                           required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="year" class="form-label">
+                        Year of Manufacture <span class="required">*</span>
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           id="year"
+                           name="year"
+                           min="1900"
+                           max="2100"
+                           placeholder="e.g. 2022"
+                           required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="mileage" class="form-label">
+                        Mileage (km) <span class="required">*</span>
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           id="mileage"
+                           name="mileage"
+                           min="0"
+                           step="1"
+                           placeholder="e.g. 45000"
+                           required>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="price" class="form-label">
+                        Asking Price (KES) <span class="required">*</span>
+                    </label>
+
+                    <input type="number"
+                           class="form-control"
+                           id="price"
+                           name="price"
+                           min="1"
+                           step="1"
+                           placeholder="e.g. 15000000"
+                           required>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VEHICLE SPECIFICATIONS -->
+
+        <div class="form-card">
+
+            <h2 class="section-title">Vehicle Specifications</h2>
+
+            <p class="section-description">
+                Provide technical details to help buyers compare vehicles.
+            </p>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <label for="fuel" class="form-label">
+                        Fuel Type <span class="required">*</span>
+                    </label>
+
+                    <select class="form-select"
+                            id="fuel"
+                            name="fuel"
+                            required>
+                        <option value="">Select fuel type</option>
+                        <option value="Petrol">Petrol</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Hybrid">Hybrid</option>
+                        <option value="Plug-in Hybrid">Plug-in Hybrid</option>
+                        <option value="Electric">Electric</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="transmission" class="form-label">
+                        Transmission <span class="required">*</span>
+                    </label>
+
+                    <select class="form-select"
+                            id="transmission"
+                            name="transmission"
+                            required>
+                        <option value="">Select transmission</option>
+                        <option value="Automatic">Automatic</option>
+                        <option value="Manual">Manual</option>
+                        <option value="CVT">CVT</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label for="engine" class="form-label">Engine</label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="engine"
+                           name="engine"
+                           placeholder="e.g. 3000cc / 3.0L"
+                           maxlength="100">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="color" class="form-label">Exterior Colour</label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="color"
+                           name="color"
+                           placeholder="e.g. Black"
+                           maxlength="50">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="condition" class="form-label">Condition</label>
+
+                    <select class="form-select"
+                            id="condition"
+                            name="condition">
+                        <option value="">Select condition</option>
+                        <option value="Brand New">Brand New</option>
+                        <option value="Foreign Used">Foreign Used</option>
+                        <option value="Local Used">Local Used</option>
+                    </select>
+                </div>
+
+                <div class="col-md-6">
+                    <label for="location" class="form-label">
+                        Vehicle Location <span class="required">*</span>
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           id="location"
+                           name="location"
+                           placeholder="e.g. Westlands, Nairobi"
+                           maxlength="150"
+                           required>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- VEHICLE PHOTOS -->
+
+        <div class="form-card">
+
+            <h2 class="section-title">Vehicle Photos</h2>
+
+            <p class="section-description">
+                Upload at least five clear images. You may select
+                additional images in the same selection.
+            </p>
+
+            <div class="upload-box">
+
+                <div class="fs-1 mb-2" aria-hidden="true">
+                    &#128247;
+                </div>
+
+                <h3 class="h5 fw-bold">Upload Vehicle Images</h3>
+
+                <p>
+                    Front, rear, both sides, interior, engine and other details.
+                </p>
+
+                <label for="images" class="btn btn-outline-dark">
+                    Choose Photos
+                </label>
+
+                <input type="file"
+                       class="visually-hidden"
+                       id="images"
+                       name="images"
+                       accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                       multiple
+                       required
+                       aria-describedby="photoHelp photoStatus">
+
+                <div id="photoHelp" class="form-text mt-3">
+                    Accepted formats: JPG, JPEG, PNG and WEBP.
+                    Minimum: 5 images.
+                </div>
+
+            </div>
+
+            <div id="photoStatus"
+                 class="photo-status"
+                 aria-live="polite">
+                No photos selected.
+            </div>
+
+            <div id="photoPreview" class="photo-grid"></div>
+
+        </div>
+
+        <!-- DESCRIPTION -->
+
+        <div class="form-card">
+
+            <h2 class="section-title">Vehicle Description</h2>
+
+            <p class="section-description">
+                Describe the vehicle honestly and highlight its features.
+            </p>
+
+            <label for="description" class="form-label">
+                Description <span class="required">*</span>
+            </label>
+
+            <textarea class="form-control"
+                      id="description"
+                      name="description"
+                      minlength="20"
+                      maxlength="5000"
+                      placeholder="Describe the vehicle's condition, service history, features, ownership and any modifications..."
+                      required></textarea>
+
+            <div class="form-text">
+                Do not include private documents or sensitive personal information.
+            </div>
+
+        </div>
+
+        <!-- APPROVAL NOTICE -->
+
+        <div class="listing-notice">
+            <strong>Before submitting</strong>
+
+            <ul class="mb-0 mt-2">
+                <li>Check the registration number and vehicle details.</li>
+                <li>Confirm the asking price and mileage.</li>
+                <li>Upload at least five valid vehicle photos.</li>
+                <li>Your listing will remain pending until reviewed by an administrator.</li>
+            </ul>
+        </div>
+
+        <!-- ACTIONS -->
+
+        <div class="d-grid gap-3">
+
+            <button type="submit"
+                    id="submitButton"
+                    class="btn btn-dark submit-btn">
+                Submit Car Listing
+            </button>
+
+            <a href="{{ url_for('cars.all_cars') }}"
+               class="text-center text-decoration-none text-secondary">
+                Cancel and return to available cars
+            </a>
+
+        </div>
 
     </form>
 
-    <p class="mt-3">
-        Remember your password?
-        <a href="{{ url_for('auth.login') }}">
-            Login
-        </a>
-    </p>
-
 </div>
-```
 
-</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const form = document.getElementById("addCarForm");
+    const imageInput = document.getElementById("images");
+    const photoStatus = document.getElementById("photoStatus");
+    const photoPreview = document.getElementById("photoPreview");
+    const submitButton = document.getElementById("submitButton");
+
+    let previewUrls = [];
+
+    function clearPreviews() {
+        previewUrls.forEach(function (url) {
+            URL.revokeObjectURL(url);
+        });
+
+        previewUrls = [];
+        photoPreview.replaceChildren();
+    }
+
+    imageInput.addEventListener("change", function () {
+
+        clearPreviews();
+
+        const files = Array.from(imageInput.files || []);
+
+        imageInput.setCustomValidity("");
+
+        if (files.length === 0) {
+            photoStatus.textContent = "No photos selected.";
+            return;
+        }
+
+        const invalidFile = files.find(function (file) {
+            const extension = file.name.split(".").pop().toLowerCase();
+
+            return !["jpg", "jpeg", "png", "webp"].includes(extension)
+                || !file.type.startsWith("image/");
+        });
+
+        if (invalidFile) {
+            imageInput.setCustomValidity(
+                "Use JPG, JPEG, PNG or WEBP images only."
+            );
+
+            photoStatus.textContent =
+                "An unsupported file was selected.";
+
+            imageInput.reportValidity();
+            return;
+        }
+
+        photoStatus.textContent =
+            files.length + " photo(s) selected. " +
+            (files.length >= 5
+                ? "Minimum requirement met."
+                : "Select at least " + (5 - files.length) + " more.");
+
+        files.forEach(function (file) {
+
+            const item = document.createElement("div");
+            item.className = "photo-item";
+
+            const img = document.createElement("img");
+            const url = URL.createObjectURL(file);
+
+            previewUrls.push(url);
+            img.src = url;
+            img.alt = file.name;
+
+            const caption = document.createElement("small");
+            caption.textContent = file.name;
+
+            item.appendChild(img);
+            item.appendChild(caption);
+
+            photoPreview.appendChild(item);
+        });
+    });
+
+    form.addEventListener("submit", function (event) {
+
+        const files = Array.from(imageInput.files || []);
+
+        if (files.length < 5) {
+            event.preventDefault();
+
+            photoStatus.textContent =
+                "Please select at least five vehicle photos.";
+
+            imageInput.setCustomValidity(
+                "Select at least five vehicle photos."
+            );
+
+            imageInput.reportValidity();
+            return;
+        }
+
+        const invalidFile = files.some(function (file) {
+            const extension = file.name.split(".").pop().toLowerCase();
+
+            return !["jpg", "jpeg", "png", "webp"].includes(extension)
+                || !file.type.startsWith("image/");
+        });
+
+        if (invalidFile) {
+            event.preventDefault();
+
+            imageInput.setCustomValidity(
+                "Use JPG, JPEG, PNG or WEBP images only."
+            );
+
+            imageInput.reportValidity();
+            return;
+        }
+
+        imageInput.setCustomValidity("");
+
+        submitButton.disabled = true;
+        submitButton.textContent = "Submitting Listing...";
+    });
+
+    window.addEventListener("pagehide", clearPreviews);
+
+});
+</script>
 
 {% endblock %}

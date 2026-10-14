@@ -1,0 +1,145 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}Buyer Inquiries | Carvion Motors{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">Buyer Inquiries</h2>
+            <p class="text-muted mb-0">
+                View buyers who have contacted you about your vehicles.
+            </p>
+        </div>
+
+        <a href="{{ url_for('cars.my_cars') }}"
+           class="btn btn-outline-dark">
+            My Cars
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show"
+                     role="alert">
+                    {{ message }}
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if inquiries %}
+
+        <div class="row g-3">
+
+            {% for inquiry in inquiries %}
+
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+
+                                <div class="flex-grow-1">
+
+                                    <h5 class="mb-2">
+                                        {% if inquiry.car %}
+                                            {{ inquiry.car.brand }}
+                                            {{ inquiry.car.model }}
+                                            {% if inquiry.car.year %}
+                                                ({{ inquiry.car.year }})
+                                            {% endif %}
+                                        {% else %}
+                                            Vehicle inquiry
+                                        {% endif %}
+                                    </h5>
+
+                                    <p class="mb-1">
+                                        <strong>Buyer:</strong>
+                                        {{ inquiry.buyer.name if inquiry.buyer else "Unknown buyer" }}
+                                    </p>
+
+                                    <p class="mb-1">
+                                        <strong>Email:</strong>
+                                        {{ inquiry.buyer.email if inquiry.buyer else "Unavailable" }}
+                                    </p>
+
+                                    <p class="mb-1">
+                                        <strong>Inquiry status:</strong>
+                                        <span class="badge bg-secondary">
+                                            {{ inquiry.status or "Open" }}
+                                        </span>
+                                    </p>
+
+                                    <small class="text-muted">
+                                        Started:
+                                        {% if inquiry.created_at %}
+                                            {{ inquiry.created_at.strftime('%d %b %Y, %H:%M') }}
+                                        {% else %}
+                                            Date unavailable
+                                        {% endif %}
+                                    </small>
+
+                                    {% set unread_count = namespace(value=0) %}
+                                    {% for message in inquiry.messages %}
+                                        {% if message.receiver_id == current_user.id
+                                              and not message.is_read %}
+                                            {% set unread_count.value = unread_count.value + 1 %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    {% if unread_count.value > 0 %}
+                                        <div class="mt-2">
+                                            <span class="badge bg-danger">
+                                                {{ unread_count.value }}
+                                                unread message{% if unread_count.value != 1 %}s{% endif %}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="d-flex align-items-center">
+                                    <a href="{{ url_for(
+                                        'chat.inquiry_chat',
+                                        inquiry_id=inquiry.id
+                                    ) }}"
+                                       class="btn btn-dark">
+                                        Open Conversation
+                                    </a>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <h4>No buyer inquiries yet</h4>
+                <p class="text-muted mb-0">
+                    When buyers contact you about your vehicles,
+                    their inquiries will appear here.
+                </p>
+            </div>
+        </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}
+```

@@ -1722,263 +1722,143 @@ def mark_all_notifications_read():
     )
 
 
+
 # ============================================================
-# BUYER SENDS INQUIRY
+# SHARED BUYER-TO-SELLER INQUIRY HANDLER
 # ============================================================
 
-@cars.route(
-    "/inquiry/<int:car_id>",
-    methods=["POST"]
-)
-@login_required
-def send_inquiry(car_id):
+def process_vehicle_inquiry(car_id):
 
     car = Car.query.get_or_404(car_id)
 
     if current_user.role != "buyer":
+        flash("Only buyers can contact sellers.", "danger")
+        return redirect(url_for("cars.car_details", car_id=car.id))
 
-        flash(
-            "Only buyers can contact sellers about vehicles.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
+    if not car.seller_id:
+        flash("This vehicle has no assigned seller.", "danger")
+        return redirect(url_for("cars.car_details", car_id=car.id))
 
     if current_user.id == car.seller_id:
+        flash("You cannot inquire about your own vehicle.", "warning")
+        return redirect(url_for("cars.car_details", car_id=car.id))
 
-        flash(
-            "You cannot inquire about your own car.",
-            "warning"
-        )
-
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
-
-    message_text = request.form.get(
-        "message",
-        ""
-    ).strip()
+    message_text = request.form.get("message", "").strip()
 
     if not message_text:
+        flash("Please enter a message.", "warning")
+        return redirect(url_for("cars.car_details", car_id=car.id))
 
-        flash(
-            "Message cannot be empty.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
-
-    inquiry = Inquiry.query.filter_by(
-        car_id=car.id,
-        buyer_id=current_user.id,
-        seller_id=car.seller_id
-    ).first()
-
-    if not inquiry:
-
-        inquiry = Inquiry(
+    try:
+        # Reuse the existing inquiry for this buyer and vehicle.
+        inquiry = Inquiry.query.filter_by(
             car_id=car.id,
             buyer_id=current_user.id,
             seller_id=car.seller_id,
-            status="Open"
+        ).first()
+
+        # Create the inquiry if it does not already exist.
+        if inquiry is None:
+            inquiry = Inquiry(
+                car_id=car.id,
+                buyer_id=current_user.id,
+                seller_id=car.seller_id,
+                status="Open",
+            )
+            db.session.add(inquiry)
+            db.session.flush()
+
+        # Send the message to the SELLER, not the administrator.
+        message = InquiryMessage(
+            inquiry_id=inquiry.id,
+            sender_id=current_user.id,
+            receiver_id=car.seller_id,
+            sender_role=current_user.role,
+            message=message_text,
+            is_read=False,
         )
+        db.session.add(message)
 
-        db.session.add(inquiry)
+        inquiry.status = "Open"
 
+        notification = Notification(
+            user_id=car.seller_id,
+            car_id=car.id,
+            title="New Vehicle Inquiry",
+            message=(
+                f"{current_user.name} sent you a message "
+                f"about {car.brand} {car.model}."
+            ),
+            notification_type="inquiry",
+            is_read=False,
+        )
+        db.session.add(notification)
+
+        # Save the inquiry, message, and notification together.
         db.session.commit()
 
-    message = InquiryMessage(
-        inquiry_id=inquiry.id,
-        sender_id=current_user.id,
-        receiver_id=car.seller_id,
-        sender_role=current_user.role,
-        message=message_text,
-        is_read=False
-    )
+        flash("Your message has been sent to the seller.", "success")
 
-    db.session.add(message)
-
-    inquiry.status = "Open"
-
-    notification = Notification(
-        user_id=car.seller_id,
-        car_id=car.id,
-        title="New Vehicle Inquiry",
-        message=(
-            f"{current_user.name} sent you a "
-            f"new inquiry about "
-            f"{car.brand} {car.model}."
-        ),
-        notification_type="inquiry"
-    )
-
-    db.session.add(notification)
-
-    db.session.commit()
-
-    flash(
-        "Message sent to the seller.",
-        "success"
-    )
-
-    return redirect(
-        url_for(
-            "chat.inquiry_chat",
-            inquiry_id=inquiry.id
+        return redirect(
+            url_for("chat.inquiry_chat", inquiry_id=inquiry.id)
         )
-    )
+
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to process vehicle inquiry")
+
+        flash(
+            "We could not send your inquiry. Please try again.",
+            "danger",
+        )
+        return redirect(url_for("cars.car_details", car_id=car.id))
 
 
 # ============================================================
-# BUYER INQUIRIES
+# BUYER SENDS INQUIRY
 # ============================================================
 
-@cars.route("/buyer_inquiries")
+@cars.route("/inquiry/<int:car_id>", methods=["POST"])
 @login_required
-def buyer_inquiries():
-
-    inquiries = Inquiry.query.filter_by(
-        buyer_id=current_user.id
-    ).order_by(
-        Inquiry.created_at.desc()
-    ).all()
-
-    return render_template(
-        "buyer_inquiries.html",
-        inquiries=inquiries
-    )
-
-
-# ============================================================
-# SELLER INQUIRIES
-# ============================================================
-
-@cars.route("/seller_inquiries")
-@login_required
-def seller_inquiries():
-
-    inquiries = Inquiry.query.filter_by(
-        seller_id=current_user.id
-    ).order_by(
-        Inquiry.created_at.desc()
-    ).all()
-
-    return render_template(
-        "seller_inquiries.html",
-        inquiries=inquiries
-    )
+def send_inquiry(car_id):
+    return process_vehicle_inquiry(car_id)
 
 
 # ============================================================
 # CONTACT SELLER
 # ============================================================
 
-@cars.route(
-    "/contact_seller/<int:car_id>",
-    methods=["POST"]
-)
+@cars.route("/contact_seller/<int:car_id>", methods=["POST"])
 @login_required
 def contact_seller(car_id):
+    return process_vehicle_inquiry(car_id)
 
-    car = Car.query.get_or_404(car_id)
 
-    message_text = request.form.get(
-        "message",
-        ""
-    ).strip()
+# ============================================================
+# BUYER INQUIRIES — LEGACY URL COMPATIBILITY
+# ============================================================
 
-    if not message_text:
+@cars.route("/buyer_inquiries")
+@login_required
+def buyer_inquiries():
 
-        flash(
-            "Message cannot be empty.",
-            "danger"
-        )
+    if current_user.role != "buyer":
+        flash("Buyer access required.", "danger")
+        return redirect(url_for("cars.all_cars"))
 
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
+    return redirect(url_for("chat.my_inquiries"))
 
-    inquiry = Inquiry(
-        car_id=car.id,
-        buyer_id=current_user.id,
-        seller_id=car.seller_id,
-        status="Open"
-    )
 
-    db.session.add(inquiry)
+# ============================================================
+# SELLER INQUIRIES — LEGACY URL COMPATIBILITY
+# ============================================================
 
-    db.session.commit()
+@cars.route("/seller_inquiries")
+@login_required
+def seller_inquiries():
 
-    admin = User.query.filter_by(
-        role="admin"
-    ).first()
+    if current_user.role != "seller":
+        flash("Seller access required.", "danger")
+        return redirect(url_for("cars.all_cars"))
 
-    if not admin:
-
-        flash(
-            "No administrator is currently available.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=car.id
-            )
-        )
-
-    message = InquiryMessage(
-        inquiry_id=inquiry.id,
-        sender_id=current_user.id,
-        receiver_id=admin.id,
-        sender_role=current_user.role,
-        message=message_text,
-        is_read=False
-    )
-
-    db.session.add(message)
-
-    notification = Notification(
-        user_id=admin.id,
-        car_id=car.id,
-        title="New Contact Request",
-        message=(
-            f"{current_user.name} contacted "
-            f"you regarding "
-            f"{car.brand} {car.model}."
-        ),
-        notification_type="inquiry"
-    )
-
-    db.session.add(notification)
-
-    db.session.commit()
-
-    flash(
-        "Your request has been sent successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for(
-            "cars.car_details",
-            car_id=car.id
-        )
-    )
+    return redirect(url_for("chat.seller_inquiries_chat"))

@@ -111,6 +111,7 @@ def get_or_create_inquiry(car, buyer_id):
             seller_id=car.seller_id,
             status="Open",
         )
+
         db.session.add(inquiry)
         db.session.flush()
 
@@ -124,8 +125,10 @@ def send_inquiry_message(inquiry, sender, message_text):
     """
     if sender.id == inquiry.buyer_id:
         receiver_id = inquiry.seller_id
+
     elif sender.id == inquiry.seller_id:
         receiver_id = inquiry.buyer_id
+
     else:
         raise PermissionError(
             "You are not a participant in this inquiry."
@@ -163,13 +166,15 @@ def send_inquiry_message(inquiry, sender, message_text):
 
 
 def safe_flash_error(message, error):
-    """Log database errors without exposing technical details to users."""
+    """Log database errors without exposing technical details."""
     db.session.rollback()
+
     current_app.logger.exception(
         "%s: %s",
         message,
         str(error),
     )
+
     flash(message, "danger")
 
 
@@ -199,11 +204,18 @@ def inquiry_chat(inquiry_id):
         )
         return redirect(url_for("cars.all_cars"))
 
+    # --------------------------------------------------------
+    # SEND A MESSAGE
+    # --------------------------------------------------------
+
     if request.method == "POST":
-        message_text = request.form.get("message", "").strip()
+        message_text = request.form.get(
+            "message", ""
+        ).strip()
 
         if not message_text:
             flash("Message cannot be empty.", "warning")
+
             return redirect(
                 url_for(
                     "chat.inquiry_chat",
@@ -219,6 +231,7 @@ def inquiry_chat(inquiry_id):
             )
 
             db.session.commit()
+
             flash("Message sent successfully.", "success")
 
         except Exception as error:
@@ -234,7 +247,12 @@ def inquiry_chat(inquiry_id):
             )
         )
 
+    # --------------------------------------------------------
+    # LOAD MESSAGES
+    # --------------------------------------------------------
+
     try:
+        # Mark messages addressed to the current user as read.
         InquiryMessage.query.filter(
             InquiryMessage.inquiry_id == inquiry.id,
             InquiryMessage.receiver_id == current_user.id,
@@ -246,6 +264,7 @@ def inquiry_chat(inquiry_id):
 
         db.session.commit()
 
+        # Retrieve all messages for this inquiry.
         messages = InquiryMessage.query.filter_by(
             inquiry_id=inquiry.id,
         ).order_by(
@@ -253,11 +272,20 @@ def inquiry_chat(inquiry_id):
             InquiryMessage.id.asc(),
         ).all()
 
+        current_app.logger.info(
+            "Inquiry chat loaded: inquiry_id=%s, "
+            "user_id=%s, message_count=%s",
+            inquiry.id,
+            current_user.id,
+            len(messages),
+        )
+
     except Exception as error:
         safe_flash_error(
             "Unable to load the conversation.",
             error,
         )
+
         return redirect(url_for("cars.all_cars"))
 
     return render_template(
@@ -288,12 +316,17 @@ def start_car_chat(car_id):
             "Only buyers can start vehicle inquiries.",
             "warning",
         )
+
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
 
     if not car.seller_id or not car.seller:
-        flash("This vehicle has no assigned seller.", "danger")
+        flash(
+            "This vehicle has no assigned seller.",
+            "danger",
+        )
+
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -303,6 +336,7 @@ def start_car_chat(car_id):
             "You cannot inquire about your own vehicle.",
             "warning",
         )
+
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -320,7 +354,12 @@ def start_car_chat(car_id):
 
             if not message_text:
                 db.session.commit()
-                flash("Message cannot be empty.", "warning")
+
+                flash(
+                    "Message cannot be empty.",
+                    "warning",
+                )
+
                 return redirect(
                     url_for(
                         "chat.inquiry_chat",
@@ -334,11 +373,14 @@ def start_car_chat(car_id):
                 message_text,
             )
 
-        # Commit the inquiry even if this request is a GET.
+        # Commit the inquiry and any new message.
         db.session.commit()
 
         if request.method == "POST":
-            flash("Your inquiry has been sent.", "success")
+            flash(
+                "Your inquiry has been sent.",
+                "success",
+            )
 
         return redirect(
             url_for(
@@ -352,6 +394,7 @@ def start_car_chat(car_id):
             "We could not process your inquiry. Please try again.",
             error,
         )
+
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -375,9 +418,30 @@ def my_inquiries():
         Inquiry.id.desc(),
     ).all()
 
+    # Retrieve messages directly for each inquiry.
+    messages_by_inquiry = {
+        inquiry.id: [] for inquiry in inquiries
+    }
+
+    inquiry_ids = list(messages_by_inquiry.keys())
+
+    if inquiry_ids:
+        saved_messages = InquiryMessage.query.filter(
+            InquiryMessage.inquiry_id.in_(inquiry_ids)
+        ).order_by(
+            InquiryMessage.created_at.asc(),
+            InquiryMessage.id.asc(),
+        ).all()
+
+        for message in saved_messages:
+            messages_by_inquiry[
+                message.inquiry_id
+            ].append(message)
+
     return render_template(
         "chat/my_inquiries.html",
         inquiries=inquiries,
+        messages_by_inquiry=messages_by_inquiry,
     )
 
 
@@ -392,6 +456,7 @@ def seller_inquiries_chat():
         flash("Seller access required.", "danger")
         return redirect(url_for("cars.all_cars"))
 
+    # Retrieve all inquiries assigned to this seller.
     inquiries = Inquiry.query.filter_by(
         seller_id=current_user.id,
     ).order_by(
@@ -399,9 +464,43 @@ def seller_inquiries_chat():
         Inquiry.id.desc(),
     ).all()
 
+    # Create a message list for every inquiry.
+    # This does not depend on Inquiry.messages relationships.
+    messages_by_inquiry = {
+        inquiry.id: [] for inquiry in inquiries
+    }
+
+    inquiry_ids = list(messages_by_inquiry.keys())
+
+    # Retrieve messages directly from the database.
+    if inquiry_ids:
+        saved_messages = InquiryMessage.query.filter(
+            InquiryMessage.inquiry_id.in_(inquiry_ids)
+        ).order_by(
+            InquiryMessage.created_at.asc(),
+            InquiryMessage.id.asc(),
+        ).all()
+
+        for message in saved_messages:
+            messages_by_inquiry[
+                message.inquiry_id
+            ].append(message)
+
+    # Log counts to help diagnose missing messages in Render.
+    for inquiry in inquiries:
+        current_app.logger.info(
+            "Seller inquiry check: inquiry_id=%s, "
+            "seller_id=%s, buyer_id=%s, message_count=%s",
+            inquiry.id,
+            inquiry.seller_id,
+            inquiry.buyer_id,
+            len(messages_by_inquiry[inquiry.id]),
+        )
+
     return render_template(
         "chat/seller_inquiries.html",
         inquiries=inquiries,
+        messages_by_inquiry=messages_by_inquiry,
     )
 
 
@@ -425,7 +524,10 @@ def admin_chat():
         return redirect(url_for("dashboard"))
 
     if not allowed_direct_chat(current_user, admin):
-        flash("You are not allowed to start this chat.", "danger")
+        flash(
+            "You are not allowed to start this chat.",
+            "danger",
+        )
         return redirect(url_for("dashboard"))
 
     try:
@@ -441,7 +543,10 @@ def admin_chat():
 
             if not message_text:
                 db.session.commit()
-                flash("Message cannot be empty.", "warning")
+                flash(
+                    "Message cannot be empty.",
+                    "warning",
+                )
                 return redirect(url_for("chat.admin_chat"))
 
             message = Message(
@@ -586,6 +691,7 @@ def admin_conversation(conversation_id):
 
         if not message_text:
             flash("Message cannot be empty.", "warning")
+
             return redirect(
                 url_for(
                     "chat.admin_conversation",

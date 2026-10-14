@@ -1,386 +1,332 @@
+
 {% extends "base.html" %}
+
+{% block title %}
+{{ car.brand }} {{ car.model }} | Carvion Motors
+{% endblock %}
 
 {% block content %}
 
 <div class="container py-4">
 
-```
-<!-- ========================================= -->
-<!-- VEHICLE HEADER -->
-<!-- ========================================= -->
+    <!-- VEHICLE HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="fw-bold mb-1">
+                {{ car.brand }} {{ car.model }}
+            </h1>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+            <p class="text-muted mb-0">
+                {{ car.year }}
+                {% if car.registration_number %}
+                    &bull; {{ car.registration_number }}
+                {% endif %}
+            </p>
+        </div>
 
-    <div>
-        <h1 class="fw-bold mb-1">
-            {{ car.brand }} {{ car.model }}
-        </h1>
+        <a href="{{ url_for('cars.all_cars') }}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Back to Cars
+        </a>
+    </div>
 
-        <p class="text-muted mb-0">
-            {{ car.year }}
 
-            {% if car.registration_number %}
-                • {{ car.registration_number }}
+    <!-- VEHICLE PHOTOS -->
+    {% if car.images %}
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <h4 class="fw-bold mb-3">Vehicle Photos</h4>
+
+            <div class="row g-3">
+
+                {% for image in car.images %}
+
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="vehicle-image">
+
+                        <img
+                            src="{{ image.filename }}"
+                            class="img-fluid rounded w-100"
+                            style="height:220px; object-fit:cover; cursor:pointer;"
+                            alt="{{ car.brand }} {{ car.model }} photo"
+                            data-bs-toggle="modal"
+                            data-bs-target="#imageModal{{ image.id }}"
+                            loading="lazy"
+                        >
+
+                    </div>
+                </div>
+
+                <!-- FULL IMAGE MODAL -->
+                <div class="modal fade"
+                     id="imageModal{{ image.id }}"
+                     tabindex="-1"
+                     aria-hidden="true">
+
+                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                        <div class="modal-content bg-dark">
+
+                            <div class="modal-header border-0">
+                                <button
+                                    type="button"
+                                    class="btn-close btn-close-white"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Close">
+                                </button>
+                            </div>
+
+                            <div class="modal-body text-center p-2">
+                                <img
+                                    src="{{ image.filename }}"
+                                    class="img-fluid"
+                                    style="max-height:80vh; object-fit:contain;"
+                                    alt="{{ car.brand }} {{ car.model }} photo"
+                                >
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                {% endfor %}
+
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+
+    <div class="alert alert-secondary mb-4">
+        No vehicle photos available.
+    </div>
+
+    {% endif %}
+
+
+    <!-- VEHICLE INFORMATION -->
+    <div class="row g-4">
+
+        <!-- LEFT COLUMN -->
+        <div class="col-lg-8">
+
+            <!-- SPECIFICATIONS -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+
+                    <h4 class="fw-bold mb-4">Vehicle Details</h4>
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Make</small>
+                                <div class="fw-bold">{{ car.brand }}</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Model</small>
+                                <div class="fw-bold">{{ car.model }}</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Year</small>
+                                <div class="fw-bold">{{ car.year }}</div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Price</small>
+                                <div class="fw-bold text-success">
+                                    KSh {{ "{:,.0f}".format(car.price) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if car.location %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Location</small>
+                                <div class="fw-bold">{{ car.location }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.fuel %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Fuel</small>
+                                <div class="fw-bold">{{ car.fuel }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.transmission %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Transmission</small>
+                                <div class="fw-bold">{{ car.transmission }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.mileage is not none %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Mileage</small>
+                                <div class="fw-bold">
+                                    {{ "{:,.0f}".format(car.mileage) }} km
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.condition %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Condition</small>
+                                <div class="fw-bold">{{ car.condition }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.registration_number %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Registration</small>
+                                <div class="fw-bold">
+                                    {{ car.registration_number }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.engine %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Engine</small>
+                                <div class="fw-bold">{{ car.engine }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if car.color %}
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded h-100">
+                                <small class="text-muted">Color</small>
+                                <div class="fw-bold">{{ car.color }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- DESCRIPTION -->
+            {% if car.description %}
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+
+                    <h4 class="fw-bold mb-3">Description</h4>
+
+                    <p class="text-muted mb-0"
+                       style="white-space:pre-line;">{{ car.description }}</p>
+
+                </div>
+            </div>
             {% endif %}
-        </p>
-    </div>
 
-    <a href="{{ url_for('cars.all_cars') }}"
-       class="btn btn-outline-secondary">
-        ← Back to Cars
-    </a>
-
-</div>
+        </div>
 
 
-<!-- ========================================= -->
-<!-- VEHICLE PHOTOS -->
-<!-- ========================================= -->
+        <!-- RIGHT COLUMN: CONTACT SELLER -->
+        <div class="col-lg-4">
 
-{% if car.images %}
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
 
-<div class="card shadow-sm border-0 mb-4">
+                    <h4 class="fw-bold mb-4">Contact Seller</h4>
 
-    <div class="card-body">
+                    {% if car.seller %}
 
-        <h4 class="fw-bold mb-3">
-            Vehicle Photos
-        </h4>
+                    <div class="mb-4">
+                        <small class="text-muted">Seller</small>
 
-        <div class="row g-3">
+                        <div class="fw-bold fs-5">
+                            {{ car.seller.name }}
+                        </div>
+                    </div>
 
-            {% for image in car.images %}
+                    {% endif %}
 
-            <div class="col-6 col-md-4 col-lg-3">
 
-                <div class="vehicle-image">
+                    {% if current_user.is_authenticated
+                          and current_user.role|lower == "buyer"
+                          and current_user.id != car.seller_id %}
 
-                    <img
-                        src="{{ image.filename }}"
-                        class="img-fluid rounded w-100"
-                        style="height:220px; object-fit:cover; cursor:pointer;"
-                        alt="{{ car.brand }} {{ car.model }} photo"
-                        data-bs-toggle="modal"
-                        data-bs-target="#imageModal{{ image.id }}"
-                        loading="lazy"
+                    <!-- IMPORTANT: Uses the shared inquiry handler -->
+                    <form
+                        method="POST"
+                        action="{{ url_for('cars.send_inquiry', car_id=car.id) }}"
                     >
 
-                </div>
+                        <div class="mb-3">
+                            <label for="sellerMessage"
+                                   class="form-label fw-bold">
+                                Message Seller
+                            </label>
 
-            </div>
-
-
-            <!-- ========================================= -->
-            <!-- FULL IMAGE MODAL -->
-            <!-- ========================================= -->
-
-            <div class="modal fade"
-                 id="imageModal{{ image.id }}"
-                 tabindex="-1"
-                 aria-hidden="true">
-
-                <div class="modal-dialog modal-xl modal-dialog-centered">
-
-                    <div class="modal-content bg-dark">
-
-                        <div class="modal-header border-0">
-
-                            <button
-                                type="button"
-                                class="btn-close btn-close-white"
-                                data-bs-dismiss="modal"
-                                aria-label="Close">
-                            </button>
-
+                            <textarea
+                                id="sellerMessage"
+                                name="message"
+                                class="form-control"
+                                rows="5"
+                                maxlength="5000"
+                                placeholder="Ask the seller about this vehicle..."
+                                required
+                            ></textarea>
                         </div>
 
-                        <div class="modal-body text-center p-2">
+                        <button type="submit"
+                                class="btn btn-dark w-100">
+                            <i class="bi bi-chat-dots"></i>
+                            Send Message
+                        </button>
 
-                            <img
-                                src="{{ image.filename }}"
-                                class="img-fluid"
-                                style="max-height:80vh; object-fit:contain;"
-                                alt="{{ car.brand }} {{ car.model }} photo"
-                            >
+                    </form>
 
-                        </div>
+                    {% elif not current_user.is_authenticated %}
 
+                    <a href="{{ url_for('auth.login') }}"
+                       class="btn btn-dark w-100">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Login to Contact Seller
+                    </a>
+
+                    {% elif current_user.id == car.seller_id %}
+
+                    <div class="alert alert-info mb-0">
+                        This is your vehicle listing.
                     </div>
 
-                </div>
+                    {% else %}
 
-            </div>
-
-            {% endfor %}
-
-        </div>
-
-    </div>
-
-</div>
-
-{% else %}
-
-<div class="alert alert-secondary mb-4">
-    No vehicle photos available.
-</div>
-
-{% endif %}
-
-
-<!-- ========================================= -->
-<!-- VEHICLE INFORMATION -->
-<!-- ========================================= -->
-
-<div class="row g-4">
-
-    <!-- ========================================= -->
-    <!-- LEFT SIDE -->
-    <!-- ========================================= -->
-
-    <div class="col-lg-8">
-
-        <div class="card shadow-sm border-0 mb-4">
-
-            <div class="card-body">
-
-                <h4 class="fw-bold mb-4">
-                    Vehicle Details
-                </h4>
-
-                <div class="row g-3">
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Make</small>
-                            <div class="fw-bold">
-                                {{ car.brand }}
-                            </div>
-                        </div>
+                    <div class="alert alert-info mb-0">
+                        Only buyer accounts can contact sellers.
                     </div>
 
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Model</small>
-                            <div class="fw-bold">
-                                {{ car.model }}
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Year</small>
-                            <div class="fw-bold">
-                                {{ car.year }}
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Price</small>
-                            <div class="fw-bold text-success">
-                                KSh {{ "{:,.0f}".format(car.price) }}
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {% if car.location %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Location</small>
-                            <div class="fw-bold">
-                                {{ car.location }}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-
-                    {% if car.fuel %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Fuel</small>
-                            <div class="fw-bold">
-                                {{ car.fuel }}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-
-                    {% if car.transmission %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Transmission</small>
-                            <div class="fw-bold">
-                                {{ car.transmission }}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-
-                    {% if car.mileage is not none %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Mileage</small>
-                            <div class="fw-bold">
-                                {{ "{:,.0f}".format(car.mileage) }} km
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-
-                    {% if car.condition %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Condition</small>
-                            <div class="fw-bold">
-                                {{ car.condition }}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-
-                    {% if car.registration_number %}
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <small class="text-muted">Registration</small>
-                            <div class="fw-bold">
-                                {{ car.registration_number }}
-                            </div>
-                        </div>
-                    </div>
                     {% endif %}
 
                 </div>
-
-            </div>
-
-        </div>
-
-
-        <!-- ========================================= -->
-        <!-- DESCRIPTION -->
-        <!-- ========================================= -->
-
-        {% if car.description %}
-
-        <div class="card shadow-sm border-0 mb-4">
-
-            <div class="card-body">
-
-                <h4 class="fw-bold mb-3">
-                    Description
-                </h4>
-
-                <p class="text-muted mb-0"
-                   style="white-space:pre-line;">
-                    {{ car.description }}
-                </p>
-
-            </div>
-
-        </div>
-
-        {% endif %}
-
-    </div>
-
-
-    <!-- ========================================= -->
-    <!-- SELLER / CONTACT -->
-    <!-- ========================================= -->
-
-    <div class="col-lg-4">
-
-        <div class="card shadow-sm border-0">
-
-            <div class="card-body">
-
-                <h4 class="fw-bold mb-4">
-                    Contact Seller
-                </h4>
-
-
-                {% if car.seller %}
-
-                <div class="mb-4">
-
-                    <small class="text-muted">
-                        Seller
-                    </small>
-
-                    <div class="fw-bold fs-5">
-                        {{ car.seller.name }}
-                    </div>
-
-                </div>
-
-                {% endif %}
-
-
-                {% if current_user.is_authenticated
-                      and current_user.role|lower == "buyer" %}
-
-                <form
-                    method="POST"
-                    action="{{ url_for('chat.start_car_chat', car_id=car.id) }}"
-                >
-
-                    <div class="mb-3">
-
-                        <label class="form-label fw-bold">
-                            Message Seller
-                        </label>
-
-                        <textarea
-                            name="message"
-                            class="form-control"
-                            rows="5"
-                            placeholder="Ask the seller about this vehicle..."
-                            required
-                        ></textarea>
-
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="btn btn-dark w-100"
-                    >
-                        <i class="bi bi-chat-dots"></i>
-                        Contact Seller
-                    </button>
-
-                </form>
-
-
-                {% elif not current_user.is_authenticated %}
-
-                <a
-                    href="{{ url_for('auth.login') }}"
-                    class="btn btn-dark w-100"
-                >
-                    Login to Contact Seller
-                </a>
-
-
-                {% else %}
-
-                <div class="alert alert-info mb-0">
-                    Login as a buyer to contact this seller.
-                </div>
-
-                {% endif %}
-
             </div>
 
         </div>
@@ -388,18 +334,9 @@
     </div>
 
 </div>
-```
 
-</div>
-
-<!-- ========================================= -->
-
-<!-- IMAGE STYLING -->
-
-<!-- ========================================= -->
 
 <style>
-
 .vehicle-image {
     overflow: hidden;
     border-radius: 10px;
@@ -412,7 +349,6 @@
 .vehicle-image img:hover {
     transform: scale(1.03);
 }
-
 </style>
 
 {% endblock %}

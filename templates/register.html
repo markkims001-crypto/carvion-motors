@@ -1,58 +1,194 @@
-```html
-<!-- Password -->
-<div class="mb-3">
-    <label for="password" class="form-label">
-        Password
-    </label>
 
-    <input
-        type="password"
-        id="password"
-        name="password"
-        class="form-control"
-        placeholder="Create Password"
-        minlength="6"
-        required
-    >
-</div>
+{% extends "base.html" %}
 
-<!-- Confirm Password -->
-<div class="mb-4">
-    <label for="confirm_password" class="form-label">
-        Confirm Password
-    </label>
+{% block title %}Create Account | Carvion Motors{% endblock %}
 
-    <input
-        type="password"
-        id="confirm_password"
-        name="confirm_password"
-        class="form-control"
-        placeholder="Re-enter Password"
-        minlength="6"
-        required
-    >
+{% block content %}
 
-    <div id="password-error"
-         class="text-danger small mt-2"
-         style="display: none;">
-        Passwords do not match.
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <h2 class="fw-bold">Create Your Account</h2>
+                        <p class="text-muted">
+                            Join Carvion Motors to buy and sell cars.
+                        </p>
+                    </div>
+
+                    <!-- Flash messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div
+                                    class="alert alert-{{ category }} alert-dismissible fade show"
+                                    role="alert"
+                                >
+                                    {{ message }}
+                                    <button
+                                        type="button"
+                                        class="btn-close"
+                                        data-bs-dismiss="alert"
+                                        aria-label="Close"
+                                    ></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <!-- Registration form -->
+                    <form
+                        method="POST"
+                        action="{{ url_for('auth.register') }}"
+                        id="register-form"
+                    >
+
+                        <!-- Name -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label">
+                                Full Name
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                class="form-control"
+                                placeholder="Enter your full name"
+                                autocomplete="name"
+                                value="{{ request.form.get('name', '') }}"
+                                required
+                            >
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                Email Address
+                            </label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                class="form-control"
+                                placeholder="Enter your email"
+                                autocomplete="email"
+                                value="{{ request.form.get('email', '') }}"
+                                required
+                            >
+                        </div>
+
+                        <!-- Password -->
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                Password
+                            </label>
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                class="form-control"
+                                placeholder="Create Password"
+                                minlength="6"
+                                autocomplete="new-password"
+                                required
+                            >
+                            <div class="form-text">
+                                Use at least 6 characters.
+                            </div>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="mb-3">
+                            <label
+                                for="confirm_password"
+                                class="form-label"
+                            >
+                                Confirm Password
+                            </label>
+                            <input
+                                type="password"
+                                id="confirm_password"
+                                name="confirm_password"
+                                class="form-control"
+                                placeholder="Re-enter Password"
+                                minlength="6"
+                                autocomplete="new-password"
+                                required
+                            >
+                            <div
+                                id="password-error"
+                                class="text-danger small mt-2"
+                                role="alert"
+                                hidden
+                            >
+                                Passwords do not match.
+                            </div>
+                        </div>
+
+                        <!-- Show passwords -->
+                        <div class="form-check mb-4">
+                            <input
+                                type="checkbox"
+                                id="show-passwords"
+                                class="form-check-input"
+                            >
+                            <label
+                                for="show-passwords"
+                                class="form-check-label"
+                            >
+                                Show passwords
+                            </label>
+                        </div>
+
+                        <!-- Submit -->
+                        <button
+                            type="submit"
+                            class="btn btn-dark w-100 py-2"
+                        >
+                            Create Account
+                        </button>
+
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <span class="text-muted">
+                            Already have an account?
+                        </span>
+                        <a
+                            href="{{ url_for('auth.login') }}"
+                            class="text-decoration-none fw-semibold"
+                        >
+                            Log In
+                        </a>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("register-form");
     const password = document.getElementById("password");
     const confirmPassword =
         document.getElementById("confirm_password");
     const error = document.getElementById("password-error");
-    const form = password.closest("form");
+    const showPasswords =
+        document.getElementById("show-passwords");
 
-    function checkPasswords() {
+    function validatePasswords() {
         const mismatch =
             confirmPassword.value !== "" &&
             password.value !== confirmPassword.value;
 
-        error.style.display = mismatch ? "block" : "none";
+        error.hidden = !mismatch;
+
         confirmPassword.setCustomValidity(
             mismatch ? "Passwords do not match." : ""
         );
@@ -60,15 +196,22 @@ document.addEventListener("DOMContentLoaded", function () {
         return !mismatch;
     }
 
-    password.addEventListener("input", checkPasswords);
-    confirmPassword.addEventListener("input", checkPasswords);
+    password.addEventListener("input", validatePasswords);
+    confirmPassword.addEventListener("input", validatePasswords);
+
+    showPasswords.addEventListener("change", function () {
+        const type = this.checked ? "text" : "password";
+        password.type = type;
+        confirmPassword.type = type;
+    });
 
     form.addEventListener("submit", function (event) {
-        if (!checkPasswords()) {
+        if (!validatePasswords()) {
             event.preventDefault();
             confirmPassword.reportValidity();
         }
     });
 });
 </script>
-```
+
+{% endblock %}

@@ -1,159 +1,74 @@
-{% extends "base.html" %}
+```html
+<!-- Password -->
+<div class="mb-3">
+    <label for="password" class="form-label">
+        Password
+    </label>
 
-{% block title %}
-Register | Carvion Motors
-{% endblock %}
+    <input
+        type="password"
+        id="password"
+        name="password"
+        class="form-control"
+        placeholder="Create Password"
+        minlength="6"
+        required
+    >
+</div>
 
-{% block content %}
+<!-- Confirm Password -->
+<div class="mb-4">
+    <label for="confirm_password" class="form-label">
+        Confirm Password
+    </label>
 
-<div class="container py-5">
+    <input
+        type="password"
+        id="confirm_password"
+        name="confirm_password"
+        class="form-control"
+        placeholder="Re-enter Password"
+        minlength="6"
+        required
+    >
 
-```
-<div class="row justify-content-center">
-
-    <div class="col-md-6 col-lg-5">
-
-        <div class="form-box">
-
-            <h2 class="text-center mb-4">
-                Create Account
-            </h2>
-
-            <p class="text-center text-muted mb-4">
-                Join Carvion Motors
-            </p>
-
-            <form method="POST">
-
-                <!-- Full Name -->
-                <div class="mb-3">
-
-                    <label class="form-label">
-                        Full Name
-                    </label>
-
-                    <input
-                        type="text"
-                        name="name"
-                        class="form-control"
-                        placeholder="Full Name"
-                        required
-                    >
-
-                </div>
-
-
-                <!-- Email -->
-                <div class="mb-3">
-
-                    <label class="form-label">
-                        Email Address
-                    </label>
-
-                    <input
-                        type="email"
-                        name="email"
-                        class="form-control"
-                        placeholder="Email Address"
-                        required
-                    >
-
-                </div>
-
-
-                <!-- Phone -->
-                <div class="mb-3">
-
-                    <label class="form-label">
-                        Phone Number
-                    </label>
-
-                    <input
-                        type="tel"
-                        name="phone"
-                        class="form-control"
-                        placeholder="Phone Number"
-                        required
-                    >
-
-                </div>
-
-
-                <!-- Account Type -->
-                <div class="mb-3">
-
-                    <label class="form-label">
-                        Account Type
-                    </label>
-
-                    <select
-                        name="role"
-                        class="form-select"
-                        required
-                    >
-
-                        <option value="buyer" selected>
-                            Buyer — I want to buy cars
-                        </option>
-
-                        <option value="seller">
-                            Seller / Dealer — I want to sell cars
-                        </option>
-
-                    </select>
-
-                </div>
-
-
-                <!-- Password -->
-                <div class="mb-4">
-
-                    <label class="form-label">
-                        Password
-                    </label>
-
-                    <input
-                        type="password"
-                        name="password"
-                        class="form-control"
-                        placeholder="Create Password"
-                        minlength="6"
-                        required
-                    >
-
-                </div>
-
-
-                <!-- Register -->
-                <button
-                    type="submit"
-                    class="btn btn-primary w-100"
-                >
-
-                    Create Account
-
-                </button>
-
-            </form>
-
-
-            <p class="mt-4 text-center">
-
-                Already have an account?
-
-                <a href="{{ url_for('auth.login') }}">
-                    Login
-                </a>
-
-            </p>
-
-        </div>
-
+    <div id="password-error"
+         class="text-danger small mt-2"
+         style="display: none;">
+        Passwords do not match.
     </div>
-
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const password = document.getElementById("password");
+    const confirmPassword =
+        document.getElementById("confirm_password");
+    const error = document.getElementById("password-error");
+    const form = password.closest("form");
+
+    function checkPasswords() {
+        const mismatch =
+            confirmPassword.value !== "" &&
+            password.value !== confirmPassword.value;
+
+        error.style.display = mismatch ? "block" : "none";
+        confirmPassword.setCustomValidity(
+            mismatch ? "Passwords do not match." : ""
+        );
+
+        return !mismatch;
+    }
+
+    password.addEventListener("input", checkPasswords);
+    confirmPassword.addEventListener("input", checkPasswords);
+
+    form.addEventListener("submit", function (event) {
+        if (!checkPasswords()) {
+            event.preventDefault();
+            confirmPassword.reportValidity();
+        }
+    });
+});
+</script>
 ```
-
-</div>
-
-{% endblock %}

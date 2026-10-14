@@ -1,493 +1,1071 @@
+```html
 {% extends "base.html" %}
+
+{% block title %}Available Cars | Carvion Motors{% endblock %}
 
 {% block content %}
 
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-    <div>
-        <h1>Available Cars</h1>
-        <p class="text-muted">
-            Find your next vehicle at Carvion Motors.
-        </p>
-    </div>
+<div class="container-fluid px-lg-4 py-4 cars-page">
 
-```
-{% if current_user.is_authenticated and current_user.role|lower == "seller" %}
-    <a href="{{ url_for('cars.add_car') }}" class="btn btn-primary">
-        + Add Car
-    </a>
-{% endif %}
-```
+    <!-- PAGE HEADER -->
+    <section class="cars-heading mb-4">
+        <div>
+            <span class="cars-eyebrow">CARVION MOTORS</span>
+            <h1 class="cars-title">Find your next car.</h1>
+            <p class="text-muted mb-0">
+                Explore vehicles available for sale and find the right one for you.
+            </p>
+        </div>
 
-</div>
+        {% if current_user.is_authenticated and current_user.role|lower == "seller" %}
+        <a href="{{ url_for('cars.add_car') }}"
+           class="btn btn-primary add-car-btn">
+            <span aria-hidden="true">+</span> Add Car
+        </a>
+        {% endif %}
+    </section>
 
-<!-- SEARCH & FILTERS -->
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body">
+    <!-- COMPACT SEARCH BAR -->
+    <section class="quick-search mb-4">
+        <form method="GET"
+              action="{{ url_for('cars.all_cars') }}"
+              class="quick-search-form">
 
-```
-    <h5 class="mb-3">
-        🔎 Search & Filters
-    </h5>
-
-    <form method="GET" action="{{ url_for('cars.all_cars') }}">
-
-        <div class="row g-3">
-
-            <!-- BRAND -->
-            <div class="col-md-3">
-                <label class="form-label">Brand</label>
+            <div class="quick-search-input">
+                <span class="search-icon" aria-hidden="true">⌕</span>
                 <input
                     type="text"
                     name="brand"
                     class="form-control"
-                    placeholder="Toyota"
+                    placeholder="Search by brand, e.g. Toyota or BMW"
                     value="{{ search.brand or '' }}"
+                    aria-label="Search car brand"
                 >
             </div>
 
-            <!-- MODEL -->
-            <div class="col-md-3">
-                <label class="form-label">Model</label>
+            <div class="quick-search-model">
                 <input
                     type="text"
                     name="model"
                     class="form-control"
-                    placeholder="Prado"
+                    placeholder="Model, e.g. Prado"
                     value="{{ search.model or '' }}"
+                    aria-label="Search car model"
                 >
             </div>
 
-            <!-- LOCATION -->
-            <div class="col-md-3">
-                <label class="form-label">Location</label>
+            <div class="quick-search-location">
                 <input
                     type="text"
                     name="location"
                     class="form-control"
-                    placeholder="Nairobi"
+                    placeholder="Location"
                     value="{{ search.location or '' }}"
+                    aria-label="Search car location"
                 >
             </div>
 
-            <!-- FUEL -->
-            <div class="col-md-3">
-                <label class="form-label">Fuel</label>
-                <select name="fuel" class="form-select">
-                    <option value="">All</option>
+            <input type="hidden" name="fuel" value="{{ search.fuel or '' }}">
+            <input type="hidden" name="transmission" value="{{ search.transmission or '' }}">
+            <input type="hidden" name="min_price" value="{{ search.min_price or '' }}">
+            <input type="hidden" name="max_price" value="{{ search.max_price or '' }}">
+            <input type="hidden" name="min_year" value="{{ search.min_year or '' }}">
+            <input type="hidden" name="max_year" value="{{ search.max_year or '' }}">
+            <input type="hidden" name="min_mileage" value="{{ search.min_mileage or '' }}">
+            <input type="hidden" name="max_mileage" value="{{ search.max_mileage or '' }}">
+            <input type="hidden" name="sort" value="{{ search.sort or 'newest' }}">
 
-                    <option value="Petrol"
-                        {% if search.fuel == "Petrol" %}selected{% endif %}>
-                        Petrol
-                    </option>
+            <button type="submit" class="btn btn-primary quick-search-button">
+                Search Cars
+            </button>
+        </form>
+    </section>
 
-                    <option value="Diesel"
-                        {% if search.fuel == "Diesel" %}selected{% endif %}>
-                        Diesel
-                    </option>
 
-                    <option value="Hybrid"
-                        {% if search.fuel == "Hybrid" %}selected{% endif %}>
-                        Hybrid
-                    </option>
+    <!-- INVENTORY HEADING AND FILTER CONTROLS -->
+    <section class="inventory-section">
 
-                    <option value="Electric"
-                        {% if search.fuel == "Electric" %}selected{% endif %}>
-                        Electric
-                    </option>
-                </select>
+        <div class="inventory-toolbar mb-3">
+            <div>
+                <h2 class="inventory-title">Available Cars</h2>
+                <p class="text-muted small mb-0">
+                    Browse our available vehicle listings.
+                </p>
             </div>
 
-            <!-- TRANSMISSION -->
-            <div class="col-md-3">
-                <label class="form-label">Transmission</label>
-                <select name="transmission" class="form-select">
-                    <option value="">All</option>
-
-                    <option value="Automatic"
-                        {% if search.transmission == "Automatic" %}selected{% endif %}>
-                        Automatic
-                    </option>
-
-                    <option value="Manual"
-                        {% if search.transmission == "Manual" %}selected{% endif %}>
-                        Manual
-                    </option>
-                </select>
-            </div>
-
-            <!-- MIN PRICE -->
-            <div class="col-md-3">
-                <label class="form-label">Min Price</label>
-                <input
-                    type="number"
-                    name="min_price"
-                    class="form-control"
-                    placeholder="KSh"
-                    value="{{ search.min_price or '' }}"
-                >
-            </div>
-
-            <!-- MAX PRICE -->
-            <div class="col-md-3">
-                <label class="form-label">Max Price</label>
-                <input
-                    type="number"
-                    name="max_price"
-                    class="form-control"
-                    placeholder="KSh"
-                    value="{{ search.max_price or '' }}"
-                >
-            </div>
-
-            <!-- MIN YEAR -->
-            <div class="col-md-3">
-                <label class="form-label">Min Year</label>
-                <input
-                    type="number"
-                    name="min_year"
-                    class="form-control"
-                    placeholder="2018"
-                    value="{{ search.min_year or '' }}"
-                >
-            </div>
-
-            <!-- MAX YEAR -->
-            <div class="col-md-3">
-                <label class="form-label">Max Year</label>
-                <input
-                    type="number"
-                    name="max_year"
-                    class="form-control"
-                    placeholder="2026"
-                    value="{{ search.max_year or '' }}"
-                >
-            </div>
-
-            <!-- MIN MILEAGE -->
-            <div class="col-md-3">
-                <label class="form-label">Min Mileage</label>
-                <input
-                    type="number"
-                    name="min_mileage"
-                    class="form-control"
-                    placeholder="km"
-                    value="{{ search.min_mileage or '' }}"
-                >
-            </div>
-
-            <!-- MAX MILEAGE -->
-            <div class="col-md-3">
-                <label class="form-label">Max Mileage</label>
-                <input
-                    type="number"
-                    name="max_mileage"
-                    class="form-control"
-                    placeholder="km"
-                    value="{{ search.max_mileage or '' }}"
-                >
-            </div>
-
-            <!-- SORT -->
-            <div class="col-md-3">
-                <label class="form-label">Sort</label>
-
-                <select name="sort" class="form-select">
-
-                    <option value="newest"
-                        {% if search.sort == "newest" %}selected{% endif %}>
-                        Newest
-                    </option>
-
-                    <option value="price_low"
-                        {% if search.sort == "price_low" %}selected{% endif %}>
-                        Price: Low → High
-                    </option>
-
-                    <option value="price_high"
-                        {% if search.sort == "price_high" %}selected{% endif %}>
-                        Price: High → Low
-                    </option>
-
-                    <option value="year_new"
-                        {% if search.sort == "year_new" %}selected{% endif %}>
-                        Newest Year
-                    </option>
-
-                    <option value="mileage_low"
-                        {% if search.sort == "mileage_low" %}selected{% endif %}>
-                        Lowest Mileage
-                    </option>
-
-                    <option value="oldest"
-                        {% if search.sort == "oldest" %}selected{% endif %}>
-                        Oldest
-                    </option>
-
-                </select>
-            </div>
-
-            <!-- BUTTONS -->
-            <div class="col-12">
-
-                <button type="submit" class="btn btn-primary">
-                    🔎 Search
+            <div class="inventory-actions">
+                <button
+                    class="btn btn-outline-secondary filter-toggle"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#advancedFilters"
+                    aria-expanded="false"
+                    aria-controls="advancedFilters">
+                    <span aria-hidden="true">☷</span>
+                    Filters
                 </button>
 
-                <a
-                    href="{{ url_for('cars.all_cars') }}"
-                    class="btn btn-outline-secondary"
-                >
-                    Reset
-                </a>
+                <form method="GET"
+                      action="{{ url_for('cars.all_cars') }}"
+                      class="sort-form">
 
+                    <input type="hidden" name="brand" value="{{ search.brand or '' }}">
+                    <input type="hidden" name="model" value="{{ search.model or '' }}">
+                    <input type="hidden" name="location" value="{{ search.location or '' }}">
+                    <input type="hidden" name="fuel" value="{{ search.fuel or '' }}">
+                    <input type="hidden" name="transmission" value="{{ search.transmission or '' }}">
+                    <input type="hidden" name="min_price" value="{{ search.min_price or '' }}">
+                    <input type="hidden" name="max_price" value="{{ search.max_price or '' }}">
+                    <input type="hidden" name="min_year" value="{{ search.min_year or '' }}">
+                    <input type="hidden" name="max_year" value="{{ search.max_year or '' }}">
+                    <input type="hidden" name="min_mileage" value="{{ search.min_mileage or '' }}">
+                    <input type="hidden" name="max_mileage" value="{{ search.max_mileage or '' }}">
+
+                    <label for="inventorySort" class="visually-hidden">
+                        Sort vehicles
+                    </label>
+
+                    <select
+                        name="sort"
+                        id="inventorySort"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                        <option value="newest"
+                            {% if search.sort == "newest" %}selected{% endif %}>
+                            Newest listings
+                        </option>
+
+                        <option value="price_low"
+                            {% if search.sort == "price_low" %}selected{% endif %}>
+                            Price: Low to High
+                        </option>
+
+                        <option value="price_high"
+                            {% if search.sort == "price_high" %}selected{% endif %}>
+                            Price: High to Low
+                        </option>
+
+                        <option value="year_new"
+                            {% if search.sort == "year_new" %}selected{% endif %}>
+                            Newest Year
+                        </option>
+
+                        <option value="mileage_low"
+                            {% if search.sort == "mileage_low" %}selected{% endif %}>
+                            Lowest Mileage
+                        </option>
+
+                        <option value="oldest"
+                            {% if search.sort == "oldest" %}selected{% endif %}>
+                            Oldest Listings
+                        </option>
+                    </select>
+                </form>
             </div>
-
         </div>
 
-    </form>
 
-</div>
-```
+        <!-- ADVANCED FILTERS: COLLAPSED BY DEFAULT -->
+        <div class="collapse mb-4" id="advancedFilters">
+            <div class="card advanced-filter-card">
+                <div class="card-body p-3 p-lg-4">
 
-</div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="filter-heading mb-0">Advanced Search</h3>
+                        <a href="{{ url_for('cars.all_cars') }}"
+                           class="reset-link">
+                            Reset filters
+                        </a>
+                    </div>
 
-<!-- CARS -->
+                    <form method="GET" action="{{ url_for('cars.all_cars') }}">
+                        <div class="row g-3">
 
-{% if cars %}
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterBrand" class="form-label">Brand</label>
+                                <input
+                                    id="filterBrand"
+                                    type="text"
+                                    name="brand"
+                                    class="form-control"
+                                    placeholder="Toyota"
+                                    value="{{ search.brand or '' }}">
+                            </div>
 
-<div class="row g-4">
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterModel" class="form-label">Model</label>
+                                <input
+                                    id="filterModel"
+                                    type="text"
+                                    name="model"
+                                    class="form-control"
+                                    placeholder="Prado"
+                                    value="{{ search.model or '' }}">
+                            </div>
 
-```
-{% for car in cars %}
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterLocation" class="form-label">Location</label>
+                                <input
+                                    id="filterLocation"
+                                    type="text"
+                                    name="location"
+                                    class="form-control"
+                                    placeholder="Nairobi"
+                                    value="{{ search.location or '' }}">
+                            </div>
 
-<div class="col-lg-4 col-md-6">
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterFuel" class="form-label">Fuel Type</label>
+                                <select id="filterFuel" name="fuel" class="form-select">
+                                    <option value="">All fuel types</option>
+                                    <option value="Petrol"
+                                        {% if search.fuel == "Petrol" %}selected{% endif %}>
+                                        Petrol
+                                    </option>
+                                    <option value="Diesel"
+                                        {% if search.fuel == "Diesel" %}selected{% endif %}>
+                                        Diesel
+                                    </option>
+                                    <option value="Hybrid"
+                                        {% if search.fuel == "Hybrid" %}selected{% endif %}>
+                                        Hybrid
+                                    </option>
+                                    <option value="Electric"
+                                        {% if search.fuel == "Electric" %}selected{% endif %}>
+                                        Electric
+                                    </option>
+                                </select>
+                            </div>
 
-    <div class="card shadow-sm h-100 car-card">
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterTransmission" class="form-label">
+                                    Transmission
+                                </label>
+                                <select
+                                    id="filterTransmission"
+                                    name="transmission"
+                                    class="form-select">
+                                    <option value="">All transmissions</option>
+                                    <option value="Automatic"
+                                        {% if search.transmission == "Automatic" %}selected{% endif %}>
+                                        Automatic
+                                    </option>
+                                    <option value="Manual"
+                                        {% if search.transmission == "Manual" %}selected{% endif %}>
+                                        Manual
+                                    </option>
+                                </select>
+                            </div>
 
-        <!-- IMAGE -->
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="minPrice" class="form-label">Minimum Price (KSh)</label>
+                                <input
+                                    id="minPrice"
+                                    type="number"
+                                    min="0"
+                                    name="min_price"
+                                    class="form-control"
+                                    placeholder="e.g. 500000"
+                                    value="{{ search.min_price or '' }}">
+                            </div>
 
-        {% if car.images and car.images|length > 0 %}
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="maxPrice" class="form-label">Maximum Price (KSh)</label>
+                                <input
+                                    id="maxPrice"
+                                    type="number"
+                                    min="0"
+                                    name="max_price"
+                                    class="form-control"
+                                    placeholder="e.g. 5000000"
+                                    value="{{ search.max_price or '' }}">
+                            </div>
 
-            {% set first_image = car.images[0] %}
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="minYear" class="form-label">Minimum Year</label>
+                                <input
+                                    id="minYear"
+                                    type="number"
+                                    min="1900"
+                                    name="min_year"
+                                    class="form-control"
+                                    placeholder="2018"
+                                    value="{{ search.min_year or '' }}">
+                            </div>
 
-            <div class="car-image-container">
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="maxYear" class="form-label">Maximum Year</label>
+                                <input
+                                    id="maxYear"
+                                    type="number"
+                                    min="1900"
+                                    name="max_year"
+                                    class="form-control"
+                                    placeholder="2026"
+                                    value="{{ search.max_year or '' }}">
+                            </div>
 
-                <img
-                    src="{{ first_image.filename }}"
-                    class="card-img-top car-card-image"
-                    alt="{{ car.brand }} {{ car.model }}"
-                    loading="lazy"
-                >
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="minMileage" class="form-label">
+                                    Minimum Mileage (km)
+                                </label>
+                                <input
+                                    id="minMileage"
+                                    type="number"
+                                    min="0"
+                                    name="min_mileage"
+                                    class="form-control"
+                                    placeholder="e.g. 10000"
+                                    value="{{ search.min_mileage or '' }}">
+                            </div>
+
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="maxMileage" class="form-label">
+                                    Maximum Mileage (km)
+                                </label>
+                                <input
+                                    id="maxMileage"
+                                    type="number"
+                                    min="0"
+                                    name="max_mileage"
+                                    class="form-control"
+                                    placeholder="e.g. 100000"
+                                    value="{{ search.max_mileage or '' }}">
+                            </div>
+
+                            <div class="col-12 col-sm-6 col-lg-3">
+                                <label for="filterSort" class="form-label">Sort By</label>
+                                <select id="filterSort" name="sort" class="form-select">
+                                    <option value="newest"
+                                        {% if search.sort == "newest" %}selected{% endif %}>
+                                        Newest Listings
+                                    </option>
+                                    <option value="price_low"
+                                        {% if search.sort == "price_low" %}selected{% endif %}>
+                                        Price: Low to High
+                                    </option>
+                                    <option value="price_high"
+                                        {% if search.sort == "price_high" %}selected{% endif %}>
+                                        Price: High to Low
+                                    </option>
+                                    <option value="year_new"
+                                        {% if search.sort == "year_new" %}selected{% endif %}>
+                                        Newest Year
+                                    </option>
+                                    <option value="mileage_low"
+                                        {% if search.sort == "mileage_low" %}selected{% endif %}>
+                                        Lowest Mileage
+                                    </option>
+                                    <option value="oldest"
+                                        {% if search.sort == "oldest" %}selected{% endif %}>
+                                        Oldest Listings
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 d-flex flex-wrap gap-2 mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    Apply Filters
+                                </button>
+                                <a href="{{ url_for('cars.all_cars') }}"
+                                   class="btn btn-outline-secondary">
+                                    Clear All
+                                </a>
+                            </div>
+
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- CAR LISTINGS -->
+        {% if cars %}
+
+        <div class="row g-4 car-listings">
+
+            {% for car in cars %}
+
+            <div class="col-12 col-sm-6 col-xl-4">
+
+                <article class="card car-card h-100">
+
+                    <!-- CAR IMAGE -->
+                    <div class="car-image-container">
+
+                        {% if car.images and car.images|length > 0 %}
+                            {% set first_image = car.images[0] %}
+
+                            <a href="{{ url_for('cars.car_details', car_id=car.id) }}"
+                               class="car-image-link"
+                               aria-label="View {{ car.brand }} {{ car.model }}">
+
+                                <img
+                                    src="{{ first_image.filename }}"
+                                    class="car-card-image"
+                                    alt="{{ car.year }} {{ car.brand }} {{ car.model }}"
+                                    loading="lazy"
+                                    decoding="async">
+                            </a>
+
+                        {% else %}
+
+                            <a href="{{ url_for('cars.car_details', car_id=car.id) }}"
+                               class="car-image-link car-image-placeholder">
+                                <div class="placeholder-content">
+                                    <span class="placeholder-icon" aria-hidden="true">🚘</span>
+                                    <span>No image available</span>
+                                </div>
+                            </a>
+
+                        {% endif %}
+
+                        <span class="year-badge">{{ car.year }}</span>
+
+                        {% if current_user.is_authenticated %}
+                        <form
+                            method="POST"
+                            action="{{ url_for('cars.toggle_favorite', car_id=car.id) }}"
+                            class="favorite-form">
+
+                            <button
+                                type="submit"
+                                class="favorite-btn {% if car.id in favorite_ids %}is-favorite{% endif %}"
+                                aria-label="{% if car.id in favorite_ids %}Remove from favorites{% else %}Add to favorites{% endif %}"
+                                title="Toggle favorite">
+
+                                {% if car.id in favorite_ids %}
+                                    ♥
+                                {% else %}
+                                    ♡
+                                {% endif %}
+
+                            </button>
+                        </form>
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- CAR INFORMATION -->
+                    <div class="card-body car-card-body">
+
+                        <div class="car-card-heading">
+                            <div class="min-width-0">
+                                <h3 class="car-name">
+                                    {{ car.brand }} {{ car.model }}
+                                </h3>
+                                <p class="car-location">
+                                    <span aria-hidden="true">📍</span>
+                                    {{ car.location or "Location not specified" }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="car-price">
+                            KSh {{ "{:,.0f}".format(car.price or 0) }}
+                        </div>
+
+                        <div class="car-specifications">
+
+                            <div class="car-spec">
+                                <span class="spec-icon" aria-hidden="true">◷</span>
+                                <span>{{ "{:,}".format(car.mileage or 0) }} km</span>
+                            </div>
+
+                            <div class="car-spec">
+                                <span class="spec-icon" aria-hidden="true">⛽</span>
+                                <span>{{ car.fuel or "Not specified" }}</span>
+                            </div>
+
+                            <div class="car-spec">
+                                <span class="spec-icon" aria-hidden="true">⚙</span>
+                                <span>{{ car.transmission or "Not specified" }}</span>
+                            </div>
+
+                        </div>
+
+                        {% if car.seller %}
+                        <div class="seller-information">
+                            <span class="seller-dot" aria-hidden="true"></span>
+                            <span>
+                                Seller:
+                                {{ car.seller.name or car.seller.email or "Car seller" }}
+                            </span>
+                        </div>
+                        {% endif %}
+
+                        <div class="car-card-actions">
+
+                            <a
+                                href="{{ url_for('cars.car_details', car_id=car.id) }}"
+                                class="btn btn-primary view-details-btn">
+                                View Details
+                            </a>
+
+                            {% if current_user.is_authenticated %}
+
+                            <form
+                                method="POST"
+                                action="{{ url_for('cars.toggle_compare', car_id=car.id) }}"
+                                class="compare-form">
+
+                                <button
+                                    type="submit"
+                                    class="btn compare-btn {% if car.id in compare_ids %}btn-dark{% else %}btn-outline-dark{% endif %}"
+                                    title="Compare this car">
+
+                                    {% if car.id in compare_ids %}
+                                        ✓ Comparing
+                                    {% else %}
+                                        ⇄ Compare
+                                    {% endif %}
+
+                                </button>
+                            </form>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+                </article>
 
             </div>
+
+            {% endfor %}
+
+        </div>
 
         {% else %}
 
-            <div class="car-image-placeholder d-flex align-items-center justify-content-center">
-
-                <span class="text-muted">
-                    No Image Available
-                </span>
-
-            </div>
+        <!-- EMPTY STATE -->
+        <div class="empty-cars-state">
+            <div class="empty-cars-icon" aria-hidden="true">🚘</div>
+            <h3>No vehicles found</h3>
+            <p class="text-muted">
+                Try a different search or adjust your filters to see more vehicles.
+            </p>
+            <a href="{{ url_for('cars.all_cars') }}"
+               class="btn btn-primary">
+                View All Cars
+            </a>
+        </div>
 
         {% endif %}
 
-
-        <!-- CARD BODY -->
-
-        <div class="card-body">
-
-            <!-- TITLE + FAVORITE -->
-
-            <div class="d-flex justify-content-between align-items-start gap-2">
-
-                <h3 class="mb-3">
-                    {{ car.brand }} {{ car.model }}
-                </h3>
-
-                {% if current_user.is_authenticated %}
-
-                <form
-                    method="POST"
-                    action="{{ url_for('cars.toggle_favorite', car_id=car.id) }}"
-                >
-
-                    <button
-                        type="submit"
-                        class="btn btn-sm {% if car.id in favorite_ids %}btn-danger{% else %}btn-outline-danger{% endif %}"
-                        title="Favorite"
-                    >
-
-                        {% if car.id in favorite_ids %}
-                            ❤️
-                        {% else %}
-                            ♡
-                        {% endif %}
-
-                    </button>
-
-                </form>
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- DETAILS -->
-
-            <p class="mb-2">
-                <strong>Year:</strong>
-                {{ car.year }}
-            </p>
-
-            <p class="mb-2">
-                <strong>Mileage:</strong>
-                {{ "{:,}".format(car.mileage or 0) }} km
-            </p>
-
-            <p class="mb-2">
-                <strong>Fuel:</strong>
-                {{ car.fuel }}
-            </p>
-
-            <p class="mb-2">
-                <strong>Transmission:</strong>
-                {{ car.transmission }}
-            </p>
-
-            <h4 class="text-success fw-bold">
-                KSh {{ "{:,.0f}".format(car.price or 0) }}
-            </h4>
-
-            <p class="mb-2">
-                📍 {{ car.location }}
-            </p>
-
-
-            <!-- SELLER -->
-
-            {% if car.seller %}
-
-            <p class="text-muted">
-                Seller: {{ car.seller.name }}
-            </p>
-
-            {% endif %}
-
-
-            <!-- ACTIONS -->
-
-            <div class="d-flex gap-2 flex-wrap mt-3">
-
-                <!-- VIEW DETAILS -->
-
-                <a
-                    href="{{ url_for('cars.car_details', car_id=car.id) }}"
-                    class="btn btn-primary"
-                >
-                    View Details
-                </a>
-
-
-                <!-- COMPARE -->
-
-                {% if current_user.is_authenticated %}
-
-                <form
-                    method="POST"
-                    action="{{ url_for('cars.toggle_compare', car_id=car.id) }}"
-                >
-
-                    <button
-                        type="submit"
-                        class="btn {% if car.id in compare_ids %}btn-dark{% else %}btn-outline-dark{% endif %}"
-                    >
-
-                        {% if car.id in compare_ids %}
-                            ✓ Comparing
-                        {% else %}
-                            ⚖️ Compare
-                        {% endif %}
-
-                    </button>
-
-                </form>
-
-                {% endif %}
-
-            </div>
-
-        </div>
-
-    </div>
+    </section>
 
 </div>
 
-{% endfor %}
-```
 
-</div>
-
-{% else %}
-
-<div class="alert alert-info">
-
-```
-<h5>
-    No vehicles found.
-</h5>
-
-<p class="mb-0">
-    Try changing your search or filter options.
-</p>
-```
-
-</div>
-
-{% endif %}
-
-<!-- CARD STYLING -->
-
+<!-- PAGE STYLES -->
 <style>
+.cars-page {
+    max-width: 1600px;
+    margin: 0 auto;
+    color: var(--bs-body-color);
+}
+
+.cars-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.cars-eyebrow {
+    display: inline-block;
+    margin-bottom: 7px;
+    color: var(--bs-primary);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+}
+
+.cars-title {
+    margin: 0 0 8px;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -1.2px;
+}
+
+.add-car-btn {
+    flex-shrink: 0;
+    border-radius: 8px;
+    padding: 11px 17px;
+    font-weight: 600;
+}
+
+.quick-search {
+    padding: 12px;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 13px;
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.035);
+}
+
+.quick-search-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.5fr) minmax(130px, 1fr) minmax(130px, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.quick-search-input,
+.quick-search-model,
+.quick-search-location {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.search-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--bs-secondary-color);
+}
+
+.quick-search .form-control {
+    min-width: 0;
+    height: 45px;
+    border-color: transparent;
+    background: var(--bs-tertiary-bg);
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.quick-search .form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.12);
+}
+
+.quick-search-button {
+    min-height: 45px;
+    padding: 0 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.inventory-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.inventory-title {
+    margin: 0 0 4px;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.inventory-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-toggle {
+    min-height: 42px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.sort-form .form-select {
+    min-width: 165px;
+    min-height: 42px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.advanced-filter-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 12px;
+    background: var(--bs-body-bg);
+}
+
+.filter-heading {
+    font-size: 1.1rem;
+    font-weight: 750;
+}
+
+.advanced-filter-card .form-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.advanced-filter-card .form-control,
+.advanced-filter-card .form-select {
+    min-height: 43px;
+    border-radius: 8px;
+}
+
+.reset-link {
+    font-size: 0.85rem;
+    text-decoration: none;
+}
 
 .car-card {
     overflow: hidden;
-    border: none;
-    border-radius: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 13px;
+    background: var(--bs-body-bg);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.045);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .car-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
 }
 
 .car-image-container {
+    position: relative;
     width: 100%;
-    height: 240px;
+    aspect-ratio: 4 / 3;
     overflow: hidden;
-    background: #f1f1f1;
+    background: var(--bs-tertiary-bg);
+}
+
+.car-image-link {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .car-card-image {
-    width: 100%;
-    height: 240px;
-    object-fit: cover;
     display: block;
-    transition: transform 0.3s ease;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 0.35s ease;
 }
 
 .car-card:hover .car-card-image {
-    transform: scale(1.03);
+    transform: scale(1.045);
 }
 
 .car-image-placeholder {
-    width: 100%;
-    height: 240px;
-    background: #f1f1f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-secondary-color);
+    text-decoration: none;
 }
 
+.placeholder-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.placeholder-icon {
+    font-size: 2.5rem;
+}
+
+.year-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background: rgba(17, 24, 39, 0.88);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.favorite-form {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    margin: 0;
+}
+
+.favorite-btn {
+    display: flex;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.96);
+    color: #dc3545;
+    font-size: 1.4rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.favorite-btn:hover {
+    transform: scale(1.08);
+}
+
+.favorite-btn.is-favorite {
+    background: #dc3545;
+    color: #fff;
+}
+
+.car-card-body {
+    display: flex;
+    flex-direction: column;
+    padding: 17px;
+}
+
+.car-card-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.min-width-0 {
+    min-width: 0;
+}
+
+.car-name {
+    margin: 0 0 7px;
+    font-size: 1.15rem;
+    font-weight: 750;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.car-location {
+    margin: 0 0 13px;
+    color: var(--bs-secondary-color);
+    font-size: 0.83rem;
+}
+
+.car-price {
+    margin-bottom: 14px;
+    color: var(--bs-success-text-emphasis, #198754);
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+}
+
+.car-specifications {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 8px;
+    padding: 13px 0;
+    border-top: 1px solid var(--bs-border-color);
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.car-spec {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.spec-icon {
+    flex-shrink: 0;
+    color: var(--bs-secondary-color);
+}
+
+.seller-information {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 12px;
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+    overflow-wrap: anywhere;
+}
+
+.seller-dot {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #198754;
+}
+
+.car-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 16px;
+}
+
+.view-details-btn,
+.compare-btn {
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 650;
+}
+
+.view-details-btn {
+    flex: 1;
+}
+
+.compare-form {
+    display: flex;
+    flex-shrink: 0;
+}
+
+.compare-btn {
+    padding: 0 11px;
+    white-space: nowrap;
+}
+
+.empty-cars-state {
+    padding: 65px 20px;
+    text-align: center;
+    border: 1px dashed var(--bs-border-color);
+    border-radius: 14px;
+    background: var(--bs-tertiary-bg);
+}
+
+.empty-cars-icon {
+    margin-bottom: 12px;
+    font-size: 3rem;
+}
+
+.empty-cars-state h3 {
+    font-weight: 750;
+}
+
+.empty-cars-state .btn {
+    margin-top: 10px;
+    border-radius: 8px;
+}
+
+@media (min-width: 1200px) {
+    .car-listings {
+        --bs-gutter-x: 1.4rem;
+        --bs-gutter-y: 1.4rem;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .quick-search-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .quick-search-input {
+        grid-column: 1 / -1;
+    }
+
+    .quick-search-button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .cars-page {
+        padding-top: 18px !important;
+    }
+
+    .cars-heading {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .cars-title {
+        font-size: 1.75rem;
+        letter-spacing: -0.7px;
+    }
+
+    .cars-heading p {
+        max-width: 280px;
+        font-size: 0.88rem;
+    }
+
+    .add-car-btn {
+        padding: 9px 11px;
+        font-size: 0.82rem;
+    }
+
+    .quick-search {
+        padding: 9px;
+    }
+
+    .quick-search-form {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 8px;
+    }
+
+    .quick-search-input {
+        grid-column: auto;
+    }
+
+    .inventory-toolbar {
+        align-items: flex-start;
+    }
+
+    .inventory-title {
+        font-size: 1.3rem;
+    }
+
+    .inventory-actions {
+        width: 100%;
+    }
+
+    .filter-toggle {
+        flex: 0 0 auto;
+    }
+
+    .sort-form {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .sort-form .form-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .car-card-body {
+        padding: 14px;
+    }
+
+    .car-name {
+        font-size: 1.05rem;
+    }
+
+    .car-price {
+        font-size: 1.25rem;
+    }
+
+    .car-card-actions {
+        gap: 7px;
+    }
+
+    .compare-btn {
+        padding: 0 9px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .car-card,
+    .car-card-image,
+    .favorite-btn {
+        transition: none;
+    }
+}
 </style>
 
 {% endblock %}
+```

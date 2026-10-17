@@ -1,155 +1,64 @@
 
 {% extends "base.html" %}
 
-{% block title %}Seller Inquiries | Carvion Motors{% endblock %}
+{% block title %}Buyer Inquiries | Carvion Motors{% endblock %}
 
 {% block content %}
 
 <style>
-    .inquiries-page {
-        max-width: 1100px;
-        margin: 35px auto;
-        padding: 0 15px;
-    }
-
-    .inquiries-header {
-        margin-bottom: 25px;
-    }
-
-    .inquiries-header h1 {
-        font-size: 1.8rem;
-        font-weight: 750;
-        color: #111827;
-    }
-
-    .inquiries-header p {
-        color: #6b7280;
-    }
-
-    .inquiry-card {
-        background: #fff;
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 22px;
-        margin-bottom: 18px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-    }
-
-    .inquiry-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 15px;
-        flex-wrap: wrap;
-    }
-
-    .inquiry-title {
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: 6px;
-    }
-
-    .inquiry-meta {
-        color: #6b7280;
-        font-size: 0.9rem;
-        overflow-wrap: anywhere;
-    }
-
-    .inquiry-status {
-        display: inline-block;
-        padding: 5px 11px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        background: #e5e7eb;
-        color: #374151;
-    }
-
-    .unread-badge {
-        display: inline-block;
-        background: #dc2626;
-        color: #fff;
-        padding: 4px 9px;
-        border-radius: 20px;
-        font-size: 0.78rem;
-        font-weight: 700;
-    }
-
-    .latest-message {
-        background: #f9fafb;
+    .inquiry-message-preview {
+        background: #f8fafc;
         border: 1px solid #e5e7eb;
         border-radius: 10px;
-        padding: 14px;
-        margin: 18px 0;
+        padding: 14px 16px;
+        margin-top: 18px;
         overflow-wrap: anywhere;
     }
 
-    .latest-message-label {
-        font-size: 0.8rem;
-        font-weight: 700;
+    .inquiry-message-preview .preview-label {
         color: #6b7280;
+        font-size: 0.82rem;
+        font-weight: 700;
         margin-bottom: 7px;
     }
 
-    .latest-message-text {
+    .inquiry-message-preview .preview-text {
         color: #1f2937;
-        margin: 0;
         white-space: pre-wrap;
+        margin-bottom: 6px;
     }
 
-    .latest-message-time {
-        display: block;
-        margin-top: 8px;
+    .inquiry-message-preview .preview-time {
         color: #9ca3af;
         font-size: 0.78rem;
     }
 
-    .no-message {
+    .inquiry-message-preview .no-message {
         color: #6b7280;
         font-style: italic;
-        margin: 0;
-    }
-
-    .open-chat-button {
-        display: inline-block;
-        background: #111827;
-        color: #fff;
-        text-decoration: none;
-        padding: 10px 17px;
-        border-radius: 8px;
-        font-weight: 600;
-    }
-
-    .open-chat-button:hover {
-        background: #2563eb;
-        color: #fff;
-    }
-
-    .empty-state {
-        padding: 45px 20px;
-        text-align: center;
-        border: 1px dashed #d1d5db;
-        border-radius: 14px;
-        color: #6b7280;
-    }
-
-    .empty-state h3 {
-        color: #111827;
-        margin-bottom: 10px;
+        margin-bottom: 0;
     }
 </style>
 
-<div class="inquiries-page">
+<div class="container py-4">
 
-    <div class="inquiries-header">
-        <h1>Buyer Inquiries</h1>
-        <p>View buyer messages and manage conversations about your vehicles.</p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="mb-1">Buyer Inquiries</h2>
+            <p class="text-muted mb-0">
+                View buyer messages and conversations about your vehicles.
+            </p>
+        </div>
+
+        <a href="{{ url_for('cars.my_cars') }}"
+           class="btn btn-outline-dark">
+            My Cars
+        </a>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
+    {% with flash_messages = get_flashed_messages(with_categories=true) %}
+        {% if flash_messages %}
+            {% for category, message in flash_messages %}
                 <div class="alert alert-{{ category }} alert-dismissible fade show"
                      role="alert">
                     {{ message }}
@@ -164,102 +73,138 @@
 
     {% if inquiries %}
 
-        {% for inquiry in inquiries %}
+        <div class="row g-3">
 
-            {% set ordered_messages = inquiry.messages|sort(attribute='created_at') %}
-            {% set latest_message = ordered_messages|last if ordered_messages else none %}
+            {% for inquiry in inquiries %}
 
-            {% set unread_count = namespace(total=0) %}
+                {% set inquiry_messages = messages_by_inquiry.get(inquiry.id, []) %}
+                {% set latest_message = inquiry_messages[-1] if inquiry_messages else none %}
+                {% set unread_count = namespace(value=0) %}
 
-            {% for msg in inquiry.messages %}
-                {% if msg.receiver_id == current_user.id and not msg.is_read %}
-                    {% set unread_count.total = unread_count.total + 1 %}
-                {% endif %}
+                {% for message in inquiry_messages %}
+                    {% if message.receiver_id == current_user.id and not message.is_read %}
+                        {% set unread_count.value = unread_count.value + 1 %}
+                    {% endif %}
+                {% endfor %}
+
+                <div class="col-12">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body">
+
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+
+                                <div class="flex-grow-1">
+
+                                    <h5 class="mb-2">
+                                        {% if inquiry.car %}
+                                            {{ inquiry.car.brand }}
+                                            {{ inquiry.car.model }}
+                                            {% if inquiry.car.year %}
+                                                ({{ inquiry.car.year }})
+                                            {% endif %}
+                                        {% else %}
+                                            Vehicle inquiry
+                                        {% endif %}
+                                    </h5>
+
+                                    <p class="mb-1">
+                                        <strong>Buyer:</strong>
+                                        {{ inquiry.buyer.name if inquiry.buyer else "Unknown buyer" }}
+                                    </p>
+
+                                    <p class="mb-1">
+                                        <strong>Email:</strong>
+                                        {{ inquiry.buyer.email if inquiry.buyer else "Unavailable" }}
+                                    </p>
+
+                                    <p class="mb-1">
+                                        <strong>Inquiry status:</strong>
+                                        <span class="badge bg-secondary">
+                                            {{ inquiry.status or "Open" }}
+                                        </span>
+                                    </p>
+
+                                    <small class="text-muted">
+                                        Started:
+                                        {% if inquiry.created_at %}
+                                            {{ inquiry.created_at.strftime('%d %b %Y, %H:%M') }}
+                                        {% else %}
+                                            Date unavailable
+                                        {% endif %}
+                                    </small>
+
+                                    {% if unread_count.value > 0 %}
+                                        <div class="mt-2">
+                                            <span class="badge bg-danger">
+                                                {{ unread_count.value }}
+                                                unread message{% if unread_count.value != 1 %}s{% endif %}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="d-flex align-items-center">
+                                    <a href="{{ url_for('chat.inquiry_chat', inquiry_id=inquiry.id) }}"
+                                       class="btn btn-dark">
+                                        Open Conversation
+                                    </a>
+                                </div>
+
+                            </div>
+
+                            <div class="inquiry-message-preview">
+
+                                <div class="preview-label">
+                                    {% if latest_message %}
+                                        {% if latest_message.sender_id == current_user.id %}
+                                            Your latest message
+                                        {% else %}
+                                            Latest message from buyer
+                                        {% endif %}
+                                    {% else %}
+                                        Latest message
+                                    {% endif %}
+                                </div>
+
+                                {% if latest_message %}
+
+                                    <p class="preview-text">{{ latest_message.message }}</p>
+
+                                    {% if latest_message.created_at %}
+                                        <span class="preview-time">
+                                            {{ latest_message.created_at.strftime('%d %b %Y, %H:%M') }}
+                                        </span>
+                                    {% endif %}
+
+                                {% else %}
+
+                                    <p class="no-message">
+                                        No messages are saved for this inquiry yet.
+                                    </p>
+
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
             {% endfor %}
 
-            <div class="inquiry-card">
-
-                <div class="inquiry-top">
-
-                    <div>
-                        <div class="inquiry-title">
-                            {{ inquiry.car.brand }} {{ inquiry.car.model }}
-                        </div>
-
-                        <div class="inquiry-meta">
-                            Buyer:
-                            {{ inquiry.buyer.name or inquiry.buyer.email }}
-                        </div>
-
-                        <div class="inquiry-meta">
-                            {{ inquiry.buyer.email }}
-                        </div>
-                    </div>
-
-                    <div>
-                        <span class="inquiry-status">
-                            {{ inquiry.status or "Open" }}
-                        </span>
-
-                        {% if unread_count.total > 0 %}
-                            <span class="unread-badge">
-                                {{ unread_count.total }} unread
-                            </span>
-                        {% endif %}
-                    </div>
-
-                </div>
-
-                <div class="latest-message">
-
-                    <div class="latest-message-label">
-                        {% if latest_message %}
-                            {% if latest_message.sender_id == current_user.id %}
-                                Your latest message
-                            {% else %}
-                                Latest message from buyer
-                            {% endif %}
-                        {% else %}
-                            Conversation
-                        {% endif %}
-                    </div>
-
-                    {% if latest_message %}
-
-                        <p class="latest-message-text">{{ latest_message.message }}</p>
-
-                        {% if latest_message.created_at %}
-                            <span class="latest-message-time">
-                                {{ latest_message.created_at.strftime('%d %b %Y, %I:%M %p') }}
-                            </span>
-                        {% endif %}
-
-                    {% else %}
-
-                        <p class="no-message">
-                            No messages are attached to this inquiry yet.
-                        </p>
-
-                    {% endif %}
-
-                </div>
-
-                <a
-                    href="{{ url_for('chat.inquiry_chat', inquiry_id=inquiry.id) }}"
-                    class="open-chat-button"
-                >
-                    Open Conversation &rarr;
-                </a>
-
-            </div>
-
-        {% endfor %}
+        </div>
 
     {% else %}
 
-        <div class="empty-state">
-            <h3>No buyer inquiries yet</h3>
-            <p>When buyers contact you about your vehicles, their inquiries will appear here.</p>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <h4>No buyer inquiries yet</h4>
+                <p class="text-muted mb-0">
+                    When buyers contact you about your vehicles,
+                    their inquiries will appear here.
+                </p>
+            </div>
         </div>
 
     {% endif %}

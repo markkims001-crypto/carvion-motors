@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
@@ -13,7 +14,8 @@ from models import (
     Inquiry,
     InquiryMessage,
     Message,
-    Notification
+    Notification,
+    PasswordResetCode,
 )
 
 
@@ -81,7 +83,7 @@ def create_app():
             "unread_compares": 0,
             "unread_inquiries": 0,
             "unread_vehicle_updates": 0,
-            "unread_messages": 0
+            "unread_messages": 0,
         }
 
         if not current_user.is_authenticated:
@@ -95,7 +97,7 @@ def create_app():
             Notification.query
             .filter(
                 Notification.user_id == current_user.id,
-                Notification.is_read.is_(False)
+                Notification.is_read.is_(False),
             )
             .all()
         )
@@ -132,7 +134,7 @@ def create_app():
             if notification.notification_type in (
                 "vehicle",
                 "approval",
-                "rejection"
+                "rejection",
             )
         )
 
@@ -140,14 +142,14 @@ def create_app():
         # INQUIRIES
         # ====================================================
 
-        if current_user.role.lower() == "admin":
+        if (getattr(current_user, "role", "") or "").lower() == "admin":
 
             data["unread_inquiries"] = (
                 Notification.query
                 .filter(
                     Notification.user_id == current_user.id,
                     Notification.notification_type == "inquiry",
-                    Notification.is_read.is_(False)
+                    Notification.is_read.is_(False),
                 )
                 .count()
             )
@@ -158,7 +160,7 @@ def create_app():
                 InquiryMessage.query
                 .filter(
                     InquiryMessage.receiver_id == current_user.id,
-                    InquiryMessage.is_read.is_(False)
+                    InquiryMessage.is_read.is_(False),
                 )
                 .count()
             )
@@ -171,7 +173,7 @@ def create_app():
             Message.query
             .filter(
                 Message.receiver_id == current_user.id,
-                Message.is_read.is_(False)
+                Message.is_read.is_(False),
             )
             .count()
         )
@@ -203,7 +205,7 @@ def create_app():
         try:
 
             # ------------------------------------------------
-            # CREATE ALL TABLES
+            # CREATE TABLES
             # ------------------------------------------------
 
             db.create_all()
@@ -218,7 +220,7 @@ def create_app():
 
             database_url = app.config.get(
                 "SQLALCHEMY_DATABASE_URI",
-                ""
+                "",
             )
 
             if database_url.startswith("postgresql"):
@@ -233,38 +235,60 @@ def create_app():
             # ------------------------------------------------
             # DEFAULT ADMIN
             # ------------------------------------------------
+            # Do not create a public admin account with a
+            # hard-coded password. Configure the initial admin
+            # securely instead.
 
-            admin_user = User.query.filter_by(
-                email="admin@carvion.com"
-            ).first()
+            admin_email = os.environ.get(
+                "CARVION_ADMIN_EMAIL",
+                "",
+            ).strip().lower()
 
-            if admin_user is None:
+            admin_password = os.environ.get(
+                "CARVION_ADMIN_PASSWORD",
+                "",
+            )
 
-                admin_user = User(
-                    name="Carvion Admin",
-                    email="admin@carvion.com",
-                    phone="0700000000",
-                    password=generate_password_hash("admin123"),
-                    role="admin"
+            if admin_email and admin_password:
+
+                admin_user = User.query.filter_by(
+                    email=admin_email
+                ).first()
+
+                if admin_user is None:
+
+                    admin_user = User(
+                        name="Carvion Admin",
+                        email=admin_email,
+                        phone="0700000000",
+                        password=generate_password_hash(
+                            admin_password
+                        ),
+                        role="admin",
+                    )
+
+                    db.session.add(admin_user)
+                    db.session.commit()
+
+                    print("Initial admin account created.")
+
+                else:
+                    print("Configured admin account already exists.")
+
+            else:
+                print(
+                    "Initial admin creation skipped. "
+                    "Configure CARVION_ADMIN_EMAIL and "
+                    "CARVION_ADMIN_PASSWORD if needed."
                 )
 
-                db.session.add(admin_user)
-                db.session.commit()
-
-                print("=" * 60)
-                print("DEFAULT ADMIN CREATED")
-                print("Email: admin@carvion.com")
-                print("Password: admin123")
-                print("=" * 60)
-
-        except Exception as e:
+        except Exception:
 
             db.session.rollback()
 
-            print("=" * 60)
-            print("DATABASE INITIALIZATION ERROR")
-            print(str(e))
-            print("=" * 60)
+            app.logger.exception(
+                "DATABASE INITIALIZATION ERROR"
+            )
 
     # ========================================================
     # HOME
@@ -283,7 +307,7 @@ def create_app():
 
         return render_template(
             "index.html",
-            cars=cars
+            cars=cars,
         )
 
     # ========================================================
@@ -322,23 +346,19 @@ def create_app():
     @login_required
     def buyer_home():
 
-        if current_user.role.lower() != "buyer":
+        if (getattr(current_user, "role", "") or "").lower() != "buyer":
             return redirect(url_for("home"))
 
         inquiries = (
             Inquiry.query
-            .filter_by(
-                buyer_id=current_user.id
-            )
-            .order_by(
-                Inquiry.created_at.desc()
-            )
+            .filter_by(buyer_id=current_user.id)
+            .order_by(Inquiry.created_at.desc())
             .all()
         )
 
         return render_template(
             "buyer_home.html",
-            inquiries=inquiries
+            inquiries=inquiries,
         )
 
     return app
@@ -364,5 +384,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
-        debug=True
+        debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true",
     )

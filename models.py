@@ -911,4 +911,31 @@ class Notification(db.Model):
     car = db.relationship(
         "Car",
         back_populates="notifications"
+ )
+    
+
+# ============================================================
+# SMS PASSWORD RESET CODE
+# ============================================================
+
+class PasswordResetCode(db.Model):
+    __tablename__ = "password_reset_codes"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f"{User.__tablename__}.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
     )
+
+    code_hash = db.Column(db.String(255), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+

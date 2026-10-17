@@ -109,9 +109,26 @@ def phone_lookup_variants(normalized_phone):
 # ============================================================
 
 def send_reset_sms(phone, code):
+    current_app.logger.info(
+    "Africa's Talking config: username=%r, "
+    "API key present=%s, API key length=%s, "
+    "sender ID present=%s",
+    username,
+    bool(api_key),
+    len(api_key),
+    bool(sender_id),
+)
     username = os.environ.get("AT_USERNAME", "").strip()
     api_key = os.environ.get("AT_API_KEY", "").strip()
     sender_id = os.environ.get("AT_SENDER_ID", "").strip()
+    current_app.logger.info(
+    "AT diagnostic: username=%r, key_present=%s, "
+    "key_length=%d, sender_id_present=%s",
+    username,
+    bool(api_key),
+    len(api_key),
+    bool(sender_id),
+)
 
     if not username or not api_key:
         current_app.logger.error(

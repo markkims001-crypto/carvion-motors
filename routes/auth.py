@@ -326,3 +326,163 @@ def profile():
 def force_logout():
     logout_user()
     return redirect(url_for("auth.login"))
+
+# ----------------------------------------------------------------------
+# LOGIN
+# ----------------------------------------------------------------------
+
+@auth.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("home"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            flash("Welcome back!", "success")
+
+            next_url = request.args.get("next", "")
+            if next_url.startswith("/") and not next_url.startswith("//"):
+                return redirect(next_url)
+
+            return redirect(url_for("home"))
+
+        flash("Invalid email or password.", "danger")
+
+    return render_template("login.html")
+
+
+# ----------------------------------------------------------------------
+# REGISTRATION
+# ----------------------------------------------------------------------
+
+@auth.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("home"))
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        phone = request.form.get("phone", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not name or not email or not phone:
+            flash("Please complete all required fields.", "danger")
+        elif len(password) < 6:
+            flash("Password must be at least 6 characters.", "danger")
+        elif password != confirm_password:
+            flash("Passwords do not match.", "danger")
+        elif User.query.filter_by(email=email).first():
+            flash("An account with that email already exists.", "danger")
+        else:
+            try:
+                user = User(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    password=generate_password_hash(password),
+                    role="buyer",
+                )
+                db.session.add(user)
+                db.session.commit()
+
+                flash("Account created. You can now log in.", "success")
+                return redirect(url_for("auth.login"))
+
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("Registration failed.")
+                flash("Registration failed. Please try again.", "danger")
+
+    return render_template("register.html")
+
+
+# ----------------------------------------------------------------------
+# SMS PASSWORD RESET REQUEST
+# ----------------------------------------------------------------------
+
+@auth.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        phone = request.form.get("phone", "").strip()
+        normalised = normalise_phone(phone)
+
+        user = None
+        for candidate in User.query.all():
+            if phone_matches(candidate.phone, normalised):
+                user = candidate
+                break
+
+        if user:
+            now = int(time.time())
+            previous_sent = int(session.get("sms_reset_sent_at", 0))
+
+            if now - previous_sent < 60:
+                flash("Please wait before requesting another code.", "warning")
+                return render_template("forgot_password.html")
+
+            code = f"{secrets.randbelow(1_000_000):06d}"
+
+            clear_sms_reset_session()
+
+            if send_reset_sms(user.phone, code):
+                session["sms_reset_user_id"] = user.id
+                session["sms_reset_code_hash"] = otp_digest(code)
+                session["sms_reset_expires_at"] = now + 600
+                session["sms_reset_attempts"] = 0
+                session["sms_reset_sent_at"] = now
+
+                flash("If your number matches an account, a reset code has been sent.", "info")
+                return redirect(url_for("auth.verify_reset_code"))
+
+            clear_sms_reset_session()
+            flash("We could not send the reset code. Please try again later.", "danger")
+        else:
+            flash("If your number matches an account, a reset code will be sent.", "info")
+
+    return render_template("forgot_password.html")
+
+
+# ----------------------------------------------------------------------
+# VERIFY SMS RESET CODE
+# ----------------------------------------------------------------------
+
+@auth.route("/verify-reset-code", methods=["GET", "POST"])
+def verify_reset_code():
+    user_id = session.get("sms_reset_user_id")
+    expires_at = int(session.get("sms_reset_expires_at", 0))
+
+    if not user_id or int(time.time()) > expires_at:
+        clear_sms_reset_session()
+        flash("Your reset code has expired. Please request another.", "warning")
+        return redirect(url_for("auth.forgot_password"))
+
+    if request.method == "POST":
+        attempts = int(session.get("sms_reset_attempts", 0))
+
+        if attempts >= 5:
+            clear_sms_reset_session()
+            flash("Too many incorrect attempts. Request a new code.", "danger")
+            return redirect(url_for("auth.forgot_password"))
+
+        submitted_code = request.form.get("code", "").strip()
+        expected_hash = session.get("sms_reset_code_hash", "")
+        submitted_hash = otp_digest(submitted_code)
+
+        if not submitted_code or not hmac.compare_digest(
+            expected_hash, submitted_hash
+        ):
+            session["sms_reset_attempts"] = attempts + 1
+            flash("Incorrect verification code.", "danger")
+        else:
+            session["sms_reset_verified"] = True
+            return redirect(url_for("auth.reset_password_sms"))
+
+    return render_template("verify_reset_code.html")

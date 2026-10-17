@@ -1,0 +1,64 @@
+
+{% extends "base.html" %}
+
+{% block title %}Verify Reset Code | Carvion Motors{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="form-box mx-auto" style="max-width: 450px;">
+
+        <h2 class="mb-3">Verify Your Phone</h2>
+
+        <p class="text-muted">
+            Enter the six-digit verification code sent to your phone.
+            The code expires after 10 minutes.
+        </p>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST"
+              action="{{ url_for('auth.verify_reset_code') }}">
+
+            <div class="mb-3">
+                <label for="code" class="form-label">
+                    Verification Code
+                </label>
+
+                <input
+                    type="text"
+                    id="code"
+                    name="code"
+                    class="form-control"
+                    inputmode="numeric"
+                    pattern="[0-9]{6}"
+                    maxlength="6"
+                    minlength="6"
+                    placeholder="Enter 6-digit code"
+                    autocomplete="one-time-code"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                Verify Code
+            </button>
+
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('auth.forgot_password') }}">
+                Request another code
+            </a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

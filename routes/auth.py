@@ -435,10 +435,10 @@ def forgot_password():
                     sent = send_reset_email(user, reset_url)
 
                     # Diagnostic log: records whether the helper returned success.
-                    current_app.logger.info(
-                        "Password reset email helper returned: %s",
-                        sent,
-                    )
+                    current_app.logger.warning(
+    "Password reset email helper returned: %s",
+    sent,
+)
 
                     if not sent:
                         current_app.logger.error(

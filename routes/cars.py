@@ -1704,20 +1704,31 @@ def mark_notification_read(notification_id):
 
     db.session.commit()
 
+    role = (getattr(current_user, "role", "") or "").lower()
+
+    if notification.notification_type == "inquiry":
+        if role == "seller":
+            return redirect(url_for("chat.seller_inquiries_chat"))
+        if role == "buyer":
+            return redirect(url_for("chat.my_inquiries"))
+
+    if notification.notification_type == "message":
+        if role == "admin":
+            return redirect(url_for("chat.admin_chats"))
+        if role in {"buyer", "seller"}:
+            return redirect(url_for("chat.admin_chat"))
+
     if notification.car_id:
         if (
-            (getattr(current_user, "role", "") or "").lower() == "seller"
+            role == "seller"
             and notification.notification_type in {"approval", "rejection", "vehicle"}
         ):
             return redirect(url_for("cars.my_cars"))
 
-        if (
-            (getattr(current_user, "role", "") or "").lower() == "admin"
-            and notification.notification_type == "report"
-        ):
+        if role == "admin" and notification.notification_type == "report":
             return redirect(url_for("admin.reports"))
 
-        if (getattr(current_user, "role", "") or "").lower() == "admin":
+        if role == "admin":
             return redirect(url_for("admin.car_details", car_id=notification.car_id))
 
         return redirect(

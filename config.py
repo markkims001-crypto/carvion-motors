@@ -7,39 +7,30 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    # ==========================================
-    # Flask Configuration
-    # ==========================================
-    SECRET_KEY = os.environ.get(
-        "SECRET_KEY",
-        "carvion_secret_key_2026"
-    )
+    SECRET_KEY = os.environ.get("SECRET_KEY")
 
-    # ==========================================
-    # Database Configuration
-    # ==========================================
-    # Uses PostgreSQL if DATABASE_URL is defined.
-    # Otherwise falls back to SQLite.
+    if not SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required. "
+            "Set a long random secret before starting Carvion Motors."
+        )
+
+    WTF_CSRF_TIME_LIMIT = 7200
+
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL"
     ) or "sqlite:///" + os.path.join(BASE_DIR, "carvion.db")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # ==========================================
-    # Upload Configuration
-    # ==========================================
     UPLOAD_FOLDER = os.path.join(
         BASE_DIR,
         "static",
         "uploads"
     )
 
-    MAX_CONTENT_LENGTH = 25 * 1024 * 1024  # 25 MB
+    MAX_CONTENT_LENGTH = 25 * 1024 * 1024
 
-    # ==========================================
-    # Allowed Image Extensions
-    # ==========================================
     ALLOWED_EXTENSIONS = {
         "jpg",
         "jpeg",
@@ -47,13 +38,9 @@ class Config:
         "webp"
     }
 
-    # ==========================================
-    # Car Image Requirements
-    # ==========================================
-    REQUIRED_CAR_IMAGES = 7
+    REQUIRED_CAR_IMAGES = 5
 
-    # ==========================================
-    # Session Configuration
-    # ==========================================
     SESSION_PERMANENT = False
     SESSION_TYPE = "filesystem"
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"

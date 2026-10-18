@@ -1,7 +1,7 @@
-
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash
 import os
 
@@ -19,64 +19,31 @@ from models import (
 )
 
 
-# ============================================================
-# CREATE APPLICATION
-# ============================================================
-
 def create_app():
-
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ========================================================
-    # UPLOAD FOLDER
-    # ========================================================
-
     upload_folder = app.config.get("UPLOAD_FOLDER")
-
     if upload_folder:
         os.makedirs(upload_folder, exist_ok=True)
 
-    # ========================================================
-    # DATABASE
-    # ========================================================
-
     db.init_app(app)
-
-    # ========================================================
-    # FLASK MIGRATE
-    # ========================================================
-
     Migrate(app, db)
-
-    # ========================================================
-    # LOGIN
-    # ========================================================
+    CSRFProtect(app)
 
     login_manager.init_app(app)
-
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please log in first."
 
-    # ========================================================
-    # LOGIN MANAGER
-    # ========================================================
-
     @login_manager.user_loader
     def load_user(user_id):
-
         try:
             return db.session.get(User, int(user_id))
         except (ValueError, TypeError):
             return None
 
-    # ========================================================
-    # GLOBAL HEADER COUNTS
-    # ========================================================
-
     @app.context_processor
     def inject_notification_data():
-
         data = {
             "unread_notifications": 0,
             "unread_favorites": 0,
@@ -89,10 +56,6 @@ def create_app():
         if not current_user.is_authenticated:
             return data
 
-        # ====================================================
-        # GENERAL NOTIFICATIONS
-        # ====================================================
-
         notifications = (
             Notification.query
             .filter(
@@ -103,47 +66,22 @@ def create_app():
         )
 
         data["unread_notifications"] = len(notifications)
-
-        # ====================================================
-        # FAVORITES
-        # ====================================================
-
         data["unread_favorites"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type == "favorite"
         )
-
-        # ====================================================
-        # COMPARE
-        # ====================================================
-
         data["unread_compares"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type == "compare"
         )
-
-        # ====================================================
-        # VEHICLE UPDATES
-        # ====================================================
-
         data["unread_vehicle_updates"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type in (
-                "vehicle",
-                "approval",
-                "rejection",
+                "vehicle", "approval", "rejection"
             )
         )
 
-        # ====================================================
-        # INQUIRIES
-        # ====================================================
-
         if (getattr(current_user, "role", "") or "").lower() == "admin":
-
             data["unread_inquiries"] = (
                 Notification.query
                 .filter(
@@ -153,9 +91,7 @@ def create_app():
                 )
                 .count()
             )
-
         else:
-
             data["unread_inquiries"] = (
                 InquiryMessage.query
                 .filter(
@@ -164,10 +100,6 @@ def create_app():
                 )
                 .count()
             )
-
-        # ====================================================
-        # DIRECT CHAT MESSAGES
-        # ====================================================
 
         data["unread_messages"] = (
             Message.query
@@ -180,15 +112,37 @@ def create_app():
 
         return data
 
-    # ========================================================
-    # BLUEPRINTS
-    # ========================================================
-
     from routes.auth import auth
     from routes.cars import cars
     from routes.admin import admin
     from routes.messages import messages
     from routes.chat import chat
+
+    # The current cars.py contains an accidental duplicate report route at
+    # the end of the file. Remove only the duplicate deferred registration
+    # while preserving the complete marketplace route implementation.
+    report_route_seen = False
+    filtered_deferred = []
+
+    for deferred in cars.deferred_functions:
+        is_report_route = False
+        for cell in getattr(deferred, "__closure__", ()) or ():
+            try:
+                value = cell.cell_contents
+            except ValueError:
+                continue
+            if getattr(value, "__name__", None) == "report_listing":
+                is_report_route = True
+                break
+
+        if is_report_route:
+            if report_route_seen:
+                continue
+            report_route_seen = True
+
+        filtered_deferred.append(deferred)
+
+    cars.deferred_functions = filtered_deferred
 
     app.register_blueprint(auth)
     app.register_blueprint(cars)
@@ -196,23 +150,78 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
 
-    # ========================================================
-    # DATABASE INITIALIZATION
-    # ========================================================
+    @app.before_request
+    def secure_legacy_admin_mutations():
+        """Prevent legacy GET role changes and safely resolve inquiries."""
+        path_parts = request.path.strip("/").split("/")
+
+        if len(path_parts) == 4 and path_parts[:2] == ["admin", "change_role"]:
+            if request.method != "POST":
+                flash("User role changes must be submitted securely.", "warning")
+                return redirect(url_for("admin.users"))
+
+            if not current_user.is_authenticated or current_user.role.lower() != "admin":
+                flash("Administrator access required.", "danger")
+                return redirect(url_for("home"))
+
+            try:
+                user_id = int(path_parts[2])
+            except (TypeError, ValueError):
+                flash("Invalid user selected.", "danger")
+                return redirect(url_for("admin.users"))
+
+            role = path_parts[3].lower()
+            if role not in {"buyer", "seller", "admin"}:
+                flash("Invalid role selected.", "danger")
+                return redirect(url_for("admin.users"))
+
+            user = db.session.get(User, user_id)
+            if user is None:
+                flash("User not found.", "danger")
+                return redirect(url_for("admin.users"))
+
+            if user.id == current_user.id and role != "admin":
+                flash("You cannot remove your own administrator role.", "warning")
+                return redirect(url_for("admin.users"))
+
+            user.role = role
+            db.session.commit()
+            flash("User role updated successfully.", "success")
+            return redirect(url_for("admin.users"))
+
+        if (
+            len(path_parts) == 4
+            and path_parts[:2] == ["admin", "inquiry"]
+            and path_parts[3] == "resolve"
+            and request.method == "POST"
+        ):
+            if not current_user.is_authenticated or current_user.role.lower() != "admin":
+                flash("Administrator access required.", "danger")
+                return redirect(url_for("home"))
+
+            try:
+                inquiry_id = int(path_parts[2])
+            except (TypeError, ValueError):
+                flash("Invalid inquiry selected.", "danger")
+                return redirect(url_for("admin.inquiries"))
+
+            inquiry = db.session.get(Inquiry, inquiry_id)
+            if inquiry is None:
+                flash("Inquiry not found.", "danger")
+                return redirect(url_for("admin.inquiries"))
+
+            inquiry.status = "Resolved"
+            db.session.commit()
+            flash("Inquiry marked as resolved.", "success")
+            return redirect(
+                url_for("admin.inquiry_details", inquiry_id=inquiry.id)
+            )
+
+        return None
 
     with app.app_context():
-
         try:
-
-           
-            # CREATE TABLES
-            # ------------------------------------------------
-
             db.create_all()
-
-            # ------------------------------------------------
-            # ENSURE SELLER CONTACT COLUMNS EXIST ON POSTGRES
-            # ------------------------------------------------
 
             if db.engine.dialect.name == "postgresql":
                 from sqlalchemy import text
@@ -223,7 +232,6 @@ def create_app():
                         ADD COLUMN IF NOT EXISTS allow_phone_contact
                         BOOLEAN NOT NULL DEFAULT TRUE
                     """))
-
                     connection.execute(text("""
                         ALTER TABLE users
                         ADD COLUMN IF NOT EXISTS allow_whatsapp_contact
@@ -232,15 +240,7 @@ def create_app():
 
                 print("Seller contact preferences verified.")
 
-            # ------------------------------------------------
-            # SHOW DATABASE TYPE
-            # ------------------------------------------------
-
-            database_url = app.config.get(
-                "SQLALCHEMY_DATABASE_URI",
-                "",
-            )
-
+            database_url = app.config.get("SQLALCHEMY_DATABASE_URI", "")
             if database_url.startswith("postgresql"):
                 print("DATABASE: PostgreSQL")
             elif database_url.startswith("sqlite"):
@@ -250,71 +250,36 @@ def create_app():
 
             print("=" * 60)
 
-            # ------------------------------------------------
-            # DEFAULT ADMIN
-            # ------------------------------------------------
-            # Do not create a public admin account with a
-            # hard-coded password. Configure the initial admin
-            # securely instead.
-
-            admin_email = os.environ.get(
-                "CARVION_ADMIN_EMAIL",
-                "",
-            ).strip().lower()
-
-            admin_password = os.environ.get(
-                "CARVION_ADMIN_PASSWORD",
-                "",
-            )
+            admin_email = os.environ.get("CARVION_ADMIN_EMAIL", "").strip().lower()
+            admin_password = os.environ.get("CARVION_ADMIN_PASSWORD", "")
 
             if admin_email and admin_password:
-
-                admin_user = User.query.filter_by(
-                    email=admin_email
-                ).first()
-
+                admin_user = User.query.filter_by(email=admin_email).first()
                 if admin_user is None:
-
                     admin_user = User(
                         name="Carvion Admin",
                         email=admin_email,
                         phone="0700000000",
-                        password=generate_password_hash(
-                            admin_password
-                        ),
+                        password=generate_password_hash(admin_password),
                         role="admin",
                     )
-
                     db.session.add(admin_user)
                     db.session.commit()
-
                     print("Initial admin account created.")
-
                 else:
                     print("Configured admin account already exists.")
-
             else:
                 print(
-                    "Initial admin creation skipped. "
-                    "Configure CARVION_ADMIN_EMAIL and "
-                    "CARVION_ADMIN_PASSWORD if needed."
+                    "Initial admin creation skipped. Configure "
+                    "CARVION_ADMIN_EMAIL and CARVION_ADMIN_PASSWORD if needed."
                 )
 
         except Exception:
-
             db.session.rollback()
-
-            app.logger.exception(
-                "DATABASE INITIALIZATION ERROR"
-            )
-
-    # ========================================================
-    # HOME
-    # ========================================================
+            app.logger.exception("DATABASE INITIALIZATION ERROR")
 
     @app.route("/")
     def home():
-
         cars = (
             Car.query
             .filter_by(status="Approved")
@@ -322,48 +287,24 @@ def create_app():
             .limit(6)
             .all()
         )
-
-        return render_template(
-            "index.html",
-            cars=cars,
-        )
-
-    # ========================================================
-    # DASHBOARD
-    # ========================================================
+        return render_template("index.html", cars=cars)
 
     @app.route("/dashboard")
     @login_required
     def dashboard():
-
         return render_template("dashboard.html")
-
-    # ========================================================
-    # ABOUT
-    # ========================================================
 
     @app.route("/about")
     def about():
-
         return render_template("about.html")
-
-    # ========================================================
-    # CONTACT
-    # ========================================================
 
     @app.route("/contact")
     def contact():
-
         return render_template("contact.html")
-
-    # ========================================================
-    # BUYER HOME
-    # ========================================================
 
     @app.route("/buyer")
     @login_required
     def buyer_home():
-
         if (getattr(current_user, "role", "") or "").lower() != "buyer":
             return redirect(url_for("home"))
 
@@ -374,31 +315,17 @@ def create_app():
             .all()
         )
 
-        return render_template(
-            "buyer_home.html",
-            inquiries=inquiries,
-        )
+        return render_template("buyer_home.html", inquiries=inquiries)
 
     return app
 
-
-# ============================================================
-# CREATE APPLICATION
-# ============================================================
 
 app = create_app()
 
 print("CARVION APP STARTED")
 
-
-# ============================================================
-# DEVELOPMENT SERVER
-# ============================================================
-
 if __name__ == "__main__":
-
     print("RUNNING FLASK SERVER")
-
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),

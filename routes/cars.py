@@ -949,8 +949,8 @@ def add_car():
     # ========================================================
 
     flash(
-        "Your car has been submitted successfully. "
-        "Your account is now a seller.",
+        "Your car listing is now live. "
+        "Your account is now a seller. Administrators may still review listings.",
         "success"
     )
 

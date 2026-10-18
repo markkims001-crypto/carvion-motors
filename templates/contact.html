@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Contact Us | Carvion Motors{% endblock %}
+{% block content %}
+<section class="page-contact py-3 py-md-5">
+    <header class="mb-4">
+        <p class="text-uppercase fw-bold small mb-2" style="color:#b77900;letter-spacing:.12em;">We're here to help</p>
+        <h1 class="display-6">Contact Carvion Motors</h1>
+        <p class="lead">Questions about a vehicle, listing, or using our marketplace? Get in touch with us.</p>
+    </header>
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-0">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="h4">Call us</h2>
+                    <p>Reach Carvion Motors by phone.</p>
+                    <a class="btn btn-warning" href="tel:+0182709886">+0182709886</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-0">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="h4">Email us</h2>
+                    <p>Send us your question and we’ll get back to you.</p>
+                    <a class="btn btn-warning" href="mailto:carvionmotor@gmail.com">carvionmotor@gmail.com</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="text-muted small mt-4">For information about how personal information is handled, please read our <a href="{{ url_for('privacy') }}">Privacy Policy</a>.</p>
+</section>
+{% endblock %}

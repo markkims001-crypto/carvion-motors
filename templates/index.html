@@ -180,7 +180,16 @@
         <li><a href="{{ url_for('cars.all_cars') }}">Browse Cars</a></li>
         {% if current_user.is_authenticated %}
             <li><a href="{{ url_for('cars.favorites') }}">Favorites</a></li>
+            <li><a href="{{ url_for('cars.compare') }}">Compare</a></li>
+            <li><a href="{{ url_for('cars.notifications') }}">Notifications</a></li>
+            {% if current_user.role.lower() == "admin" %}
+                <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+            {% elif current_user.role.lower() == "seller" %}
+                <li><a href="{{ url_for('cars.seller_dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('cars.my_cars') }}">My Cars</a></li>
+            {% endif %}
             <li><a class="nav-cta" href="{{ url_for('cars.add_car') }}">Sell Your Car</a></li>
+            <li><form method="POST" action="{{ url_for('auth.logout') }}" style="display:inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" style="border:0;background:transparent;color:#e5e7eb;padding:10px 13px;font:inherit;font-size:14px;font-weight:650;cursor:pointer">Logout</button></form></li>
         {% else %}
             <li><a href="{{ url_for('auth.login') }}">Login</a></li>
             <li><a href="{{ url_for('auth.register') }}">Register</a></li>

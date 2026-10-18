@@ -195,7 +195,8 @@ def user_details(user_id):
 # ==========================================
 
 @admin.route(
-    "/change_role/<int:user_id>/<role>"
+    "/change_role/<int:user_id>/<role>",
+    methods=["POST"]
 )
 @admin_required
 def change_role(user_id, role):

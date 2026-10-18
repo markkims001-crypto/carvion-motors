@@ -48,3 +48,5 @@ def test_password_reset_pages_are_reachable():
     with app.test_client() as client:
         assert client.get("/forgot-password").status_code == 200
         assert client.get("/forgot-password-email").status_code == 200
+        assert client.get("/forgot-password-sms").status_code == 200
+        assert client.get("/verify-reset-code").status_code == 302

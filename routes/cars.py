@@ -1388,18 +1388,21 @@ def toggle_favorite(car_id):
 
         db.session.add(favorite)
 
-        notification = Notification(
-            user_id=current_user.id,
-            car_id=car.id,
-            title="Car Added to Favorites",
-            message=(
-                f"{car.brand} {car.model} "
-                "has been saved to your favorites."
-            ),
-            notification_type="favorite"
-        )
-
-        db.session.add(notification)
+        # Notify the listing owner about buyer interest, not the user
+        # who clicked Favorite. Avoid sending a seller a notification about
+        # their own listing.
+        if car.seller_id != current_user.id:
+            db.session.add(Notification(
+                user_id=car.seller_id,
+                car_id=car.id,
+                title="Someone Saved Your Vehicle",
+                message=(
+                    f"A user saved your {car.brand} {car.model} "
+                    "listing to their favorites."
+                ),
+                notification_type="favorite",
+                is_read=False,
+            ))
 
         db.session.commit()
 

@@ -172,6 +172,30 @@
         .page-favorites .empty-state, .page-compare .empty-state { padding: clamp(2rem, 6vw, 4rem) 1rem; text-align: center; border: 1px dashed #cbd5e1; border-radius: var(--cv-radius); background: #fff; }
         @media (max-width: 575.98px) { .page-auth { min-height: auto; padding: 1.25rem 0; } .auth-card { border-radius: 16px; box-shadow: 0 10px 28px rgba(15,23,42,.07); } .page-favorites .card-body { padding: 1rem; } }
 
+        .page-admin-dashboard .admin-stat-card { height: 100%; border-radius: 15px; transition: transform .18s ease, box-shadow .18s ease; }
+        .page-admin-dashboard .admin-stat-card:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(15,23,42,.10); }
+        .page-admin-dashboard .card-header { padding: 1rem 1.2rem; }
+        .page-admin-dashboard .admin-stat-value { font-size: clamp(1.65rem, 3vw, 2.2rem); font-weight: 800; letter-spacing: -.04em; }
+        .page-admin-cars .status-filters { display: flex; flex-wrap: wrap; gap: .55rem; }
+        .page-admin-cars .status-filters .btn { flex: 0 0 auto; }
+        .page-admin-users .user-role-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+        .page-admin-users .user-role-actions form { margin: 0; }
+        .page-admin-users .table td { vertical-align: middle; }
+        .page-chat .chat-transcript { max-height: 62vh; min-height: 300px; overflow-y: auto; padding: clamp(1rem, 3vw, 1.5rem); background: #f8fafc; }
+        .page-chat .chat-message { max-width: min(85%, 620px); padding: .8rem 1rem; border-radius: 15px; margin-bottom: 1rem; overflow-wrap: anywhere; }
+        .page-chat .chat-message p { margin: .35rem 0 0; white-space: pre-wrap; }
+        .page-chat .chat-message-mine { margin-left: auto; background: #111827; color: #fff; border-bottom-right-radius: 5px; }
+        .page-chat .chat-message-mine p { color: #f8fafc; }
+        .page-chat .chat-message-other { margin-right: auto; background: #fff; border: 1px solid var(--cv-border); border-bottom-left-radius: 5px; }
+        .page-chat .chat-compose { padding: 1rem; background: #fff; border-top: 1px solid var(--cv-border); }
+        .page-chat .chat-compose textarea { resize: vertical; }
+        .page-inquiries .card { margin-bottom: 1rem; }
+        @media (max-width: 575.98px) {
+            .page-admin-users .user-role-actions { flex-direction: column; align-items: stretch; }
+            .page-chat .chat-message { max-width: 94%; }
+            .page-chat .chat-transcript { min-height: 260px; }
+        }
+
         @media (max-width: 991.98px) {
             .site-navbar .navbar-nav { align-items: stretch; padding: .7rem 0 .25rem; }
             .site-navbar .nav-link { padding: .65rem .8rem; }

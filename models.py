@@ -950,3 +950,72 @@ class PasswordResetCode(db.Model):
         default=datetime.utcnow
     )
 
+
+# ============================================================
+# CAR LISTING REPORT MODEL
+# ============================================================
+
+class Report(db.Model):
+    __tablename__ = "reports"
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    car_id = db.Column(
+        db.Integer,
+        db.ForeignKey("cars.id"),
+        nullable=False,
+        index=True
+    )
+
+    reporter_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id"),
+        nullable=False,
+        index=True
+    )
+
+    reason = db.Column(
+        db.String(100),
+        nullable=False
+    )
+
+    details = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    status = db.Column(
+        db.String(20),
+        nullable=False,
+        default="Pending",
+        server_default="Pending"
+    )
+
+    admin_notes = db.Column(
+        db.Text,
+        nullable=True
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow
+    )
+
+    reviewed_at = db.Column(
+        db.DateTime,
+        nullable=True
+    )
+
+    car = db.relationship(
+        "Car",
+        backref=db.backref("reports", lazy=True)
+    )
+
+    reporter = db.relationship(
+        "User",
+        backref=db.backref("submitted_reports", lazy=True)
+    )

@@ -1,5 +1,6 @@
 # routes/admin.py
 
+from datetime import datetime
 from functools import wraps
 
 from flask import (
@@ -22,7 +23,8 @@ from models import (
     User,
     Car,
     Inquiry,
-    InquiryMessage
+    InquiryMessage,
+    Report
 )
 
 
@@ -951,5 +953,147 @@ def admin_server_error(error):
     return redirect(
         url_for(
             "admin.dashboard"
+        )
+    )
+
+# ============================================================
+# LISTING REPORT MANAGEMENT
+# ============================================================
+
+@admin.route("/reports")
+@admin_required
+def reports():
+
+    status = request.args.get("status", "Pending")
+
+    valid_statuses = {
+        "Pending",
+        "Reviewed",
+        "Dismissed",
+        "All"
+    }
+
+    if status not in valid_statuses:
+        status = "Pending"
+
+    query = Report.query
+
+    if status != "All":
+        query = query.filter_by(status=status)
+
+    reports_list = query.order_by(
+        Report.created_at.desc()
+    ).all()
+
+    report_counts = {
+        "pending": Report.query.filter_by(
+            status="Pending"
+        ).count(),
+
+        "reviewed": Report.query.filter_by(
+            status="Reviewed"
+        ).count(),
+
+        "dismissed": Report.query.filter_by(
+            status="Dismissed"
+        ).count(),
+
+        "total": Report.query.count()
+    }
+
+    return render_template(
+        "admin_reports.html",
+        reports=reports_list,
+        report_counts=report_counts,
+        selected_status=status
+    )
+
+
+# ============================================================
+# LISTING REPORT DETAILS
+# ============================================================
+
+@admin.route("/report/<int:report_id>")
+@admin_required
+def report_details(report_id):
+
+    report = Report.query.get_or_404(report_id)
+
+    return render_template(
+        "admin_report_details.html",
+        report=report
+    )
+
+
+# ============================================================
+# REVIEW OR DISMISS A LISTING REPORT
+# ============================================================
+
+@admin.route(
+    "/report/<int:report_id>/update",
+    methods=["POST"]
+)
+@admin_required
+def update_report(report_id):
+
+    report = Report.query.get_or_404(report_id)
+
+    status = request.form.get("status", "").strip()
+    admin_notes = request.form.get(
+        "admin_notes", ""
+    ).strip()
+
+    if status not in {"Reviewed", "Dismissed", "Pending"}:
+        flash(
+            "Invalid report status.",
+            "danger"
+        )
+        return redirect(
+            url_for(
+                "admin.report_details",
+                report_id=report.id
+            )
+        )
+
+    if len(admin_notes) > 5000:
+        flash(
+            "Admin notes must not exceed 5,000 characters.",
+            "danger"
+        )
+        return redirect(
+            url_for(
+                "admin.report_details",
+                report_id=report.id
+            )
+        )
+
+    try:
+        report.status = status
+        report.admin_notes = admin_notes or None
+
+        if status == "Pending":
+            report.reviewed_at = None
+        else:
+            report.reviewed_at = datetime.utcnow()
+
+        db.session.commit()
+
+        flash(
+            "Listing report updated successfully.",
+            "success"
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        flash(
+            "Unable to update the report. Please try again.",
+            "danger"
+        )
+
+    return redirect(
+        url_for(
+            "admin.report_details",
+            report_id=report.id
         )
     )

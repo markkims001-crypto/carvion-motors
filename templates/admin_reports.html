@@ -1,0 +1,128 @@
+ {% extends "base.html" %}
+
+{% block title %}Listing Reports | Admin{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Listing Reports</h2>
+            <p class="text-muted mb-0">
+                Review reports submitted about vehicle listings.
+            </p>
+        </div>
+
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+            Admin Dashboard
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">All Reports</div>
+                    <h3 class="fw-bold">{{ report_counts.total }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Pending</div>
+                    <h3 class="fw-bold text-warning">{{ report_counts.pending }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Reviewed</div>
+                    <h3 class="fw-bold text-success">{{ report_counts.reviewed }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Dismissed</div>
+                    <h3 class="fw-bold">{{ report_counts.dismissed }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="GET" action="{{ url_for('admin.reports') }}" class="mb-3">
+        <div class="row g-2">
+            <div class="col-sm-6 col-md-4">
+                <select name="status" class="form-select">
+                    <option value="Pending" {% if selected_status == "Pending" %}selected{% endif %}>Pending</option>
+                    <option value="Reviewed" {% if selected_status == "Reviewed" %}selected{% endif %}>Reviewed</option>
+                    <option value="Dismissed" {% if selected_status == "Dismissed" %}selected{% endif %}>Dismissed</option>
+                    <option value="All" {% if selected_status == "All" %}selected{% endif %}>All reports</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" type="submit">Filter</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Vehicle</th>
+                        <th>Reason</th>
+                        <th>Reporter</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>#{{ report.id }}</td>
+                        <td>
+                            {% if report.car %}
+                                {{ report.car.brand }} {{ report.car.model }}
+                                <div class="small text-muted">{{ report.car.registration_number }}</div>
+                            {% else %}
+                                Vehicle unavailable
+                            {% endif %}
+                        </td>
+                        <td>{{ report.reason }}</td>
+                        <td>
+                            {% if report.reporter %}
+                                {{ report.reporter.name }}
+                            {% else %}
+                                Deleted account
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if report.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif report.status == "Reviewed" %}
+                                <span class="badge bg-success">Reviewed</span>
+                            {% elif report.status == "Dismissed" %}
+                                <span class="badge bg-secondary">Dismissed</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ report.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if report.created_at %}
+                                {{ report.created_at.strftime("%d %b %Y") }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a

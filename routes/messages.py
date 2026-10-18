@@ -70,6 +70,7 @@ def send_message(inquiry_id):
             inquiry_id=inquiry.id,
             sender_id=current_user.id,
             receiver_id=receiver_id,
+            sender_role=role,
             message=text,
         )
         db.session.add(message)

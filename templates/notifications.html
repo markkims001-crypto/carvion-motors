@@ -70,7 +70,15 @@
                         <small class="text-muted">{{ notification.created_at.strftime('%d %b %Y, %H:%M') }}</small>
                         {% endif %}
                         <div class="d-flex flex-wrap gap-2 mt-2">
-                            {% if current_user.role|lower == "admin" and notification.notification_type == "report" %}
+                            {% if notification.notification_type == "inquiry" and current_user.role|lower == "seller" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chat.seller_inquiries_chat') }}">Open inquiries</a>
+                            {% elif notification.notification_type == "inquiry" and current_user.role|lower == "buyer" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chat.my_inquiries') }}">Open inquiries</a>
+                            {% elif notification.notification_type == "message" and current_user.role|lower == "admin" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chat.admin_chats') }}">Open messages</a>
+                            {% elif notification.notification_type == "message" and current_user.role|lower in ["buyer", "seller"] %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('chat.admin_chat') }}">Open support chat</a>
+                            {% elif current_user.role|lower == "admin" and notification.notification_type == "report" %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.reports') }}">Review reports</a>
                             {% elif current_user.role|lower == "admin" and notification.notification_type == "user" %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Open dashboard</a>

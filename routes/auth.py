@@ -1,3 +1,4 @@
+
 # routes/auth.py
 """Carvion Motors authentication and password-reset routes."""
 
@@ -123,22 +124,17 @@ def send_reset_email(user, reset_url):
 # Africa's Talking SMS
 # ----------------------------------------------------------------------
 
-
 def send_reset_sms(phone, code):
     username = os.environ.get("AT_USERNAME", "").strip()
     api_key = os.environ.get("AT_API_KEY", "").strip()
     sender_id = os.environ.get("AT_SENDER_ID", "").strip()
 
     if africastalking is None:
-        current_app.logger.error(
-            "Africa's Talking SDK is not installed."
-        )
+        current_app.logger.error("Africa's Talking SDK is not installed.")
         return False
 
     if not username or not api_key:
-        current_app.logger.error(
-            "AT_USERNAME or AT_API_KEY is missing."
-        )
+        current_app.logger.error("AT_USERNAME or AT_API_KEY is missing.")
         return False
 
     normalised = normalise_phone(phone)
@@ -154,7 +150,6 @@ def send_reset_sms(phone, code):
     )
 
     try:
-
         africastalking.initialize(username, api_key)
 
         if sender_id:
@@ -162,9 +157,7 @@ def send_reset_sms(phone, code):
                 message, [recipient], sender_id=sender_id
             )
         else:
-            response = africastalking.SMS.send(
-                message, [recipient]
-            )
+            response = africastalking.SMS.send(message, [recipient])
 
         data = (
             response.get("SMSMessageData", {})
@@ -192,9 +185,7 @@ def send_reset_sms(phone, code):
         )
 
     except Exception:
-        current_app.logger.exception(
-            "Africa's Talking SMS sending failed."
-        )
+        current_app.logger.exception("Africa's Talking SMS sending failed.")
         return False
 
 
@@ -222,9 +213,11 @@ def reset_password_sms():
     if request.method == "POST":
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
+
         if len(password) < 6:
             flash("Password must be at least 6 characters.", "danger")
             return redirect(url_for("auth.reset_password_sms"))
+
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
             return redirect(url_for("auth.reset_password_sms"))
@@ -254,6 +247,7 @@ def forgot_password_email():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user = User.query.filter_by(email=email).first() if email else None
+
         if user:
             token = generate_reset_token(user.email)
             reset_url = url_for("auth.reset_password", token=token, _external=True)
@@ -271,11 +265,13 @@ def forgot_password_email():
 @auth.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
     email = verify_reset_token(token)
+
     if not email:
         flash("The password reset link is invalid or has expired.", "danger")
         return redirect(url_for("auth.forgot_password_email"))
 
     user = User.query.filter_by(email=email).first()
+
     if not user:
         flash("Account not found.", "danger")
         return redirect(url_for("auth.forgot_password_email"))
@@ -283,9 +279,11 @@ def reset_password(token):
     if request.method == "POST":
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
+
         if len(password) < 6:
             flash("Password must be at least 6 characters.", "danger")
             return redirect(url_for("auth.reset_password", token=token))
+
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
             return redirect(url_for("auth.reset_password", token=token))
@@ -327,6 +325,7 @@ def profile():
 def force_logout():
     logout_user()
     return redirect(url_for("auth.login"))
+
 
 # ----------------------------------------------------------------------
 # LOGIN
@@ -405,7 +404,6 @@ def register():
     return render_template("register.html")
 
 
-
 # ----------------------------------------------------------------------
 # EMAIL PASSWORD RESET REQUEST
 # ----------------------------------------------------------------------
@@ -418,6 +416,13 @@ def forgot_password():
         if email:
             user = User.query.filter_by(email=email).first()
 
+            # Diagnostic log: no email address or secret is recorded.
+            current_app.logger.info(
+                "Password reset lookup: email_submitted=%s, account_found=%s",
+                bool(email),
+                user is not None,
+            )
+
             if user:
                 try:
                     token = generate_reset_token(user.email)
@@ -428,6 +433,12 @@ def forgot_password():
                     )
 
                     sent = send_reset_email(user, reset_url)
+
+                    # Diagnostic log: records whether the helper returned success.
+                    current_app.logger.info(
+                        "Password reset email helper returned: %s",
+                        sent,
+                    )
 
                     if not sent:
                         current_app.logger.error(
@@ -447,6 +458,7 @@ def forgot_password():
         return redirect(url_for("auth.login"))
 
     return render_template("forgot_password.html")
+
 
 @auth.route("/test-reset-email", methods=["GET"])
 def test_reset_email():
@@ -477,4 +489,3 @@ def test_reset_email():
     except Exception:
         current_app.logger.exception("Resend test email failed.")
         return "Resend rejected the test email. Check Render logs.", 500
-

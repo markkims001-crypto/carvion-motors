@@ -1,7 +1,7 @@
-
 from flask import Flask, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import generate_password_hash
 import os
 
@@ -19,64 +19,31 @@ from models import (
 )
 
 
-# ============================================================
-# CREATE APPLICATION
-# ============================================================
-
 def create_app():
-
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ========================================================
-    # UPLOAD FOLDER
-    # ========================================================
-
     upload_folder = app.config.get("UPLOAD_FOLDER")
-
     if upload_folder:
         os.makedirs(upload_folder, exist_ok=True)
 
-    # ========================================================
-    # DATABASE
-    # ========================================================
-
     db.init_app(app)
-
-    # ========================================================
-    # FLASK MIGRATE
-    # ========================================================
-
     Migrate(app, db)
-
-    # ========================================================
-    # LOGIN
-    # ========================================================
+    CSRFProtect(app)
 
     login_manager.init_app(app)
-
     login_manager.login_view = "auth.login"
     login_manager.login_message = "Please log in first."
 
-    # ========================================================
-    # LOGIN MANAGER
-    # ========================================================
-
     @login_manager.user_loader
     def load_user(user_id):
-
         try:
             return db.session.get(User, int(user_id))
         except (ValueError, TypeError):
             return None
 
-    # ========================================================
-    # GLOBAL HEADER COUNTS
-    # ========================================================
-
     @app.context_processor
     def inject_notification_data():
-
         data = {
             "unread_notifications": 0,
             "unread_favorites": 0,
@@ -89,10 +56,6 @@ def create_app():
         if not current_user.is_authenticated:
             return data
 
-        # ====================================================
-        # GENERAL NOTIFICATIONS
-        # ====================================================
-
         notifications = (
             Notification.query
             .filter(
@@ -103,47 +66,22 @@ def create_app():
         )
 
         data["unread_notifications"] = len(notifications)
-
-        # ====================================================
-        # FAVORITES
-        # ====================================================
-
         data["unread_favorites"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type == "favorite"
         )
-
-        # ====================================================
-        # COMPARE
-        # ====================================================
-
         data["unread_compares"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type == "compare"
         )
-
-        # ====================================================
-        # VEHICLE UPDATES
-        # ====================================================
-
         data["unread_vehicle_updates"] = sum(
-            1
-            for notification in notifications
+            1 for notification in notifications
             if notification.notification_type in (
-                "vehicle",
-                "approval",
-                "rejection",
+                "vehicle", "approval", "rejection"
             )
         )
 
-        # ====================================================
-        # INQUIRIES
-        # ====================================================
-
         if (getattr(current_user, "role", "") or "").lower() == "admin":
-
             data["unread_inquiries"] = (
                 Notification.query
                 .filter(
@@ -153,9 +91,7 @@ def create_app():
                 )
                 .count()
             )
-
         else:
-
             data["unread_inquiries"] = (
                 InquiryMessage.query
                 .filter(
@@ -164,10 +100,6 @@ def create_app():
                 )
                 .count()
             )
-
-        # ====================================================
-        # DIRECT CHAT MESSAGES
-        # ====================================================
 
         data["unread_messages"] = (
             Message.query
@@ -179,10 +111,6 @@ def create_app():
         )
 
         return data
-
-    # ========================================================
-    # BLUEPRINTS
-    # ========================================================
 
     from routes.auth import auth
     from routes.cars import cars
@@ -196,23 +124,9 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
 
-    # ========================================================
-    # DATABASE INITIALIZATION
-    # ========================================================
-
     with app.app_context():
-
         try:
-
-           
-            # CREATE TABLES
-            # ------------------------------------------------
-
             db.create_all()
-
-            # ------------------------------------------------
-            # ENSURE SELLER CONTACT COLUMNS EXIST ON POSTGRES
-            # ------------------------------------------------
 
             if db.engine.dialect.name == "postgresql":
                 from sqlalchemy import text
@@ -223,7 +137,6 @@ def create_app():
                         ADD COLUMN IF NOT EXISTS allow_phone_contact
                         BOOLEAN NOT NULL DEFAULT TRUE
                     """))
-
                     connection.execute(text("""
                         ALTER TABLE users
                         ADD COLUMN IF NOT EXISTS allow_whatsapp_contact
@@ -232,13 +145,8 @@ def create_app():
 
                 print("Seller contact preferences verified.")
 
-            # ------------------------------------------------
-            # SHOW DATABASE TYPE
-            # ------------------------------------------------
-
             database_url = app.config.get(
-                "SQLALCHEMY_DATABASE_URI",
-                "",
+                "SQLALCHEMY_DATABASE_URI", ""
             )
 
             if database_url.startswith("postgresql"):
@@ -250,71 +158,43 @@ def create_app():
 
             print("=" * 60)
 
-            # ------------------------------------------------
-            # DEFAULT ADMIN
-            # ------------------------------------------------
-            # Do not create a public admin account with a
-            # hard-coded password. Configure the initial admin
-            # securely instead.
-
             admin_email = os.environ.get(
-                "CARVION_ADMIN_EMAIL",
-                "",
+                "CARVION_ADMIN_EMAIL", ""
             ).strip().lower()
-
             admin_password = os.environ.get(
-                "CARVION_ADMIN_PASSWORD",
-                "",
+                "CARVION_ADMIN_PASSWORD", ""
             )
 
             if admin_email and admin_password:
-
                 admin_user = User.query.filter_by(
                     email=admin_email
                 ).first()
 
                 if admin_user is None:
-
                     admin_user = User(
                         name="Carvion Admin",
                         email=admin_email,
                         phone="0700000000",
-                        password=generate_password_hash(
-                            admin_password
-                        ),
+                        password=generate_password_hash(admin_password),
                         role="admin",
                     )
-
                     db.session.add(admin_user)
                     db.session.commit()
-
                     print("Initial admin account created.")
-
                 else:
                     print("Configured admin account already exists.")
-
             else:
                 print(
-                    "Initial admin creation skipped. "
-                    "Configure CARVION_ADMIN_EMAIL and "
-                    "CARVION_ADMIN_PASSWORD if needed."
+                    "Initial admin creation skipped. Configure "
+                    "CARVION_ADMIN_EMAIL and CARVION_ADMIN_PASSWORD if needed."
                 )
 
         except Exception:
-
             db.session.rollback()
-
-            app.logger.exception(
-                "DATABASE INITIALIZATION ERROR"
-            )
-
-    # ========================================================
-    # HOME
-    # ========================================================
+            app.logger.exception("DATABASE INITIALIZATION ERROR")
 
     @app.route("/")
     def home():
-
         cars = (
             Car.query
             .filter_by(status="Approved")
@@ -322,48 +202,24 @@ def create_app():
             .limit(6)
             .all()
         )
-
-        return render_template(
-            "index.html",
-            cars=cars,
-        )
-
-    # ========================================================
-    # DASHBOARD
-    # ========================================================
+        return render_template("index.html", cars=cars)
 
     @app.route("/dashboard")
     @login_required
     def dashboard():
-
         return render_template("dashboard.html")
-
-    # ========================================================
-    # ABOUT
-    # ========================================================
 
     @app.route("/about")
     def about():
-
         return render_template("about.html")
-
-    # ========================================================
-    # CONTACT
-    # ========================================================
 
     @app.route("/contact")
     def contact():
-
         return render_template("contact.html")
-
-    # ========================================================
-    # BUYER HOME
-    # ========================================================
 
     @app.route("/buyer")
     @login_required
     def buyer_home():
-
         if (getattr(current_user, "role", "") or "").lower() != "buyer":
             return redirect(url_for("home"))
 
@@ -382,23 +238,13 @@ def create_app():
     return app
 
 
-# ============================================================
-# CREATE APPLICATION
-# ============================================================
-
 app = create_app()
 
 print("CARVION APP STARTED")
 
 
-# ============================================================
-# DEVELOPMENT SERVER
-# ============================================================
-
 if __name__ == "__main__":
-
     print("RUNNING FLASK SERVER")
-
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),

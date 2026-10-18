@@ -25,7 +25,8 @@ from models import (
     Car,
     Inquiry,
     InquiryMessage,
-    Report
+    Report,
+    Notification,
 )
 
 
@@ -360,8 +361,20 @@ def approve_car(car_id):
     )
 
 
+    was_approved = car.status == "Approved"
     car.status = "Approved"
 
+    if not was_approved:
+        db.session.add(Notification(
+            user_id=car.seller_id,
+            car_id=car.id,
+            title="Vehicle Listing Approved",
+            message=(
+                f"Your {car.brand} {car.model} listing has been approved."
+            ),
+            notification_type="approval",
+            is_read=False,
+        ))
 
     db.session.commit()
 
@@ -396,8 +409,21 @@ def reject_car(car_id):
     )
 
 
+    was_rejected = car.status == "Rejected"
     car.status = "Rejected"
 
+    if not was_rejected:
+        db.session.add(Notification(
+            user_id=car.seller_id,
+            car_id=car.id,
+            title="Vehicle Listing Rejected",
+            message=(
+                f"Your {car.brand} {car.model} listing was rejected. "
+                "Please review the listing or contact support if you need help."
+            ),
+            notification_type="rejection",
+            is_read=False,
+        ))
 
     db.session.commit()
 
@@ -1088,8 +1114,25 @@ def update_report(report_id):
         )
 
     try:
+        previous_status = report.status
         report.status = status
         report.admin_notes = admin_notes or None
+
+        if (
+            status in {"Reviewed", "Dismissed"}
+            and status != previous_status
+        ):
+            db.session.add(Notification(
+                user_id=report.reporter_id,
+                car_id=report.car_id,
+                title="Your Listing Report Was Updated",
+                message=(
+                    f"Your report about {report.car.brand} "
+                    f"{report.car.model} was marked {status.lower()}."
+                ),
+                notification_type="report_update",
+                is_read=False,
+            ))
 
         if status == "Pending":
             report.reviewed_at = None

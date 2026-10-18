@@ -44,9 +44,11 @@ def send_message(inquiry_id):
     )
 
 
-    text = request.form.get(
-        "message"
-    )
+    text = (request.form.get("message") or "").strip()
+
+    if len(text) > 5000:
+        flash("Message is too long. Please keep it under 5,000 characters.", "warning")
+        return redirect(request.referrer or url_for("home"))
 
 
     if not text:
@@ -56,9 +58,7 @@ def send_message(inquiry_id):
             "warning"
         )
 
-        return redirect(
-            request.referrer
-        )
+        return redirect(request.referrer or url_for("home"))
 
 
 
@@ -79,9 +79,13 @@ def send_message(inquiry_id):
 
         # Buyer sends to admin
 
-        receiver_id = User.query.filter_by(
-            role="admin"
-        ).first().id
+        admin_user = User.query.filter(
+            db.func.lower(User.role) == "admin"
+        ).first()
+        if admin_user is None:
+            flash("No administrator is currently available.", "warning")
+            return redirect(request.referrer or url_for("home"))
+        receiver_id = admin_user.id
 
 
     elif current_user.id == inquiry.seller_id:

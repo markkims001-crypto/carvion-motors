@@ -6,6 +6,7 @@ compatible with existing forms while applying the same access checks.
 
 from flask import Blueprint, request, redirect, url_for, flash
 from flask_login import login_required, current_user
+from urllib.parse import urlsplit
 
 from extensions import db
 from models import Inquiry, InquiryMessage, User
@@ -15,11 +16,30 @@ messages = Blueprint("messages", __name__, url_prefix="/messages")
 
 
 def _back_to_inquiry(inquiry_id):
-    """Use a known local destination when no referrer is provided."""
-    return redirect(
-        request.referrer
-        or url_for("chat.inquiry_chat", inquiry_id=inquiry_id)
-    )
+    """Return to a same-site referrer only; never redirect off-site."""
+    referrer = request.referrer
+
+    if referrer:
+        parsed = urlsplit(referrer)
+        if (
+            parsed.scheme in ("http", "https")
+            and parsed.netloc == request.host
+            and not parsed.username
+            and not parsed.password
+            and chr(92) not in referrer
+        ):
+            return redirect(referrer)
+
+        if (
+            not parsed.scheme
+            and not parsed.netloc
+            and parsed.path.startswith("/")
+            and not parsed.path.startswith("//")
+            and chr(92) not in referrer
+        ):
+            return redirect(referrer)
+
+    return redirect(url_for("chat.inquiry_chat", inquiry_id=inquiry_id))
 
 
 @messages.route("/send/<int:inquiry_id>", methods=["POST"])

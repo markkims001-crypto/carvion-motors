@@ -431,6 +431,8 @@
                             action="{{ url_for('cars.toggle_favorite', car_id=car.id) }}"
                             class="favorite-form">
 
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                             <button
                                 type="submit"
                                 class="favorite-btn {% if car.id in favorite_ids %}is-favorite{% endif %}"

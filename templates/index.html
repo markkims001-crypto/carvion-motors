@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 
@@ -61,6 +60,9 @@
             display: flex;
             gap: 25px;
         }
+
+        nav ul a { display: inline-block; padding: 8px 0; }
+
 
         nav a {
             color: white;
@@ -189,6 +191,19 @@
             color: #555;
         }
 
+
+        /* FEATURED VEHICLES */
+        .featured-section { background: #fff; }
+        .vehicle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; }
+        .vehicle-card { background: #fff; border: 1px solid #e8e8e8; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.07); transition: transform .2s, box-shadow .2s; }
+        .vehicle-card:hover { transform: translateY(-5px); box-shadow: 0 14px 30px rgba(0,0,0,.12); }
+        .vehicle-card img { width: 100%; height: 210px; object-fit: cover; background: #eee; display: block; }
+        .vehicle-info { padding: 20px; }
+        .vehicle-info h3 { font-size: 21px; margin-bottom: 8px; }
+        .vehicle-price { color: #167545; font-size: 22px; font-weight: 800; margin: 12px 0; }
+        .vehicle-meta { color: #666; font-size: 14px; }
+        .featured-empty { text-align: center; color: #666; padding: 20px; }
+
         /* SELL SECTION */
 
         .sell {
@@ -231,7 +246,9 @@
                 flex-wrap: wrap;
                 justify-content: center;
                 margin-top: 20px;
+                gap: 12px 20px;
             }
+
 
             .logo {
                 font-size: 24px;
@@ -354,6 +371,33 @@
 
 </section>
 
+<!-- FEATURED VEHICLES -->
+<section class="section featured-section">
+    <h1 class="title">Featured Vehicles</h1>
+    <div class="vehicle-grid">
+        {% for car in cars %}
+        <article class="vehicle-card">
+            {% if car.images %}
+            <img src="{{ car.images[0].filename }}" alt="{{ car.brand }} {{ car.model }}" loading="lazy">
+            {% else %}
+            <div style="height:210px;display:flex;align-items:center;justify-content:center;background:#eee;color:#666;">Photo coming soon</div>
+            {% endif %}
+            <div class="vehicle-info">
+                <h3>{{ car.year }} {{ car.brand }} {{ car.model }}</h3>
+                <div class="vehicle-meta">{{ car.location }}{% if car.mileage is not none %} · {{ "{:,}".format(car.mileage) }} km{% endif %}</div>
+                <div class="vehicle-price">KSh {{ "{:,.0f}".format(car.price) }}</div>
+                <a href="{{ url_for('cars.car_details', car_id=car.id) }}" class="btn primary" style="margin:0;padding:12px 20px;">View Details</a>
+            </div>
+        </article>
+        {% else %}
+        <p class="featured-empty">New vehicles will appear here as sellers publish their listings.</p>
+        {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+        <a href="{{ url_for('cars.all_cars') }}" class="btn primary">Explore All Cars</a>
+    </div>
+</section>
+
 <!-- WHY CHOOSE US -->
 
 <section class="section">
@@ -444,4 +488,3 @@
 </body>
 
 </html>
-```

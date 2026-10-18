@@ -82,7 +82,6 @@
                                 {% else %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=notification.car_id) }}">View vehicle</a>
                                 {% endif %}
-                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Open dashboard</a>
                             {% endif %}
                             {% if not notification.is_read %}
                             <form method="POST" action="{{ url_for('cars.mark_notification_read', notification_id=notification.id) }}">

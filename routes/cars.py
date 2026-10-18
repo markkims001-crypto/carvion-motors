@@ -882,6 +882,13 @@ def add_car():
         # COMMIT
         # ====================================================
 
+               # ====================================================
+        # PROMOTE BUYER TO SELLER AND COMMIT
+        # ====================================================
+
+        if current_user.role == "buyer":
+            current_user.role = "seller"
+
         db.session.commit()
 
         print("================================================")
@@ -941,7 +948,8 @@ def add_car():
     # ========================================================
 
     flash(
-        "Car submitted for approval successfully.",
+        "Your car has been submitted successfully. "
+        "Your account is now a seller.",
         "success"
     )
 
@@ -1730,10 +1738,11 @@ def mark_all_notifications_read():
 def process_vehicle_inquiry(car_id):
 
     car = Car.query.get_or_404(car_id)
-
-    if current_user.role != "buyer":
-        flash("Only buyers can contact sellers.", "danger")
-        return redirect(url_for("cars.car_details", car_id=car.id))
+    if current_user.role not in ("buyer", "seller"):
+     flash("Your account cannot contact sellers.", "danger")
+     return redirect(
+        url_for("cars.car_details", car_id=car.id)
+    )
 
     if not car.seller_id:
         flash("This vehicle has no assigned seller.", "danger")

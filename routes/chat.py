@@ -299,6 +299,7 @@ def inquiry_chat(inquiry_id):
 # START OR CONTINUE A VEHICLE INQUIRY
 # ============================================================
 
+
 @chat.route(
     "/chat/car/<int:car_id>",
     methods=["GET", "POST"],
@@ -311,12 +312,11 @@ def start_car_chat(car_id):
         flash("Vehicle not found.", "danger")
         return redirect(url_for("cars.all_cars"))
 
-    if normalized_role(current_user) != "buyer":
+    if normalized_role(current_user) not in ("buyer", "seller"):
         flash(
-            "Only buyers can start vehicle inquiries.",
+            "Your account cannot start vehicle inquiries.",
             "warning",
         )
-
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -326,7 +326,6 @@ def start_car_chat(car_id):
             "This vehicle has no assigned seller.",
             "danger",
         )
-
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -336,7 +335,6 @@ def start_car_chat(car_id):
             "You cannot inquire about your own vehicle.",
             "warning",
         )
-
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
@@ -353,13 +351,10 @@ def start_car_chat(car_id):
             ).strip()
 
             if not message_text:
-                db.session.commit()
-
                 flash(
                     "Message cannot be empty.",
                     "warning",
                 )
-
                 return redirect(
                     url_for(
                         "chat.inquiry_chat",
@@ -373,7 +368,6 @@ def start_car_chat(car_id):
                 message_text,
             )
 
-        # Commit the inquiry and any new message.
         db.session.commit()
 
         if request.method == "POST":
@@ -394,10 +388,10 @@ def start_car_chat(car_id):
             "We could not process your inquiry. Please try again.",
             error,
         )
-
         return redirect(
             url_for("cars.car_details", car_id=car.id)
         )
+
 
 
 # ============================================================
@@ -407,10 +401,9 @@ def start_car_chat(car_id):
 @chat.route("/chat/my-inquiries")
 @login_required
 def my_inquiries():
-    if normalized_role(current_user) != "buyer":
-        flash("Buyer access required.", "warning")
-        return redirect(url_for("cars.all_cars"))
-
+   if normalized_role(current_user) not in ("buyer", "seller"):
+    flash("Access denied.", "warning")
+    return redirect(url_for("cars.all_cars"))
     inquiries = Inquiry.query.filter_by(
         buyer_id=current_user.id,
     ).order_by(

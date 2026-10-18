@@ -417,11 +417,12 @@ def forgot_password():
             user = User.query.filter_by(email=email).first()
 
             # Diagnostic log: no email address or secret is recorded.
-            current_app.logger.info(
-                "Password reset lookup: email_submitted=%s, account_found=%s",
-                bool(email),
-                user is not None,
-            )
+            current_app.logger.warning(
+    "Password reset lookup: email_submitted=%s, account_found=%s",
+    bool(email),
+    user is not None,
+)
+            
 
             if user:
                 try:

@@ -712,7 +712,7 @@ def add_car():
 
         description=request.form.get("description"),
 
-        status="Pending"
+        status="Approved"
     )
 
     uploaded_public_ids = []

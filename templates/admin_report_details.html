@@ -1,3 +1,4 @@
+```html
 {% extends "base.html" %}
 
 {% block title %}Review Listing Report | Admin{% endblock %}
@@ -8,11 +9,13 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
         <h2 class="fw-bold mb-0">Review Report #{{ report.id }}</h2>
 
-        <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin.reports') }}"
+           class="btn btn-outline-secondary">
             Back to Reports
         </a>
     </div>
 
+    <!-- Reported vehicle -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
 
@@ -24,11 +27,13 @@
                 </p>
 
                 <p class="text-muted">
-                    Registration: {{ report.car.registration_number or "Not provided" }}
+                    Registration:
+                    {{ report.car.registration_number or "Not provided" }}
                 </p>
 
                 <p>
-                    Listing status: <strong>{{ report.car.status }}</strong>
+                    Listing status:
+                    <strong>{{ report.car.status }}</strong>
                 </p>
 
                 <a href="{{ url_for('admin.car_details', car_id=report.car.id) }}"
@@ -36,21 +41,26 @@
                     View Vehicle
                 </a>
             {% else %}
-                <p class="text-muted">This vehicle record is no longer available.</p>
+                <p class="text-muted">
+                    This vehicle record is no longer available.
+                </p>
             {% endif %}
 
             <hr>
 
+            <!-- Report information -->
             <h5 class="fw-bold">Report Information</h5>
 
             <p>
-                <strong>Reason:</strong> {{ report.reason }}
+                <strong>Reason:</strong>
+                {{ report.reason }}
             </p>
 
             <p>
                 <strong>Submitted by:</strong>
                 {% if report.reporter %}
-                    {{ report.reporter.name }} ({{ report.reporter.email }})
+                    {{ report.reporter.name }}
+                    ({{ report.reporter.email }})
                 {% else %}
                     Deleted account
                 {% endif %}
@@ -65,4 +75,112 @@
                 {% endif %}
             </p>
 
-           
+            <p>
+                <strong>Report status:</strong>
+                {% if report.status == "Pending" %}
+                    <span class="badge bg-warning text-dark">Pending</span>
+                {% elif report.status == "Reviewed" %}
+                    <span class="badge bg-success">Reviewed</span>
+                {% elif report.status == "Rejected" %}
+                    <span class="badge bg-secondary">Rejected</span>
+                {% else %}
+                    <span class="badge bg-info text-dark">
+                        {{ report.status }}
+                    </span>
+                {% endif %}
+            </p>
+
+            <hr>
+
+            <h5 class="fw-bold">Additional Details</h5>
+
+            {% if report.details %}
+                <p style="white-space: pre-wrap;">{{ report.details }}</p>
+            {% else %}
+                <p class="text-muted">No additional details were provided.</p>
+            {% endif %}
+
+            {% if report.admin_notes %}
+                <hr>
+                <h5 class="fw-bold">Previous Admin Notes</h5>
+                <p style="white-space: pre-wrap;">{{ report.admin_notes }}</p>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <!-- Admin review actions -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+
+            <h5 class="fw-bold mb-3">Admin Review Actions</h5>
+
+            <p class="text-muted">
+                Record your decision after reviewing the reported listing.
+            </p>
+
+            <form method="POST"
+                  action="{{ url_for('admin.update_report', report_id=report.id) }}">
+
+                {% if csrf_token is defined %}
+                    <input type="hidden"
+                           name="csrf_token"
+                           value="{{ csrf_token() }}">
+                {% endif %}
+
+                <div class="mb-3">
+                    <label for="status" class="form-label">
+                        Decision
+                    </label>
+
+                    <select name="status"
+                            id="status"
+                            class="form-select"
+                            required>
+                        <option value="Pending"
+                            {% if report.status == "Pending" %}selected{% endif %}>
+                            Keep Pending
+                        </option>
+
+                        <option value="Reviewed"
+                            {% if report.status == "Reviewed" %}selected{% endif %}>
+                            Mark Reviewed
+                        </option>
+
+                        <option value="Rejected"
+                            {% if report.status == "Rejected" %}selected{% endif %}>
+                            Reject Report
+                        </option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="admin_notes" class="form-label">
+                        Admin Notes
+                    </label>
+
+                    <textarea name="admin_notes"
+                              id="admin_notes"
+                              class="form-control"
+                              rows="4"
+                              maxlength="5000"
+                              placeholder="Explain your decision or record any action taken...">{{ report.admin_notes or "" }}</textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Save Review
+                </button>
+
+                <a href="{{ url_for('admin.reports') }}"
+                   class="btn btn-outline-secondary ms-2">
+                    Cancel
+                </a>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+```

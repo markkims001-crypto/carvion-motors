@@ -774,7 +774,10 @@ def forgot_password():
         )
         return redirect(url_for("auth.login"))
 
-    return render_template("forgot_password.html")
+    # SMS is the default recovery method. Keep POST handling above for
+    # compatibility with older email-reset forms, but send new GET requests
+    # to the phone-based flow.
+    return redirect(url_for("auth.forgot_password_sms"))
 
 
 # ----------------------------------------------------------------------

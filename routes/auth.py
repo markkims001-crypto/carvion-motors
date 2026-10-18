@@ -486,7 +486,7 @@ def reset_password(token):
 # Logout and profile
 # ----------------------------------------------------------------------
 
-@auth.route("/logout")
+@auth.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()
@@ -503,7 +503,8 @@ def profile():
     )
 
 
-@auth.route("/force_logout")
+@auth.route("/force_logout", methods=["POST"])
+@login_required
 def force_logout():
     logout_user()
     return redirect(url_for("auth.login"))

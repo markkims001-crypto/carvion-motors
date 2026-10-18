@@ -46,7 +46,9 @@ def test_password_reset_pages_are_reachable():
     app = make_test_app()
 
     with app.test_client() as client:
-        assert client.get("/forgot-password").status_code == 200
+        response = client.get("/forgot-password", follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/forgot-password-sms")
         assert client.get("/forgot-password-email").status_code == 200
         assert client.get("/forgot-password-sms").status_code == 200
         assert client.get("/verify-reset-code").status_code == 302

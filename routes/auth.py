@@ -8,6 +8,7 @@ import importlib
 import os
 import secrets
 import time
+from datetime import datetime, timedelta
 
 from flask import (
     Blueprint,
@@ -36,7 +37,7 @@ from werkzeug.security import (
 )
 
 from extensions import db
-from models import User
+from models import PasswordResetCode, User
 
 auth = Blueprint("auth", __name__)
 
@@ -120,9 +121,12 @@ def otp_digest(code):
 
 
 def clear_sms_reset_session():
+    # Only a database record ID is kept in the signed client session.
+    # OTP hashes, expiry, and attempt counts remain server-side.
     for key in (
         "sms_reset_user_id",
-        "sms_reset_code_hash",
+        "sms_reset_code_id",
+        "sms_reset_code_hash",  # clear legacy session values
         "sms_reset_expires_at",
         "sms_reset_attempts",
         "sms_reset_sent_at",
@@ -287,90 +291,58 @@ def send_reset_sms(phone, code):
 
 @auth.route("/reset-password-sms", methods=["GET", "POST"])
 def reset_password_sms():
-    if not session.get("sms_reset_verified"):
-        flash(
-            "Verify your SMS code before changing your password.",
-            "warning",
-        )
-        return redirect(url_for("auth.forgot_password"))
+    code_id = session.get("sms_reset_code_id")
+    user_id = session.get("sms_reset_user_id")
 
-    if int(time.time()) > int(
-        session.get("sms_reset_expires_at", 0)
+    if not session.get("sms_reset_verified") or not code_id or not user_id:
+        flash("Verify your SMS code before changing your password.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    reset_record = db.session.get(PasswordResetCode, code_id)
+    user = db.session.get(User, user_id)
+    now = datetime.utcnow()
+
+    if (
+        reset_record is None
+        or user is None
+        or reset_record.user_id != user_id
+        or reset_record.expires_at <= now
     ):
         clear_sms_reset_session()
-        flash(
-            "That reset session has expired. Request a new code.",
-            "warning",
-        )
-        return redirect(url_for("auth.forgot_password"))
-
-    user = db.session.get(
-        User,
-        session.get("sms_reset_user_id"),
-    )
-
-    if user is None:
-        clear_sms_reset_session()
-        flash(
-            "Account not found. Request a new reset code.",
-            "danger",
-        )
-        return redirect(url_for("auth.forgot_password"))
+        flash("That reset session has expired. Request a new code.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
 
     if request.method == "POST":
         password = request.form.get("password", "")
-        confirm_password = request.form.get(
-            "confirm_password",
-            "",
-        )
+        confirm_password = request.form.get("confirm_password", "")
 
         if len(password) < 6:
-            flash(
-                "Password must be at least 6 characters.",
-                "danger",
-            )
-            return redirect(
-                url_for("auth.reset_password_sms")
-            )
+            flash("Password must be at least 6 characters.", "danger")
+            return redirect(url_for("auth.reset_password_sms"))
 
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
-            return redirect(
-                url_for("auth.reset_password_sms")
-            )
+            return redirect(url_for("auth.reset_password_sms"))
 
         try:
             user.password = generate_password_hash(password)
+            # Delete this code and any other outstanding reset codes so a
+            # previously verified session cannot be replayed after success.
+            PasswordResetCode.query.filter_by(user_id=user.id).delete(
+                synchronize_session=False
+            )
             db.session.commit()
-
         except Exception:
             db.session.rollback()
-            current_app.logger.exception(
-                "SMS password reset database update failed."
-            )
-            flash(
-                "Unable to update your password right now. "
-                "Please try again.",
-                "danger",
-            )
-            return redirect(
-                url_for("auth.reset_password_sms")
-            )
+            current_app.logger.exception("SMS password reset database update failed.")
+            flash("Unable to update your password right now. Please try again.", "danger")
+            return redirect(url_for("auth.reset_password_sms"))
 
         clear_sms_reset_session()
-
-        flash(
-            "Password reset successfully. You can now log in.",
-            "success",
-        )
+        flash("Password reset successfully. You can now log in.", "success")
         return redirect(url_for("auth.login"))
 
-    return render_template(
-        "reset_password.html",
-        token=None,
-        sms_reset=True,
-    )
-
+    return render_template("reset_password.html", token=None, sms_reset=True)
 
 
 # ----------------------------------------------------------------------
@@ -387,13 +359,6 @@ def forgot_password_sms():
         flash("Enter the phone number linked to your account.", "warning")
         return redirect(url_for("auth.forgot_password_sms"))
 
-    now = int(time.time())
-    last_sent = int(session.get("sms_reset_sent_at", 0) or 0)
-    if now - last_sent < 60:
-        flash("Please wait before requesting another reset code.", "warning")
-        return redirect(url_for("auth.verify_reset_code"))
-
-    # Compare normalised numbers so common Kenyan formats work.
     user = next(
         (
             candidate for candidate in User.query.all()
@@ -404,7 +369,6 @@ def forgot_password_sms():
 
     # Keep the response generic to avoid exposing registered phone numbers.
     if user is None:
-        clear_sms_reset_session()
         flash(
             "If the number belongs to an account and SMS delivery is available, "
             "a reset code will be sent.",
@@ -412,21 +376,54 @@ def forgot_password_sms():
         )
         return redirect(url_for("auth.login"))
 
+    now = datetime.utcnow()
+    most_recent = (
+        PasswordResetCode.query
+        .filter_by(user_id=user.id)
+        .order_by(PasswordResetCode.created_at.desc())
+        .first()
+    )
+    last_sent = int(session.get("sms_reset_sent_at", 0) or 0)
+    if (
+        (most_recent and most_recent.created_at and
+         (now - most_recent.created_at).total_seconds() < 60)
+        or (int(time.time()) - last_sent < 60)
+    ):
+        flash("Please wait before requesting another reset code.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
+
     code = f"{secrets.randbelow(1_000_000):06d}"
-    if not send_reset_sms(user.phone, code):
-        clear_sms_reset_session()
-        flash(
-            "We could not send the reset SMS. Please try again later.",
-            "danger",
+    reset_record = PasswordResetCode(
+        user_id=user.id,
+        code_hash=otp_digest(code),
+        expires_at=now + timedelta(minutes=10),
+        attempts=0,
+        created_at=now,
+    )
+
+    try:
+        # Replace older codes before sending; only the latest code remains valid.
+        PasswordResetCode.query.filter_by(user_id=user.id).delete(
+            synchronize_session=False
         )
+        db.session.add(reset_record)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Could not create SMS password reset record.")
+        flash("We could not start password recovery. Please try again later.", "danger")
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    if not send_reset_sms(user.phone, code):
+        # Keep the short-lived record for server-side rate limiting, but never
+        # expose its ID to a client that did not receive a successful response.
+        flash("We could not send the reset SMS. Please try again later.", "danger")
         return redirect(url_for("auth.forgot_password_sms"))
 
     session["sms_reset_user_id"] = user.id
-    session["sms_reset_code_hash"] = otp_digest(code)
-    session["sms_reset_expires_at"] = now + 600
-    session["sms_reset_attempts"] = 0
-    session["sms_reset_sent_at"] = now
+    session["sms_reset_code_id"] = reset_record.id
     session["sms_reset_verified"] = False
+    session["sms_reset_sent_at"] = int(time.time())
     session.permanent = False
 
     flash("If SMS delivery succeeded, your code should arrive shortly.", "info")
@@ -435,38 +432,44 @@ def forgot_password_sms():
 
 @auth.route("/verify-reset-code", methods=["GET", "POST"])
 def verify_reset_code():
-    code_hash = session.get("sms_reset_code_hash")
-    expires_at = int(session.get("sms_reset_expires_at", 0) or 0)
+    code_id = session.get("sms_reset_code_id")
+    user_id = session.get("sms_reset_user_id")
 
-    if not code_hash or not session.get("sms_reset_user_id"):
+    if not code_id or not user_id:
         flash("Request a password reset code first.", "warning")
         return redirect(url_for("auth.forgot_password_sms"))
 
-    if int(time.time()) >= expires_at:
+    reset_record = db.session.get(PasswordResetCode, code_id)
+    if (
+        reset_record is None
+        or reset_record.user_id != user_id
+        or reset_record.expires_at <= datetime.utcnow()
+    ):
         clear_sms_reset_session()
         flash("Your reset code expired. Request a new one.", "warning")
         return redirect(url_for("auth.forgot_password_sms"))
 
     if request.method == "POST":
-        attempts = int(session.get("sms_reset_attempts", 0) or 0)
-        if attempts >= 5:
+        if reset_record.attempts >= 5:
             clear_sms_reset_session()
             flash("Too many incorrect attempts. Request a new code.", "danger")
             return redirect(url_for("auth.forgot_password_sms"))
 
         submitted_code = request.form.get("code", "").strip()
-        if not submitted_code.isdigit() or len(submitted_code) != 6:
-            session["sms_reset_attempts"] = attempts + 1
-            flash("Enter the six-digit code from your SMS.", "warning")
-            return redirect(url_for("auth.verify_reset_code"))
-
-        if not hmac.compare_digest(otp_digest(submitted_code), code_hash):
-            attempts += 1
-            if attempts >= 5:
+        if (
+            not submitted_code.isdigit()
+            or len(submitted_code) != 6
+            or not hmac.compare_digest(
+                otp_digest(submitted_code),
+                reset_record.code_hash,
+            )
+        ):
+            reset_record.attempts += 1
+            db.session.commit()
+            if reset_record.attempts >= 5:
                 clear_sms_reset_session()
                 flash("Too many incorrect attempts. Request a new code.", "danger")
                 return redirect(url_for("auth.forgot_password_sms"))
-            session["sms_reset_attempts"] = attempts
             flash("That code is incorrect. Please try again.", "danger")
             return redirect(url_for("auth.verify_reset_code"))
 
@@ -771,7 +774,10 @@ def forgot_password():
         )
         return redirect(url_for("auth.login"))
 
-    return render_template("forgot_password.html")
+    # SMS is the default recovery method. Keep POST handling above for
+    # compatibility with older email-reset forms, but send new GET requests
+    # to the phone-based flow.
+    return redirect(url_for("auth.forgot_password_sms"))
 
 
 # ----------------------------------------------------------------------

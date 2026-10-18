@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}About Us | Carvion Motors{% endblock %}
+{% block content %}
+<section class="page-about py-3 py-md-5">
+    <div class="p-4 p-md-5 rounded-4 mb-4" style="background:linear-gradient(135deg,#111827,#263449);color:#fff;border-bottom:4px solid #fbbf24;">
+        <p class="text-uppercase fw-bold mb-2" style="color:#fbbf24;letter-spacing:.12em;">About Carvion Motors</p>
+        <h1 class="display-5 fw-bold text-white mb-3">Find your next car with more confidence.</h1>
+        <p class="lead mb-0" style="color:#e5e7eb;max-width:760px;">Carvion Motors is an online vehicle marketplace designed to help people in Kenya discover vehicles and connect with sellers in one convenient place.</p>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body p-4">
+                <div class="fs-2 mb-3" aria-hidden="true">🚗</div>
+                <h2 class="h4">Explore listings</h2>
+                <p class="mb-0">Browse available vehicles, compare key details, review photos and filter listings to narrow your search.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body p-4">
+                <div class="fs-2 mb-3" aria-hidden="true">🤝</div>
+                <h2 class="h4">Connect directly</h2>
+                <p class="mb-0">Use the available contact and messaging options to ask sellers questions and arrange the next steps.</p>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100"><div class="card-body p-4">
+                <div class="fs-2 mb-3" aria-hidden="true">📋</div>
+                <h2 class="h4">List a vehicle</h2>
+                <p class="mb-0">Registered sellers can submit vehicle details and photos so their listings can appear on the marketplace.</p>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card border-0">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="h3">Our approach</h2>
+            <p>We aim to make vehicle discovery more straightforward through clear listing information, useful search tools and ways for buyers and sellers to communicate.</p>
+            <p>Carvion Motors is a marketplace, not a substitute for your own checks. Before paying for a vehicle or completing a purchase, independently verify the vehicle's identity, ownership documents, condition, history and seller details. Meet safely, arrange an inspection with a qualified professional where appropriate, and use a secure payment process.</p>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <a class="btn btn-dark" href="{{ url_for('cars.all_cars') }}">Browse cars</a>
+                <a class="btn btn-outline-secondary" href="{{ url_for('privacy') }}">Read our Privacy Policy</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

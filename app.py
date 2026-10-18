@@ -302,6 +302,10 @@ def create_app():
     def contact():
         return render_template("contact.html")
 
+    @app.route("/privacy")
+    def privacy():
+        return render_template("privacy.html")
+
     @app.route("/buyer")
     @login_required
     def buyer_home():

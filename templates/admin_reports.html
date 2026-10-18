@@ -1,4 +1,5 @@
- {% extends "base.html" %}
+
+{% extends "base.html" %}
 
 {% block title %}Listing Reports | Admin{% endblock %}
 
@@ -8,11 +9,8 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h2 class="fw-bold mb-1">Listing Reports</h2>
-            <p class="text-muted mb-0">
-                Review reports submitted about vehicle listings.
-            </p>
+            <p class="text-muted mb-0">Review reports submitted about vehicle listings.</p>
         </div>
-
         <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
             Admin Dashboard
         </a>
@@ -27,7 +25,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -36,7 +33,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -45,7 +41,6 @@
                 </div>
             </div>
         </div>
-
         <div class="col-6 col-lg-3">
             <div class="card border-0 shadow-sm h-100">
                 <div class="card-body">
@@ -93,7 +88,9 @@
                         <td>
                             {% if report.car %}
                                 {{ report.car.brand }} {{ report.car.model }}
-                                <div class="small text-muted">{{ report.car.registration_number }}</div>
+                                <div class="small text-muted">
+                                    {{ report.car.registration_number or "No registration" }}
+                                </div>
                             {% else %}
                                 Vehicle unavailable
                             {% endif %}
@@ -125,4 +122,23 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a
+                            <a class="btn btn-sm btn-outline-primary"
+                               href="{{ url_for('admin.report_details', report_id=report.id) }}">
+                                Review
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            No reports found for this filter.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

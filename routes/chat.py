@@ -286,6 +286,14 @@ def start_car_chat(car_id):
         flash("Vehicle not found.", "danger")
         return redirect(url_for("cars.all_cars"))
 
+    # Prevent direct URL access from creating inquiries for hidden listings.
+    if car.status != "Approved":
+        flash(
+            "This vehicle is not available for inquiries yet.",
+            "warning",
+        )
+        return redirect(url_for("cars.all_cars"))
+
     if normalized_role(current_user) not in ("buyer", "seller"):
         flash(
             "Your account cannot start vehicle inquiries.",

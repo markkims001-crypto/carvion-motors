@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 
+{% block title %}My Vehicle Inquiries | Carvion Motors{% endblock %}
+
 {% block content %}
 
-<div class="container py-4">
+<div class="container py-4 page-buyer-inquiries">
 
-```
 <!-- HEADER -->
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -36,7 +37,7 @@
 
     {% for inquiry in inquiries %}
 
-    <div class="card shadow-sm border-0 mb-4">
+    <div class="card shadow-sm border-0 mb-4 inquiry-card">
 
         <!-- CARD HEADER -->
 
@@ -355,7 +356,6 @@
     </div>
 
 {% endif %}
-```
 
 </div>
 

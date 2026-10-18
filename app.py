@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for
+from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
@@ -124,6 +124,79 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
 
+    @app.before_request
+    def secure_legacy_admin_mutations():
+        """Prevent legacy GET role changes and safely resolve inquiries."""
+        path_parts = request.path.strip("/").split("/")
+
+        # The old admin role-change route was registered as GET. Block it
+        # so it can never mutate an account from a simple link or crawler.
+        if len(path_parts) == 4 and path_parts[:2] == ["admin", "change_role"]:
+            if request.method != "POST":
+                flash("User role changes must be submitted securely.", "warning")
+                return redirect(url_for("admin.users"))
+
+            if not current_user.is_authenticated or current_user.role.lower() != "admin":
+                flash("Administrator access required.", "danger")
+                return redirect(url_for("home"))
+
+            try:
+                user_id = int(path_parts[2])
+            except (TypeError, ValueError):
+                flash("Invalid user selected.", "danger")
+                return redirect(url_for("admin.users"))
+
+            role = path_parts[3].lower()
+            if role not in {"buyer", "seller", "admin"}:
+                flash("Invalid role selected.", "danger")
+                return redirect(url_for("admin.users"))
+
+            user = db.session.get(User, user_id)
+            if user is None:
+                flash("User not found.", "danger")
+                return redirect(url_for("admin.users"))
+
+            if user.id == current_user.id and role != "admin":
+                flash("You cannot remove your own administrator role.", "warning")
+                return redirect(url_for("admin.users"))
+
+            user.role = role
+            db.session.commit()
+            flash("User role updated successfully.", "success")
+            return redirect(url_for("admin.users"))
+
+        # The legacy resolver writes a non-existent Inquiry.is_closed field.
+        # Handle it here using the actual status field.
+        if (
+            len(path_parts) == 4
+            and path_parts[:2] == ["admin", "inquiry"]
+            and path_parts[3] == "resolve"
+            and request.method == "POST"
+        ):
+            if not current_user.is_authenticated or current_user.role.lower() != "admin":
+                flash("Administrator access required.", "danger")
+                return redirect(url_for("home"))
+
+            try:
+                inquiry_id = int(path_parts[2])
+            except (TypeError, ValueError):
+                flash("Invalid inquiry selected.", "danger")
+                return redirect(url_for("admin.inquiries"))
+
+            inquiry = db.session.get(Inquiry, inquiry_id)
+            if inquiry is None:
+                flash("Inquiry not found.", "danger")
+                return redirect(url_for("admin.inquiries"))
+
+            inquiry.status = "Resolved"
+            db.session.commit()
+            flash("Inquiry marked as resolved.", "success")
+            return redirect(
+                url_for("admin.inquiry_details", inquiry_id=inquiry.id)
+            )
+
+        return None
+
     with app.app_context():
         try:
             db.create_all()
@@ -145,10 +218,7 @@ def create_app():
 
                 print("Seller contact preferences verified.")
 
-            database_url = app.config.get(
-                "SQLALCHEMY_DATABASE_URI", ""
-            )
-
+            database_url = app.config.get("SQLALCHEMY_DATABASE_URI", "")
             if database_url.startswith("postgresql"):
                 print("DATABASE: PostgreSQL")
             elif database_url.startswith("sqlite"):
@@ -158,18 +228,11 @@ def create_app():
 
             print("=" * 60)
 
-            admin_email = os.environ.get(
-                "CARVION_ADMIN_EMAIL", ""
-            ).strip().lower()
-            admin_password = os.environ.get(
-                "CARVION_ADMIN_PASSWORD", ""
-            )
+            admin_email = os.environ.get("CARVION_ADMIN_EMAIL", "").strip().lower()
+            admin_password = os.environ.get("CARVION_ADMIN_PASSWORD", "")
 
             if admin_email and admin_password:
-                admin_user = User.query.filter_by(
-                    email=admin_email
-                ).first()
-
+                admin_user = User.query.filter_by(email=admin_email).first()
                 if admin_user is None:
                     admin_user = User(
                         name="Carvion Admin",
@@ -230,10 +293,7 @@ def create_app():
             .all()
         )
 
-        return render_template(
-            "buyer_home.html",
-            inquiries=inquiries,
-        )
+        return render_template("buyer_home.html", inquiries=inquiries)
 
     return app
 
@@ -241,7 +301,6 @@ def create_app():
 app = create_app()
 
 print("CARVION APP STARTED")
-
 
 if __name__ == "__main__":
     print("RUNNING FLASK SERVER")

@@ -372,6 +372,110 @@ def reset_password_sms():
     )
 
 
+
+# ----------------------------------------------------------------------
+# SMS PASSWORD RESET REQUEST AND OTP VERIFICATION
+# ----------------------------------------------------------------------
+
+@auth.route("/forgot-password-sms", methods=["GET", "POST"])
+def forgot_password_sms():
+    if request.method == "GET":
+        return render_template("forgot_password.html", sms_mode=True)
+
+    phone = request.form.get("phone", "").strip()
+    if not phone:
+        flash("Enter the phone number linked to your account.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    now = int(time.time())
+    last_sent = int(session.get("sms_reset_sent_at", 0) or 0)
+    if now - last_sent < 60:
+        flash("Please wait before requesting another reset code.", "warning")
+        return redirect(url_for("auth.verify_reset_code"))
+
+    # Compare normalised numbers so common Kenyan formats work.
+    user = next(
+        (
+            candidate for candidate in User.query.all()
+            if phone_matches(candidate.phone, phone)
+        ),
+        None,
+    )
+
+    # Keep the response generic to avoid exposing registered phone numbers.
+    if user is None:
+        clear_sms_reset_session()
+        flash(
+            "If the number belongs to an account and SMS delivery is available, "
+            "a reset code will be sent.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
+
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    if not send_reset_sms(user.phone, code):
+        clear_sms_reset_session()
+        flash(
+            "We could not send the reset SMS. Please try again later.",
+            "danger",
+        )
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    session["sms_reset_user_id"] = user.id
+    session["sms_reset_code_hash"] = otp_digest(code)
+    session["sms_reset_expires_at"] = now + 600
+    session["sms_reset_attempts"] = 0
+    session["sms_reset_sent_at"] = now
+    session["sms_reset_verified"] = False
+    session.permanent = False
+
+    flash("If SMS delivery succeeded, your code should arrive shortly.", "info")
+    return redirect(url_for("auth.verify_reset_code"))
+
+
+@auth.route("/verify-reset-code", methods=["GET", "POST"])
+def verify_reset_code():
+    code_hash = session.get("sms_reset_code_hash")
+    expires_at = int(session.get("sms_reset_expires_at", 0) or 0)
+
+    if not code_hash or not session.get("sms_reset_user_id"):
+        flash("Request a password reset code first.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    if int(time.time()) >= expires_at:
+        clear_sms_reset_session()
+        flash("Your reset code expired. Request a new one.", "warning")
+        return redirect(url_for("auth.forgot_password_sms"))
+
+    if request.method == "POST":
+        attempts = int(session.get("sms_reset_attempts", 0) or 0)
+        if attempts >= 5:
+            clear_sms_reset_session()
+            flash("Too many incorrect attempts. Request a new code.", "danger")
+            return redirect(url_for("auth.forgot_password_sms"))
+
+        submitted_code = request.form.get("code", "").strip()
+        if not submitted_code.isdigit() or len(submitted_code) != 6:
+            session["sms_reset_attempts"] = attempts + 1
+            flash("Enter the six-digit code from your SMS.", "warning")
+            return redirect(url_for("auth.verify_reset_code"))
+
+        if not hmac.compare_digest(otp_digest(submitted_code), code_hash):
+            attempts += 1
+            if attempts >= 5:
+                clear_sms_reset_session()
+                flash("Too many incorrect attempts. Request a new code.", "danger")
+                return redirect(url_for("auth.forgot_password_sms"))
+            session["sms_reset_attempts"] = attempts
+            flash("That code is incorrect. Please try again.", "danger")
+            return redirect(url_for("auth.verify_reset_code"))
+
+        session["sms_reset_verified"] = True
+        return redirect(url_for("auth.reset_password_sms"))
+
+    return render_template("forgot_password.html", verify_sms=True)
+
+
 # ----------------------------------------------------------------------
 # Optional email reset-link flow
 # ----------------------------------------------------------------------
@@ -486,7 +590,7 @@ def reset_password(token):
 # Logout and profile
 # ----------------------------------------------------------------------
 
-@auth.route("/logout")
+@auth.route("/logout", methods=["POST"])
 @login_required
 def logout():
     logout_user()
@@ -503,7 +607,8 @@ def profile():
     )
 
 
-@auth.route("/force_logout")
+@auth.route("/force_logout", methods=["POST"])
+@login_required
 def force_logout():
     logout_user()
     return redirect(url_for("auth.login"))

@@ -1,4 +1,4 @@
-
+```html
 {% extends "base.html" %}
 
 {% block title %}
@@ -228,9 +228,11 @@
 
         </div>
 
-        <!-- RIGHT COLUMN: CONTACT SELLER -->
+        <!-- RIGHT COLUMN -->
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0">
+
+            <!-- CONTACT SELLER -->
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
 
                     <h4 class="fw-bold mb-4">Contact Seller</h4>
@@ -280,10 +282,16 @@
                           and current_user.role|lower == "buyer"
                           and current_user.id != car.seller_id %}
 
-                    <!-- EXISTING IN-SITE MESSAGING -->
+                    <!-- IN-SITE MESSAGING -->
                     <form
                         method="POST"
                         action="{{ url_for('cars.send_inquiry', car_id=car.id) }}">
+
+                        {% if csrf_token is defined %}
+                        <input type="hidden"
+                               name="csrf_token"
+                               value="{{ csrf_token() }}">
+                        {% endif %}
 
                         <div class="mb-3">
                             <label for="sellerMessage"
@@ -333,8 +341,101 @@
 
                 </div>
             </div>
-        </div>
 
+            <!-- REPORT LISTING -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+
+                    <h5 class="fw-bold mb-2">
+                        <i class="bi bi-flag"></i>
+                        Report this listing
+                    </h5>
+
+                    <p class="text-muted small">
+                        Let our team know if this listing appears misleading,
+                        suspicious, or violates marketplace rules.
+                    </p>
+
+                    {% if current_user.is_authenticated
+                          and current_user.id != car.seller_id %}
+
+                    <form method="POST"
+                          action="{{ url_for('cars.report_listing', car_id=car.id) }}">
+
+                        {% if csrf_token is defined %}
+                        <input type="hidden"
+                               name="csrf_token"
+                               value="{{ csrf_token() }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="reportReason" class="form-label">
+                                Reason for reporting
+                            </label>
+
+                            <select id="reportReason"
+                                    name="reason"
+                                    class="form-select"
+                                    required>
+                                <option value="">Select a reason</option>
+                                <option value="Suspicious price or scam">
+                                    Suspicious price or possible scam
+                                </option>
+                                <option value="Misleading information">
+                                    Misleading vehicle information
+                                </option>
+                                <option value="Incorrect vehicle details">
+                                    Incorrect vehicle details
+                                </option>
+                                <option value="Duplicate listing">
+                                    Duplicate listing
+                                </option>
+                                <option value="Suspected stolen vehicle">
+                                    Suspected stolen vehicle
+                                </option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reportDetails" class="form-label">
+                                Additional details (optional)
+                            </label>
+
+                            <textarea id="reportDetails"
+                                      name="details"
+                                      class="form-control"
+                                      rows="3"
+                                      maxlength="2000"
+                                      placeholder="Explain your concern..."></textarea>
+                        </div>
+
+                        <button type="submit"
+                                class="btn btn-outline-danger w-100">
+                            <i class="bi bi-flag"></i>
+                            Submit Report
+                        </button>
+                    </form>
+
+                    {% elif not current_user.is_authenticated %}
+
+                    <a href="{{ url_for('auth.login') }}"
+                       class="btn btn-outline-danger w-100">
+                        Login to Report Listing
+                    </a>
+
+                    {% else %}
+
+                    <p class="text-muted mb-0">
+                        You cannot report your own listing.
+                    </p>
+
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 
@@ -354,3 +455,4 @@
 </style>
 
 {% endblock %}
+```

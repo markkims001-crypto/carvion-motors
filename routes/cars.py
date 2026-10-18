@@ -890,6 +890,23 @@ def add_car():
         if current_user.role == "buyer":
             current_user.role = "seller"
 
+        # Notify every administrator that a new listing has been published.
+        administrators = User.query.filter(
+            db.func.lower(User.role) == "admin"
+        ).all()
+        for administrator in administrators:
+            db.session.add(Notification(
+                user_id=administrator.id,
+                car_id=car.id,
+                title="New Vehicle Listing",
+                message=(
+                    f"{car.brand} {car.model} ({car.registration_number}) "
+                    f"was published by {current_user.name}."
+                ),
+                notification_type="vehicle",
+                is_read=False,
+            ))
+
         db.session.commit()
 
         print("================================================")
@@ -1685,17 +1702,36 @@ def mark_notification_read(notification_id):
     db.session.commit()
 
     if notification.car_id:
+        if (
+            (getattr(current_user, "role", "") or "").lower() == "seller"
+            and notification.notification_type in {"approval", "rejection", "vehicle"}
+        ):
+            return redirect(url_for("cars.my_cars"))
+
+        if (
+            (getattr(current_user, "role", "") or "").lower() == "admin"
+            and notification.notification_type == "report"
+        ):
+            return redirect(url_for("admin.reports"))
+
+        if (getattr(current_user, "role", "") or "").lower() == "admin":
+            return redirect(url_for("admin.car_details", car_id=notification.car_id))
 
         return redirect(
-            url_for(
-                "cars.car_details",
-                car_id=notification.car_id
-            )
+            url_for("cars.car_details", car_id=notification.car_id)
         )
 
-    return redirect(
-        url_for("cars.notifications")
-    )
+    if notification.notification_type == "report" and (
+        (getattr(current_user, "role", "") or "").lower() == "admin"
+    ):
+        return redirect(url_for("admin.reports"))
+
+    if notification.notification_type == "user" and (
+        (getattr(current_user, "role", "") or "").lower() == "admin"
+    ):
+        return redirect(url_for("admin.dashboard"))
+
+    return redirect(url_for("cars.notifications"))
 
 
 # ============================================================
@@ -1963,6 +1999,24 @@ def report_listing(car_id):
         )
 
         db.session.add(report)
+
+        # Notify administrators so reports do not depend on manual checking.
+        administrators = User.query.filter(
+            db.func.lower(User.role) == "admin"
+        ).all()
+        for administrator in administrators:
+            db.session.add(Notification(
+                user_id=administrator.id,
+                car_id=car.id,
+                title="New Listing Report",
+                message=(
+                    f"{current_user.name} reported {car.brand} {car.model}: "
+                    f"{reason}."
+                ),
+                notification_type="report",
+                is_read=False,
+            ))
+
         db.session.commit()
 
         flash(

@@ -203,7 +203,7 @@ def all_cars():
     )
 
     query = Car.query.filter_by(
-        status="Approved"
+        status="Pending"
     )
 
     if brand:
@@ -898,10 +898,10 @@ def add_car():
             db.session.add(Notification(
                 user_id=administrator.id,
                 car_id=car.id,
-                title="New Vehicle Listing",
+                title="New Vehicle Submission",
                 message=(
                     f"{car.brand} {car.model} ({car.registration_number}) "
-                    f"was published by {current_user.name}."
+                    f"was submitted for review by {current_user.name}."
                 ),
                 notification_type="vehicle",
                 is_read=False,
@@ -966,8 +966,8 @@ def add_car():
     # ========================================================
 
     flash(
-        "Your car listing is now live. "
-        "Your account is now a seller. Administrators may still review listings.",
+        "Your car listing has been submitted for admin review. "
+        "Your account is now a seller. The vehicle will appear publicly after approval.",
         "success"
     )
 

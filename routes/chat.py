@@ -513,6 +513,13 @@ def admin_chat():
             )
 
             db.session.add(message)
+            db.session.add(Notification(
+                user_id=admin.id,
+                title="New Support Message",
+                message=f"{current_user.name} sent you a new support message.",
+                notification_type="message",
+                is_read=False,
+            ))
             conversation.updated_at = datetime.utcnow()
             db.session.commit()
 

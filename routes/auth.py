@@ -82,13 +82,17 @@ def clear_sms_reset_session():
 # Resend email reset helper (optional alternative)
 # ----------------------------------------------------------------------
 
+
 def send_reset_email(user, reset_url):
     if resend is None:
-        current_app.logger.error("Email reset failed: resend package is not installed.")
+        current_app.logger.error(
+            "Email reset failed: resend package is not installed."
+        )
         return False
 
     api_key = os.environ.get("RESEND_API_KEY", "").strip()
     from_email = os.environ.get("RESEND_FROM_EMAIL", "").strip()
+
     if not api_key or not from_email:
         current_app.logger.error(
             "Email reset requires RESEND_API_KEY and RESEND_FROM_EMAIL."
@@ -97,26 +101,48 @@ def send_reset_email(user, reset_url):
 
     try:
         resend.api_key = api_key
+
         response = resend.Emails.send({
             "from": from_email,
             "to": [user.email],
             "subject": "Carvion Motors password reset",
             "text": (
-                f"Hello {user.name},\n\nReset your password using this link:\n"
-                f"{reset_url}\n\nThis link expires in one hour. "
+                f"Hello {user.name},\n\n"
+                "Reset your password using this link:\n"
+                f"{reset_url}\n\n"
+                "This link expires in one hour. "
                 "If you did not request this, ignore this email."
             ),
             "html": (
                 f"<p>Hello {user.name},</p>"
-                "<p>Use the link below to reset your Carvion Motors password. "
-                "It expires in one hour.</p>"
+                "<p>Use the link below to reset your Carvion Motors "
+                "password. It expires in one hour.</p>"
                 f'<p><a href="{reset_url}">Reset my password</a></p>'
                 "<p>If you did not request this, ignore this email.</p>"
             ),
         })
-        return bool(response)
+
+        if isinstance(response, dict):
+            message_id = response.get("id")
+        else:
+            message_id = getattr(response, "id", None)
+
+        if not message_id:
+            current_app.logger.error(
+                "Resend returned no message ID for the password-reset email."
+            )
+            return False
+
+        current_app.logger.warning(
+            "Resend accepted password-reset email; message_id=%s",
+            message_id,
+        )
+        return True
+
     except Exception:
-        current_app.logger.exception("Password reset email sending failed.")
+        current_app.logger.exception(
+            "Password reset email sending failed."
+        )
         return False
 
 

@@ -33,8 +33,9 @@ from models import (
     User,
     Favorite,
     CompareCar,
-    Notification
-)
+    Notification,
+    Report
+ )
 
 
 # ============================================================
@@ -1871,3 +1872,122 @@ def seller_inquiries():
         return redirect(url_for("cars.all_cars"))
 
     return redirect(url_for("chat.seller_inquiries_chat"))
+
+# ============================================================
+# REPORT A CAR LISTING
+# ============================================================
+
+@cars.route(
+    "/car/<int:car_id>/report",
+    methods=["POST"]
+)
+@login_required
+def report_listing(car_id):
+
+    car = Car.query.get_or_404(car_id)
+
+    # Only allow reports on publicly available listings.
+    if car.status != "Approved":
+        flash(
+            "This listing is not available for reporting.",
+            "warning"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
+        )
+
+    # Users cannot report their own vehicles.
+    if car.seller_id == current_user.id:
+        flash(
+            "You cannot report your own listing.",
+            "warning"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
+        )
+
+    allowed_reasons = {
+        "Suspicious price or scam",
+        "Misleading information",
+        "Incorrect vehicle details",
+        "Duplicate listing",
+        "Suspected stolen vehicle",
+        "Other",
+    }
+
+    reason = request.form.get("reason", "").strip()
+    details = request.form.get("details", "").strip()
+
+    if reason not in allowed_reasons:
+        flash(
+            "Please select a valid reason for your report.",
+            "danger"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
+        )
+
+    if len(details) > 2000:
+        flash(
+            "Additional details must not exceed 2,000 characters.",
+            "danger"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
+        )
+
+    try:
+        # Prevent repeated pending reports from the same user
+        # about the same vehicle.
+        existing_report = Report.query.filter_by(
+            car_id=car.id,
+            reporter_id=current_user.id,
+            status="Pending"
+        ).first()
+
+        if existing_report:
+            flash(
+                "You already have a pending report for this listing.",
+                "info"
+            )
+            return redirect(
+                url_for("cars.car_details", car_id=car.id)
+            )
+
+        report = Report(
+            car_id=car.id,
+            reporter_id=current_user.id,
+            reason=reason,
+            details=details or None,
+            status="Pending"
+        )
+
+        db.session.add(report)
+        db.session.commit()
+
+        flash(
+            "Your report has been submitted for admin review.",
+            "success"
+        )
+
+    except Exception:
+        db.session.rollback()
+
+        current_app.logger.exception(
+            "Failed to submit car listing report"
+        )
+
+        flash(
+            "We could not submit your report. Please try again.",
+            "danger"
+        )
+
+    return redirect(
+        url_for("cars.car_details", car_id=car.id)
+    )
+    @cars.route(
+    "/car/<int:car_id>/report",
+    methods=["POST"]
+     )
+    @login_required
+    def report_listing(car_id):()

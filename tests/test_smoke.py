@@ -65,3 +65,13 @@ def test_about_and_privacy_pages_are_reachable():
         assert b"About Carvion Motors" in about_response.data
         assert privacy_response.status_code == 200
         assert b"Privacy Policy" in privacy_response.data
+
+
+def test_contact_page_shows_official_contact_details():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        response = client.get("/contact")
+        assert response.status_code == 200
+        assert b"+0182709886" in response.data
+        assert b"carvionmotor@gmail.com" in response.data

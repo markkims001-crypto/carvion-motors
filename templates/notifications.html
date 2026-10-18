@@ -70,7 +70,11 @@
                         <small class="text-muted">{{ notification.created_at.strftime('%d %b %Y, %H:%M') }}</small>
                         {% endif %}
                         <div class="d-flex flex-wrap gap-2 mt-2">
-                            {% if notification.car_id %}
+                            {% if current_user.role|lower == "admin" and notification.notification_type == "report" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.reports') }}">Review reports</a>
+                            {% elif current_user.role|lower == "admin" and notification.notification_type == "user" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Open dashboard</a>
+                            {% elif notification.car_id %}
                                 {% if current_user.role|lower == "admin" %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.car_details', car_id=notification.car_id) }}">View vehicle</a>
                                 {% elif current_user.role|lower == "seller" and notification.notification_type in ["approval", "rejection", "vehicle"] %}
@@ -78,9 +82,6 @@
                                 {% else %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=notification.car_id) }}">View vehicle</a>
                                 {% endif %}
-                            {% elif current_user.role|lower == "admin" and notification.notification_type == "report" %}
-                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.reports') }}">Review reports</a>
-                            {% elif current_user.role|lower == "admin" and notification.notification_type == "user" %}
                                 <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Open dashboard</a>
                             {% endif %}
                             {% if not notification.is_read %}

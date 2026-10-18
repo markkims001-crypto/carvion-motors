@@ -2,7 +2,7 @@
 
 {% block content %}
 
-<div class="container py-4">
+<div class="container py-4 page-chat">
 
 
 <h2>
@@ -24,7 +24,7 @@ style="height:400px; overflow-y:auto;">
 
 {% if msg.sender_id == current_user.id %}
 
-<div class="text-end">
+<div class="chat-message chat-message-mine">\n<div class="text-end">
 
 <span class="badge bg-primary">
 You
@@ -76,7 +76,7 @@ No messages yet.
 <form method="POST">
 
 
-<div class="card-footer">
+<div class="card-footer chat-compose">
 
 
 <textarea

@@ -52,3 +52,16 @@ def test_password_reset_pages_are_reachable():
         assert client.get("/forgot-password-email").status_code == 200
         assert client.get("/forgot-password-sms").status_code == 200
         assert client.get("/verify-reset-code").status_code == 302
+
+
+def test_about_and_privacy_pages_are_reachable():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        about_response = client.get("/about")
+        privacy_response = client.get("/privacy")
+
+        assert about_response.status_code == 200
+        assert b"About Carvion Motors" in about_response.data
+        assert privacy_response.status_code == 200
+        assert b"Privacy Policy" in privacy_response.data

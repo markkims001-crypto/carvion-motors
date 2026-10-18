@@ -154,6 +154,7 @@ def send_reset_sms(phone, code):
     )
 
     try:
+
         africastalking.initialize(username, api_key)
 
         if sender_id:
@@ -404,85 +405,76 @@ def register():
     return render_template("register.html")
 
 
+
 # ----------------------------------------------------------------------
-# SMS PASSWORD RESET REQUEST
+# EMAIL PASSWORD RESET REQUEST
 # ----------------------------------------------------------------------
 
 @auth.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if request.method == "POST":
-        phone = request.form.get("phone", "").strip()
-        normalised = normalise_phone(phone)
+        email = request.form.get("email", "").strip().lower()
 
-        user = None
-        for candidate in User.query.all():
-            if phone_matches(candidate.phone, normalised):
-                user = candidate
-                break
+        if email:
+            user = User.query.filter_by(email=email).first()
 
-        if user:
-            now = int(time.time())
-            previous_sent = int(session.get("sms_reset_sent_at", 0))
+            if user:
+                try:
+                    token = generate_reset_token(user.email)
+                    reset_url = url_for(
+                        "auth.reset_password",
+                        token=token,
+                        _external=True,
+                    )
 
-            if now - previous_sent < 60:
-                flash("Please wait before requesting another code.", "warning")
-                return render_template("forgot_password.html")
+                    sent = send_reset_email(user, reset_url)
 
-            code = f"{secrets.randbelow(1_000_000):06d}"
+                    if not sent:
+                        current_app.logger.error(
+                            "Password reset email could not be sent."
+                        )
 
-            clear_sms_reset_session()
+                except Exception:
+                    current_app.logger.exception(
+                        "Password reset request failed."
+                    )
 
-            if send_reset_sms(user.phone, code):
-                session["sms_reset_user_id"] = user.id
-                session["sms_reset_code_hash"] = otp_digest(code)
-                session["sms_reset_expires_at"] = now + 600
-                session["sms_reset_attempts"] = 0
-                session["sms_reset_sent_at"] = now
-
-                flash("If your number matches an account, a reset code has been sent.", "info")
-                return redirect(url_for("auth.verify_reset_code"))
-
-            clear_sms_reset_session()
-            flash("We could not send the reset code. Please try again later.", "danger")
-        else:
-            flash("If your number matches an account, a reset code will be sent.", "info")
+        flash(
+            "If an account exists for that email, "
+            "a password reset link has been sent.",
+            "info",
+        )
+        return redirect(url_for("auth.login"))
 
     return render_template("forgot_password.html")
 
+@auth.route("/test-reset-email", methods=["GET"])
+def test_reset_email():
+    if not current_app.config.get("TESTING") and not current_app.debug:
+        # Require an explicit environment switch on deployed services.
+        if os.environ.get("ENABLE_EMAIL_TEST_ROUTE") != "true":
+            return "Not found", 404
 
-# ----------------------------------------------------------------------
-# VERIFY SMS RESET CODE
-# ----------------------------------------------------------------------
+    if resend is None:
+        return "Resend package is not installed.", 500
 
-@auth.route("/verify-reset-code", methods=["GET", "POST"])
-def verify_reset_code():
-    user_id = session.get("sms_reset_user_id")
-    expires_at = int(session.get("sms_reset_expires_at", 0))
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
+    from_email = os.environ.get("RESEND_FROM_EMAIL", "").strip()
 
-    if not user_id or int(time.time()) > expires_at:
-        clear_sms_reset_session()
-        flash("Your reset code has expired. Please request another.", "warning")
-        return redirect(url_for("auth.forgot_password"))
+    if not api_key or not from_email:
+        return "Missing RESEND_API_KEY or RESEND_FROM_EMAIL.", 500
 
-    if request.method == "POST":
-        attempts = int(session.get("sms_reset_attempts", 0))
+    try:
+        resend.api_key = api_key
+        response = resend.Emails.send({
+            "from": from_email,
+            "to": ["markkims001@gmail.com"],
+            "subject": "Carvion Motors email test",
+            "text": "This is a test of Carvion Motors password-reset email delivery.",
+        })
+        current_app.logger.info("Resend test response: %s", response)
+        return "Resend accepted the test email. Check your inbox and spam folder."
+    except Exception:
+        current_app.logger.exception("Resend test email failed.")
+        return "Resend rejected the test email. Check Render logs.", 500
 
-        if attempts >= 5:
-            clear_sms_reset_session()
-            flash("Too many incorrect attempts. Request a new code.", "danger")
-            return redirect(url_for("auth.forgot_password"))
-
-        submitted_code = request.form.get("code", "").strip()
-        expected_hash = session.get("sms_reset_code_hash", "")
-        submitted_hash = otp_digest(submitted_code)
-
-        if not submitted_code or not hmac.compare_digest(
-            expected_hash, submitted_hash
-        ):
-            session["sms_reset_attempts"] = attempts + 1
-            flash("Incorrect verification code.", "danger")
-        else:
-            session["sms_reset_verified"] = True
-            return redirect(url_for("auth.reset_password_sms"))
-
-    return render_template("verify_reset_code.html")

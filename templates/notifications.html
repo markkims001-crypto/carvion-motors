@@ -1,332 +1,108 @@
 {% extends "base.html" %}
 
+{% block title %}Notifications | Carvion Motors{% endblock %}
+
 {% block content %}
-
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-
-```
-<div>
-
-    <h1>
-        🔔 Notifications
-    </h1>
-
-    <p class="text-muted">
-        Stay updated with everything happening on Carvion Motors.
-    </p>
-
-</div>
-
-
-{% if unread_notifications > 0 %}
-
-<form
-    method="POST"
-    action="{{ url_for('cars.mark_all_notifications_read') }}">
-
-    <button
-        type="submit"
-        class="btn btn-outline-primary">
-
-        ✓ Mark All as Read
-
-    </button>
-
-</form>
-
-{% endif %}
-```
-
-</div>
-
-<!-- ===================================================== -->
-
-<!-- ACTIVITY SUMMARY -->
-
-<!-- ===================================================== -->
-
-<div class="row g-3 mb-4">
-
-```
-<!-- TOTAL -->
-
-<div class="col-md-3">
-
-    <div class="card shadow-sm h-100">
-
-        <div class="card-body">
-
-            <h6 class="text-muted">
-                🔔 Unread
-            </h6>
-
-            <h2>
-                {{ unread_notifications }}
-            </h2>
-
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="mb-1">🔔 Notifications</h1>
+            <p class="text-muted mb-0">Important updates about your Carvion Motors account and activity.</p>
         </div>
-
+        {% if unread_notifications > 0 %}
+        <form method="POST" action="{{ url_for('cars.mark_all_notifications_read') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-primary">Mark all as read</button>
+        </form>
+        {% endif %}
     </div>
 
-</div>
-
-
-<!-- FAVORITES -->
-
-<div class="col-md-3">
-
-    <div class="card shadow-sm h-100">
-
-        <div class="card-body">
-
-            <h6 class="text-muted">
-                ❤️ Favorites
-            </h6>
-
-            <h2>
-                {{ unread_favorites }}
-            </h2>
-
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <div class="text-muted small">Unread total</div>
+                <div class="display-6">{{ unread_notifications }}</div>
+            </div></div>
         </div>
-
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <div class="text-muted small">Vehicle updates</div>
+                <div class="display-6">{{ unread_vehicle_updates }}</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <div class="text-muted small">Inquiries</div>
+                <div class="display-6">{{ unread_inquiries }}</div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card h-100 shadow-sm"><div class="card-body">
+                <div class="text-muted small">Messages</div>
+                <div class="display-6">{{ unread_messages }}</div>
+            </div></div>
+        </div>
     </div>
 
-</div>
-
-
-<!-- COMPARE -->
-
-<div class="col-md-3">
-
-    <div class="card shadow-sm h-100">
-
-        <div class="card-body">
-
-            <h6 class="text-muted">
-                ⚖️ Compare
-            </h6>
-
-            <h2>
-                {{ unread_compares }}
-            </h2>
-
-        </div>
-
-    </div>
-
-</div>
-
-
-<!-- INQUIRIES -->
-
-<div class="col-md-3">
-
-    <div class="card shadow-sm h-100">
-
-        <div class="card-body">
-
-            <h6 class="text-muted">
-                💬 Inquiries
-            </h6>
-
-            <h2>
-                {{ unread_inquiries }}
-            </h2>
-
-        </div>
-
-    </div>
-
-</div>
-```
-
-</div>
-
-<!-- ===================================================== -->
-
-<!-- NOTIFICATIONS -->
-
-<!-- ===================================================== -->
-
-{% if notifications %}
-
-<div class="card shadow-sm">
-
-```
-<div class="list-group list-group-flush">
-
-
-    {% for notification in notifications %}
-
-    <div
-        class="list-group-item
-        {% if not notification.is_read %}
-            bg-light
-        {% endif %}">
-
-
-        <div class="d-flex align-items-start gap-3">
-
-
-            <!-- ICON -->
-
-            <div
-                class="rounded-circle bg-dark text-white
-                       d-flex align-items-center justify-content-center"
-                style="
-                    width:45px;
-                    height:45px;
-                    min-width:45px;
-                    font-size:20px;
-                ">
-
-                {% if notification.notification_type == "favorite" %}
-
-                    ❤️
-
-                {% elif notification.notification_type == "compare" %}
-
-                    ⚖️
-
-                {% elif notification.notification_type == "inquiry" %}
-
-                    💬
-
-                {% elif notification.notification_type in [
-                    "vehicle",
-                    "approval"
-                ] %}
-
-                    🚗
-
-                {% elif notification.notification_type == "rejection" %}
-
-                    ⚠️
-
-                {% else %}
-
-                    🔔
-
-                {% endif %}
-
-            </div>
-
-
-            <!-- CONTENT -->
-
-            <div class="flex-grow-1">
-
-
-                <div class="d-flex flex-wrap align-items-center gap-2">
-
-                    <h5 class="mb-0">
-
-                        {{ notification.title }}
-
-                    </h5>
-
-
-                    {% if not notification.is_read %}
-
-                    <span class="badge bg-primary">
-
-                        New
-
-                    </span>
-
-                    {% endif %}
-
+    {% if notifications %}
+    <div class="card shadow-sm">
+        <div class="list-group list-group-flush">
+            {% for notification in notifications %}
+            <div class="list-group-item p-3 {% if not notification.is_read %}bg-light{% endif %}">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width:44px;height:44px;font-size:20px;">
+                        {% if notification.notification_type == "favorite" %}❤️
+                        {% elif notification.notification_type == "compare" %}⚖️
+                        {% elif notification.notification_type in ["inquiry", "message"] %}💬
+                        {% elif notification.notification_type in ["vehicle", "approval"] %}🚗
+                        {% elif notification.notification_type in ["rejection", "report"] %}⚠️
+                        {% elif notification.notification_type in ["user", "report_update"] %}👤
+                        {% else %}🔔{% endif %}
+                    </div>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <h5 class="mb-0">{{ notification.title }}</h5>
+                            {% if not notification.is_read %}<span class="badge text-bg-primary">New</span>{% endif %}
+                        </div>
+                        <p class="mb-1 mt-2">{{ notification.message }}</p>
+                        {% if notification.created_at %}
+                        <small class="text-muted">{{ notification.created_at.strftime('%d %b %Y, %H:%M') }}</small>
+                        {% endif %}
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            {% if notification.car_id %}
+                                {% if current_user.role|lower == "admin" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.car_details', car_id=notification.car_id) }}">View vehicle</a>
+                                {% elif current_user.role|lower == "seller" and notification.notification_type in ["approval", "rejection", "vehicle"] %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.my_cars') }}">View my listings</a>
+                                {% else %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=notification.car_id) }}">View vehicle</a>
+                                {% endif %}
+                            {% elif current_user.role|lower == "admin" and notification.notification_type == "report" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.reports') }}">Review reports</a>
+                            {% elif current_user.role|lower == "admin" and notification.notification_type == "user" %}
+                                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Open dashboard</a>
+                            {% endif %}
+                            {% if not notification.is_read %}
+                            <form method="POST" action="{{ url_for('cars.mark_notification_read', notification_id=notification.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Mark as read</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-
-
-                <p class="mb-1 mt-2">
-
-                    {{ notification.message }}
-
-                </p>
-
-
-                {% if notification.created_at %}
-
-                <small class="text-muted">
-
-                    {{ notification.created_at.strftime(
-                        '%d %b %Y, %H:%M'
-                    ) }}
-
-                </small>
-
-                {% endif %}
-
-
-                <!-- ACTION -->
-
-                {% if not notification.is_read %}
-
-                <div class="mt-2">
-
-                    <form
-                        method="POST"
-                        action="{{ url_for(
-                            'cars.mark_notification_read',
-                            notification_id=notification.id
-                        ) }}">
-
-                        <button
-                            type="submit"
-                            class="btn btn-sm btn-outline-primary">
-
-                            Mark as read
-
-                        </button>
-
-                    </form>
-
-                </div>
-
-                {% endif %}
-
             </div>
-
+            {% endfor %}
         </div>
-
     </div>
-
-    {% endfor %}
-
+    {% else %}
+    <div class="card shadow-sm text-center py-5">
+        <div class="display-3">🔔</div>
+        <h3 class="mt-3">You're all caught up</h3>
+        <p class="text-muted">New account, vehicle, and message updates will appear here.</p>
+        <div><a href="{{ url_for('cars.all_cars') }}" class="btn btn-primary">Browse cars</a></div>
+    </div>
+    {% endif %}
 </div>
-```
-
-</div>
-
-{% else %}
-
-<div class="text-center py-5">
-
-```
-<div style="font-size:65px;">
-    🔔
-</div>
-
-<h3>
-    You're all caught up
-</h3>
-
-<p class="text-muted">
-    There are no notifications to display.
-</p>
-
-<a
-    href="{{ url_for('cars.all_cars') }}"
-    class="btn btn-primary">
-
-    🚗 Browse Cars
-
-</a>
-```
-
-</div>
-
-{% endif %}
-
 {% endblock %}

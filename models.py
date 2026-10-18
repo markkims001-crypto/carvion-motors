@@ -51,6 +51,20 @@ class User(UserMixin, db.Model):
         default="buyer",
         nullable=False
     )
+        # Seller contact preferences
+    allow_phone_contact = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true()
+    )
+
+    allow_whatsapp_contact = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.true()
+    )
 
     created_at = db.Column(
         db.DateTime,

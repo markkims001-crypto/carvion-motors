@@ -196,6 +196,22 @@
             .page-chat .chat-transcript { min-height: 260px; }
         }
 
+        .page-edit-car { max-width: 980px; margin: 0 auto; padding: clamp(1.25rem, 3vw, 2.25rem) !important; }
+        .page-edit-car h1 { margin-bottom: 1.5rem; }
+        .page-edit-car .btn-success { background: var(--cv-gold); border-color: var(--cv-gold); color: var(--cv-ink); }
+        .page-edit-car .btn-success:hover { background: var(--cv-gold-deep); border-color: var(--cv-gold-deep); color: var(--cv-ink); }
+        .page-buyer-inquiries .inquiry-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+        .page-buyer-inquiries .card-header { gap: .75rem; flex-wrap: wrap; }
+        .page-buyer-inquiries .inquiry-card { overflow: hidden; }
+        .page-recovery { max-width: 100%; }
+        .page-recovery .recovery-card { width: 100%; max-width: 470px; margin-inline: auto; }
+        .page-recovery .form-control { min-height: 48px; }
+        .page-recovery .recovery-title { font-weight: 800; letter-spacing: -.03em; }
+        @media (max-width: 575.98px) {
+            .page-edit-car { padding: 1rem !important; }
+            .page-buyer-inquiries .inquiry-actions { flex-direction: column; }
+        }
+
         @media (max-width: 991.98px) {
             .site-navbar .navbar-nav { align-items: stretch; padding: .7rem 0 .25rem; }
             .site-navbar .nav-link { padding: .65rem .8rem; }

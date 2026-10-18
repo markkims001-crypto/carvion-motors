@@ -9,6 +9,7 @@ import os
 import secrets
 import time
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 
 from flask import (
     Blueprint,
@@ -55,6 +56,20 @@ except ImportError:
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+
+def is_safe_next_url(target):
+    """Accept only local absolute paths, never external or backslash URLs."""
+    if not target or chr(92) in target:
+        return False
+
+    parsed = urlsplit(target)
+    return (
+        target.startswith("/")
+        and not target.startswith("//")
+        and not parsed.scheme
+        and not parsed.netloc
+    )
+
 
 def normalise_phone(phone):
     """Normalise common Kenyan phone formats to 254XXXXXXXXX."""
@@ -638,7 +653,7 @@ def login():
 
             next_url = request.args.get("next", "")
 
-            if next_url.startswith("/") and not next_url.startswith("//"):
+            if is_safe_next_url(next_url):
                 return redirect(next_url)
 
             return redirect(url_for("home"))

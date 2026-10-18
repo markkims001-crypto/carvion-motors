@@ -333,10 +333,16 @@
             <div class="col-md">
                 <strong class="d-block text-white">Carvion Motors</strong>
                 <span class="small">A simpler way to discover and list vehicles in Kenya.</span>
+                <div class="small mt-2">
+                    <a class="link-light text-decoration-none" href="tel:+0182709886">Phone: +0182709886</a>
+                    <span class="mx-2">·</span>
+                    <a class="link-light text-decoration-none" href="mailto:carvionmotor@gmail.com">carvionmotor@gmail.com</a>
+                </div>
                 <div class="small mt-1">© {{ now_year|default(2026) }} Carvion Motors. All rights reserved.</div>
             </div>
             <div class="col-md-auto">
                 <nav class="d-flex flex-wrap gap-3 justify-content-md-end" aria-label="Footer navigation">
+                    <a class="link-light" href="{{ url_for('contact') }}">Contact Us</a>
                     <a class="link-light" href="{{ url_for('about') }}">About Us</a>
                     <a class="link-light" href="{{ url_for('privacy') }}">Privacy Policy</a>
                 </nav>

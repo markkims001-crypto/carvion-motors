@@ -380,7 +380,7 @@ def reset_password_sms():
 @auth.route("/forgot-password-sms", methods=["GET", "POST"])
 def forgot_password_sms():
     if request.method == "GET":
-        return render_template("forgot_password_sms.html")
+        return render_template("forgot_password.html", sms_mode=True)
 
     phone = request.form.get("phone", "").strip()
     if not phone:
@@ -473,7 +473,7 @@ def verify_reset_code():
         session["sms_reset_verified"] = True
         return redirect(url_for("auth.reset_password_sms"))
 
-    return render_template("verify_reset_code.html")
+    return render_template("forgot_password.html", verify_sms=True)
 
 
 # ----------------------------------------------------------------------

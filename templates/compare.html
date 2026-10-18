@@ -2,9 +2,9 @@
 
 {% block content %}
 
-<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+<div class="page-compare py-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
 
-```
 <div>
 
     <h1>
@@ -48,7 +48,6 @@
     {% endif %}
 
 </div>
-```
 
 </div>
 
@@ -62,7 +61,6 @@
 
 <tr>
 
-```
 <th>
     Specification
 </th>
@@ -77,7 +75,6 @@
 </th>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -89,7 +86,6 @@
 
 <tr>
 
-```
 <th>
     Vehicle
 </th>
@@ -102,10 +98,7 @@
     {% if car.images %}
 
     <img
-        src="{{ url_for(
-            'static',
-            filename=car.images[0].filename
-        ) }}"
+        src="{{ car.images[0].filename }}"
         style="
             width:100%;
             max-width:230px;
@@ -124,7 +117,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -132,7 +124,6 @@
 
 <tr>
 
-```
 <th>
     Brand
 </th>
@@ -144,7 +135,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -152,7 +142,6 @@
 
 <tr>
 
-```
 <th>
     Model
 </th>
@@ -164,7 +153,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -172,7 +160,6 @@
 
 <tr>
 
-```
 <th>
     Year
 </th>
@@ -184,7 +171,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -192,7 +178,6 @@
 
 <tr>
 
-```
 <th>
     Price
 </th>
@@ -204,7 +189,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -212,7 +196,6 @@
 
 <tr>
 
-```
 <th>
     Mileage
 </th>
@@ -224,7 +207,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -232,7 +214,6 @@
 
 <tr>
 
-```
 <th>
     Fuel
 </th>
@@ -244,7 +225,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -252,7 +232,6 @@
 
 <tr>
 
-```
 <th>
     Transmission
 </th>
@@ -264,7 +243,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -272,7 +250,6 @@
 
 <tr>
 
-```
 <th>
     Engine
 </th>
@@ -284,7 +261,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -292,7 +268,6 @@
 
 <tr>
 
-```
 <th>
     Color
 </th>
@@ -304,7 +279,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -312,7 +286,6 @@
 
 <tr>
 
-```
 <th>
     Condition
 </th>
@@ -324,7 +297,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -332,7 +304,6 @@
 
 <tr>
 
-```
 <th>
     Location
 </th>
@@ -344,7 +315,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -352,7 +322,6 @@
 
 <tr>
 
-```
 <th>
     Seller
 </th>
@@ -364,7 +333,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -372,7 +340,6 @@
 
 <tr>
 
-```
 <th>
     Actions
 </th>
@@ -414,7 +381,6 @@
 </td>
 
 {% endfor %}
-```
 
 </tr>
 
@@ -428,7 +394,6 @@
 
 <div class="text-center py-5">
 
-```
 <div style="font-size:60px;">
     ⚖️
 </div>
@@ -448,10 +413,11 @@
     Browse Cars
 
 </a>
-```
 
 </div>
 
 {% endif %}
+
+</div>
 
 {% endblock %}

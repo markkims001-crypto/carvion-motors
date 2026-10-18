@@ -12,6 +12,7 @@ def load_user(user_id):
     return db.session.get(User, int(user_id))
 
 
+
 # ============================================================
 # USER MODEL
 # ============================================================
@@ -51,7 +52,11 @@ class User(UserMixin, db.Model):
         default="buyer",
         nullable=False
     )
-        # Seller contact preferences
+
+    # ========================================================
+    # SELLER CONTACT PREFERENCES
+    # ========================================================
+
     allow_phone_contact = db.Column(
         db.Boolean,
         nullable=False,
@@ -119,13 +124,6 @@ class User(UserMixin, db.Model):
 
     # ========================================================
     # DIRECT CONVERSATIONS
-    #
-    # Seller ↔ Admin
-    # Buyer  ↔ Admin
-    #
-    # Application logic should prevent:
-    # Seller ↔ Seller
-    # Buyer  ↔ Buyer
     # ========================================================
 
     conversations_as_user1 = db.relationship(
@@ -190,7 +188,6 @@ class User(UserMixin, db.Model):
         cascade="all, delete-orphan",
         order_by="Notification.created_at.desc()"
     )
-
 
 # ============================================================
 # CAR MODEL

@@ -204,15 +204,33 @@ def create_app():
 
         try:
 
-            # ------------------------------------------------
+           
             # CREATE TABLES
             # ------------------------------------------------
 
             db.create_all()
 
-            print("=" * 60)
-            print("DATABASE INITIALIZATION COMPLETE")
-            print("=" * 60)
+            # ------------------------------------------------
+            # ENSURE SELLER CONTACT COLUMNS EXIST ON POSTGRES
+            # ------------------------------------------------
+
+            if db.engine.dialect.name == "postgresql":
+                from sqlalchemy import text
+
+                with db.engine.begin() as connection:
+                    connection.execute(text("""
+                        ALTER TABLE users
+                        ADD COLUMN IF NOT EXISTS allow_phone_contact
+                        BOOLEAN NOT NULL DEFAULT TRUE
+                    """))
+
+                    connection.execute(text("""
+                        ALTER TABLE users
+                        ADD COLUMN IF NOT EXISTS allow_whatsapp_contact
+                        BOOLEAN NOT NULL DEFAULT TRUE
+                    """))
+
+                print("Seller contact preferences verified.")
 
             # ------------------------------------------------
             # SHOW DATABASE TYPE

@@ -31,22 +31,16 @@
         </a>
     </div>
 
-
     <!-- VEHICLE PHOTOS -->
     {% if car.images %}
-
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
-
             <h4 class="fw-bold mb-3">Vehicle Photos</h4>
 
             <div class="row g-3">
-
                 {% for image in car.images %}
-
                 <div class="col-6 col-md-4 col-lg-3">
                     <div class="vehicle-image">
-
                         <img
                             src="{{ image.filename }}"
                             class="img-fluid rounded w-100"
@@ -56,7 +50,6 @@
                             data-bs-target="#imageModal{{ image.id }}"
                             loading="lazy"
                         >
-
                     </div>
                 </div>
 
@@ -68,7 +61,6 @@
 
                     <div class="modal-dialog modal-xl modal-dialog-centered">
                         <div class="modal-content bg-dark">
-
                             <div class="modal-header border-0">
                                 <button
                                     type="button"
@@ -86,25 +78,18 @@
                                     alt="{{ car.brand }} {{ car.model }} photo"
                                 >
                             </div>
-
                         </div>
                     </div>
                 </div>
-
                 {% endfor %}
-
             </div>
         </div>
     </div>
-
     {% else %}
-
     <div class="alert alert-secondary mb-4">
         No vehicle photos available.
     </div>
-
     {% endif %}
-
 
     <!-- VEHICLE INFORMATION -->
     <div class="row g-4">
@@ -115,7 +100,6 @@
             <!-- SPECIFICATIONS -->
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
-
                     <h4 class="fw-bold mb-4">Vehicle Details</h4>
 
                     <div class="row g-3">
@@ -230,27 +214,22 @@
                 </div>
             </div>
 
-
             <!-- DESCRIPTION -->
             {% if car.description %}
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-body">
-
                     <h4 class="fw-bold mb-3">Description</h4>
 
                     <p class="text-muted mb-0"
                        style="white-space:pre-line;">{{ car.description }}</p>
-
                 </div>
             </div>
             {% endif %}
 
         </div>
 
-
         <!-- RIGHT COLUMN: CONTACT SELLER -->
         <div class="col-lg-4">
-
             <div class="card shadow-sm border-0">
                 <div class="card-body">
 
@@ -260,24 +239,51 @@
 
                     <div class="mb-4">
                         <small class="text-muted">Seller</small>
-
                         <div class="fw-bold fs-5">
                             {{ car.seller.name }}
                         </div>
                     </div>
 
+                    {% set seller_phone = car.seller.phone|default('', true)|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
+
+                    {% if car.seller.allow_phone_contact|default(true) and seller_phone %}
+                    <a href="tel:{{ seller_phone }}"
+                       class="btn btn-outline-dark w-100 mb-2">
+                        <i class="bi bi-telephone"></i>
+                        Call Seller
+                    </a>
                     {% endif %}
 
+                    {% if car.seller.allow_whatsapp_contact|default(true) and seller_phone %}
+
+                        {% if seller_phone.startswith('0') %}
+                            {% set whatsapp_phone = '254' ~ seller_phone[1:] %}
+                        {% elif seller_phone.startswith('254') %}
+                            {% set whatsapp_phone = seller_phone %}
+                        {% else %}
+                            {% set whatsapp_phone = seller_phone %}
+                        {% endif %}
+
+                    <a
+                        href="https://wa.me/{{ whatsapp_phone }}?text={{ ('Hello, I am interested in your ' ~ car.brand ~ ' ' ~ car.model ~ ' listed on Carvion Motors.')|urlencode }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-success w-100 mb-3">
+                        <i class="bi bi-whatsapp"></i>
+                        WhatsApp Seller
+                    </a>
+                    {% endif %}
+
+                    {% endif %}
 
                     {% if current_user.is_authenticated
                           and current_user.role|lower == "buyer"
                           and current_user.id != car.seller_id %}
 
-                    <!-- IMPORTANT: Uses the shared inquiry handler -->
+                    <!-- EXISTING IN-SITE MESSAGING -->
                     <form
                         method="POST"
-                        action="{{ url_for('cars.send_inquiry', car_id=car.id) }}"
-                    >
+                        action="{{ url_for('cars.send_inquiry', car_id=car.id) }}">
 
                         <div class="mb-3">
                             <label for="sellerMessage"
@@ -301,7 +307,6 @@
                             <i class="bi bi-chat-dots"></i>
                             Send Message
                         </button>
-
                     </form>
 
                     {% elif not current_user.is_authenticated %}
@@ -314,27 +319,24 @@
 
                     {% elif current_user.id == car.seller_id %}
 
-                    <div class="alert alert-info mb-0">
+                    <div class="alert alert-info mb-0 mt-3">
                         This is your vehicle listing.
                     </div>
 
-                    {% else %}
+                    {% elif current_user.role|lower != "buyer" %}
 
-                    <div class="alert alert-info mb-0">
-                        Only buyer accounts can contact sellers.
+                    <div class="alert alert-info mb-0 mt-3">
+                        Only buyer accounts can send seller inquiries.
                     </div>
 
                     {% endif %}
 
                 </div>
             </div>
-
         </div>
 
     </div>
-
 </div>
-
 
 <style>
 .vehicle-image {

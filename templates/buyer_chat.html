@@ -1,108 +1,45 @@
 {% extends "base.html" %}
 
+{% block title %}Chat with Carvion Motors | Carvion Motors{% endblock %}
+
 {% block content %}
+<section class="container py-4 page-chat">
+    <div class="mb-4">
+        <p class="text-uppercase small fw-bold text-secondary mb-1">Support</p>
+        <h1 class="h2 mb-1">Chat with Carvion Admin</h1>
+        <p class="text-muted mb-0">Send a message to the Carvion Motors support team.</p>
+    </div>
 
-<div class="container py-4">
-
-
-<h2>
-Chat with Carvion Admin
-</h2>
-
-
-<div class="card shadow-sm">
-
-<div class="card-body"
-style="height:400px; overflow-y:auto;">
-
-
-{% for msg in messages %}
-
-
-<div class="mb-3">
-
-
-{% if msg.sender_id == current_user.id %}
-
-<div class="text-end">
-
-<span class="badge bg-primary">
-You
-</span>
-
-<p>
-{{ msg.message }}
-</p>
-
-</div>
-
-
-{% else %}
-
-
-<div>
-
-<span class="badge bg-success">
-Admin
-</span>
-
-<p>
-{{ msg.message }}
-</p>
-
-</div>
-
-
-{% endif %}
-
-
-</div>
-
-
-{% else %}
-
-
-<p class="text-muted">
-No messages yet.
-</p>
-
-
-{% endfor %}
-
-
-</div>
-
-
-<form method="POST">
-
-
-<div class="card-footer">
-
-
-<textarea
-name="message"
-class="form-control mb-2"
-placeholder="Type your message..."
-required></textarea>
-
-
-<button class="btn btn-primary">
-
-Send Message
-
-</button>
-
-
-</div>
-
-
-</form>
-
-
-</div>
-
-
-</div>
-
-
+    <div class="card">
+        <div class="card-body chat-transcript" aria-label="Support conversation" aria-live="polite">
+            {% for msg in messages %}
+                {% if msg.sender_id == current_user.id %}
+                    <div class="chat-message chat-message-mine">
+                        <span class="badge text-bg-warning">You</span>
+                        <p>{{ msg.message }}</p>
+                    </div>
+                {% else %}
+                    <div class="chat-message chat-message-other">
+                        <span class="badge text-bg-dark">Carvion Support</span>
+                        <p>{{ msg.message }}</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="display-6 mb-2" aria-hidden="true">💬</div>
+                    <h2 class="h5">Start a conversation</h2>
+                    <p class="text-muted mb-0">Your messages with the support team will appear here.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <form method="POST" class="chat-compose">
+            <label for="supportMessage" class="form-label">Your message</label>
+            <textarea id="supportMessage" name="message" class="form-control mb-3"
+                      rows="3" maxlength="5000" placeholder="Type your message..." required></textarea>
+            <div class="d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">Send message</button>
+            </div>
+        </form>
+    </div>
+</section>
 {% endblock %}

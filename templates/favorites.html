@@ -4,7 +4,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
 
-```
+
 <div>
 
     <h1>
@@ -25,7 +25,7 @@
     🚗 Browse Cars
 
 </a>
-```
+
 
 </div>
 
@@ -37,17 +37,14 @@
 
 <div class="col-lg-4 col-md-6">
 
-```
+
 <div class="card shadow-sm h-100">
 
 
     {% if car.images %}
 
     <img
-        src="{{ url_for(
-            'static',
-            filename=car.images[0].filename
-        ) }}"
+        src="{{ car.images[0].filename }}"
         class="card-img-top car-card-image"
         alt="{{ car.brand }} {{ car.model }}">
 
@@ -141,7 +138,7 @@
     </div>
 
 </div>
-```
+
 
 </div>
 
@@ -153,7 +150,7 @@
 
 <div class="text-center py-5">
 
-```
+
 <div style="font-size:60px;">
     ❤️
 </div>
@@ -173,7 +170,7 @@
     Browse Cars
 
 </a>
-```
+
 
 </div>
 

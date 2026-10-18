@@ -1,8 +1,61 @@
-```html
 {% extends "base.html" %}
 
 {% block title %}
 {{ car.brand }} {{ car.model }} | Carvion Motors
+
+<script>
+(function () {
+    const shareButton = document.getElementById("shareVehicleButton");
+    const whatsappButton = document.getElementById("shareWhatsAppButton");
+    const copyButton = document.getElementById("copyVehicleLinkButton");
+    const status = document.getElementById("shareVehicleStatus");
+    if (!shareButton || !whatsappButton || !copyButton || !status) return;
+
+    const pageUrl = window.location.href;
+    const title = document.title;
+    const text = {{ (car.brand ~ " " ~ car.model ~ " — KSh " ~ "{:,.0f}".format(car.price) ~ " on Carvion Motors")|tojson }};
+
+    whatsappButton.href = "https://wa.me/?text=" + encodeURIComponent(text + " " + pageUrl);
+
+    shareButton.addEventListener("click", async function () {
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: title, text: text, url: pageUrl });
+                status.textContent = "Sharing opened.";
+            } catch (error) {
+                if (error.name !== "AbortError") status.textContent = "Sharing was unavailable. Try WhatsApp or Copy link.";
+            }
+        } else {
+            await copyLink();
+        }
+    });
+
+    async function copyLink() {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(pageUrl);
+            } else {
+                const field = document.createElement("textarea");
+                field.value = pageUrl;
+                field.setAttribute("readonly", "");
+                field.style.position = "fixed";
+                field.style.opacity = "0";
+                document.body.appendChild(field);
+                field.select();
+                const copied = document.execCommand("copy");
+                field.remove();
+                if (!copied) throw new Error("Copy command failed");
+            }
+            status.textContent = "Link copied.";
+        } catch (error) {
+            status.textContent = "Could not copy automatically. Copy this page's URL from your browser.";
+        }
+    }
+
+    copyButton.addEventListener("click", copyLink);
+})();
+</script>
+
 {% endblock %}
 
 {% block content %}
@@ -29,6 +82,28 @@
             <i class="bi bi-arrow-left"></i>
             Back to Cars
         </a>
+    </div>
+
+<!-- SHARE LISTING -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">Share this vehicle</h5>
+                <p class="text-muted mb-0">Send this listing to someone who might be interested.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-dark" id="shareVehicleButton">
+                    <i class="bi bi-share"></i> Share
+                </button>
+                <a class="btn btn-success" id="shareWhatsAppButton" href="#" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-whatsapp"></i> WhatsApp
+                </a>
+                <button type="button" class="btn btn-outline-secondary" id="copyVehicleLinkButton">
+                    <i class="bi bi-link-45deg"></i> Copy link
+                </button>
+            </div>
+            <span id="shareVehicleStatus" class="small text-muted" role="status" aria-live="polite"></span>
+        </div>
     </div>
 
     <!-- VEHICLE PHOTOS -->
@@ -455,4 +530,3 @@
 </style>
 
 {% endblock %}
-```

@@ -9,7 +9,8 @@ from flask import (
     redirect,
     url_for,
     request,
-    flash
+    flash,
+    current_app,
 )
 
 from flask_login import (
@@ -431,18 +432,37 @@ def delete_car(car_id):
     )
 
 
-    # delete associated images
+    # Remove remote image assets when possible, then delete their DB rows.
+    try:
+        from routes.cars import configure_cloudinary
+        import cloudinary.uploader
 
-    for image in car.images:
-
-        db.session.delete(
-            image
+        configure_cloudinary()
+        for image in list(car.images):
+            public_id = getattr(image, "public_id", None)
+            if public_id:
+                try:
+                    result = cloudinary.uploader.destroy(
+                        public_id,
+                        resource_type="image",
+                    )
+                    if result.get("result") not in {"ok", "not found"}:
+                        current_app.logger.warning(
+                            "Cloudinary did not confirm deletion for image %s: %s",
+                            image.id,
+                            result.get("result"),
+                        )
+                except Exception:
+                    current_app.logger.exception(
+                        "Cloudinary deletion failed for image %s",
+                        image.id,
+                    )
+    except Exception:
+        current_app.logger.exception(
+            "Cloudinary is unavailable during admin car deletion."
         )
 
-
-    db.session.delete(
-        car
-    )
+    db.session.delete(car)
 
 
     db.session.commit()

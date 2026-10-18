@@ -38,7 +38,7 @@ from werkzeug.security import (
 )
 
 from extensions import db
-from models import PasswordResetCode, User
+from models import PasswordResetCode, User, Notification
 
 auth = Blueprint("auth", __name__)
 
@@ -714,6 +714,23 @@ def register():
                 )
 
                 db.session.add(user)
+                db.session.flush()
+
+                # Notify administrators of new account registrations.
+                administrators = User.query.filter(
+                    db.func.lower(User.role) == "admin"
+                ).all()
+                for administrator in administrators:
+                    db.session.add(Notification(
+                        user_id=administrator.id,
+                        title="New User Registration",
+                        message=(
+                            f"{user.name} registered a new buyer account."
+                        ),
+                        notification_type="user",
+                        is_read=False,
+                    ))
+
                 db.session.commit()
 
                 flash(

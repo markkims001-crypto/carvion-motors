@@ -26,6 +26,14 @@ from hire_lease_models import (  # noqa: F401, E402
     LeaseRequest,
 )
 
+# Register independent service inventories before db.create_all().
+from service_vehicle_models import (  # noqa: F401, E402
+    HireVehicle,
+    LeaseVehicle,
+    HireServiceRequest,
+    LeaseServiceRequest,
+)
+
 
 def create_app():
     app = Flask(__name__)

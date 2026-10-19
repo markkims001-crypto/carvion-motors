@@ -273,3 +273,133 @@ def test_inquiry_still_works_for_approved_listing():
             inquiry_id=inquiry.id,
             message="Is this vehicle available?",
         ).count() == 1
+
+
+def test_admin_can_delete_buyer_with_inquiries_without_foreign_key_error():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+
+    with app.app_context():
+        admin_user = User(
+            name="Test Admin",
+            email="admin-delete@example.test",
+            phone="0700000010",
+            password="test-password",
+            role="admin",
+        )
+        seller = User(
+            name="Seller For Deletion Test",
+            email="seller-delete@example.test",
+            phone="0700000011",
+            password="test-password",
+            role="seller",
+        )
+        buyer = User(
+            name="Buyer For Deletion Test",
+            email="buyer-delete@example.test",
+            phone="0700000012",
+            password="test-password",
+            role="buyer",
+        )
+        db.session.add_all([admin_user, seller, buyer])
+        db.session.flush()
+
+        car = Car(
+            registration_number="DELETE-TEST-1",
+            seller_id=seller.id,
+            brand="Toyota",
+            model="Corolla",
+            year=2022,
+            price=1500000,
+            mileage=25000,
+            fuel="Petrol",
+            transmission="Automatic",
+            location="Nairobi",
+            status="Approved",
+        )
+        db.session.add(car)
+        db.session.flush()
+
+        inquiry = Inquiry(
+            car_id=car.id,
+            buyer_id=buyer.id,
+            seller_id=seller.id,
+            status="Open",
+        )
+        db.session.add(inquiry)
+        db.session.flush()
+        db.session.add(InquiryMessage(
+            inquiry_id=inquiry.id,
+            sender_id=buyer.id,
+            receiver_id=seller.id,
+            sender_role="buyer",
+            message="Is this vehicle available?",
+        ))
+        db.session.commit()
+        admin_id, buyer_id, inquiry_id = admin_user.id, buyer.id, inquiry.id
+
+    with app.test_client() as client:
+        _login_test_user(client, admin_id)
+        response = client.post(
+            f"/admin/delete_user/{buyer_id}",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/admin/users")
+
+    with app.app_context():
+        assert db.session.get(User, buyer_id) is None
+        assert db.session.get(Inquiry, inquiry_id) is None
+        assert InquiryMessage.query.count() == 0
+
+
+def test_admin_cannot_delete_user_who_owns_vehicle_listings():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+
+    with app.app_context():
+        admin_user = User(
+            name="Test Admin",
+            email="admin-owner-check@example.test",
+            phone="0700000020",
+            password="test-password",
+            role="admin",
+        )
+        seller = User(
+            name="Seller With Listing",
+            email="seller-owner-check@example.test",
+            phone="0700000021",
+            password="test-password",
+            role="seller",
+        )
+        db.session.add_all([admin_user, seller])
+        db.session.flush()
+        car = Car(
+            registration_number="KEEP-LISTING-1",
+            seller_id=seller.id,
+            brand="Toyota",
+            model="Corolla",
+            year=2022,
+            price=1500000,
+            mileage=25000,
+            fuel="Petrol",
+            transmission="Automatic",
+            location="Nairobi",
+            status="Approved",
+        )
+        db.session.add(car)
+        db.session.commit()
+        admin_id, seller_id, car_id = admin_user.id, seller.id, car.id
+
+    with app.test_client() as client:
+        _login_test_user(client, admin_id)
+        response = client.post(
+            f"/admin/delete_user/{seller_id}",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(User, seller_id) is not None
+        assert db.session.get(Car, car_id) is not None

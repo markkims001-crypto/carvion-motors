@@ -13,6 +13,8 @@ from flask import (
     current_app,
 )
 
+from sqlalchemy import or_
+
 from flask_login import (
     login_required,
     current_user
@@ -28,6 +30,7 @@ from models import (
     Report,
     Notification,
 )
+from hire_lease_models import HireRequest, LeaseRequest
 
 
 # ==========================================
@@ -273,9 +276,63 @@ def delete_user(user_id):
             url_for("admin.users")
         )
 
-    db.session.delete(user)
+    # Do not cascade-delete a seller's active vehicle listings or their
+    # related marketplace records as a side effect of removing an account.
+    if Car.query.filter_by(seller_id=user.id).first():
+        flash(
+            "This account owns vehicle listings. Reassign or remove those listings before deleting the account.",
+            "warning"
+        )
+        return redirect(url_for("admin.users"))
 
-    db.session.commit()
+    try:
+        # Remove records whose non-null foreign keys point to this account.
+        # Deleting inquiry messages first avoids FK failures for messages
+        # whose inquiry relationship is absent or no longer available.
+        InquiryMessage.query.filter(
+            or_(
+                InquiryMessage.sender_id == user.id,
+                InquiryMessage.receiver_id == user.id,
+            )
+        ).delete(synchronize_session=False)
+
+        Inquiry.query.filter(
+            or_(
+                Inquiry.buyer_id == user.id,
+                Inquiry.seller_id == user.id,
+            )
+        ).delete(synchronize_session=False)
+
+        # These records reference the account as reporter/renter/seller.
+        Report.query.filter_by(reporter_id=user.id).delete(
+            synchronize_session=False
+        )
+        HireRequest.query.filter(
+            or_(
+                HireRequest.renter_id == user.id,
+                HireRequest.seller_id == user.id,
+            )
+        ).delete(synchronize_session=False)
+        LeaseRequest.query.filter(
+            or_(
+                LeaseRequest.renter_id == user.id,
+                LeaseRequest.seller_id == user.id,
+            )
+        ).delete(synchronize_session=False)
+
+        db.session.delete(user)
+        db.session.commit()
+
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Failed to delete user account id=%s", user_id
+        )
+        flash(
+            "Unable to delete this account because related records could not be safely removed. No changes were saved.",
+            "danger"
+        )
+        return redirect(url_for("admin.users"))
 
     flash(
         "User deleted successfully.",

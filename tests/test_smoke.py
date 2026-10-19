@@ -31,7 +31,7 @@ def test_marketplace_uses_page_specific_title():
     with app.test_client() as client:
         response = client.get("/cars")
         assert response.status_code == 200
-        assert b"<title>Available Cars | Carvion Motors</title>" in response.data
+        assert b"<title>Carvion Cars | Buy &amp; Sell Vehicles</title>" in response.data
 
 
 def test_homepage_returns_success():

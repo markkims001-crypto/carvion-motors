@@ -111,3 +111,30 @@ def test_hire_lease_settings_page_requires_login():
         response = client.get("/car/1/hire-lease")
         assert response.status_code == 302
         assert "/login" in response.headers["Location"]
+
+
+
+def test_public_hire_and_lease_listing_pages_are_reachable():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        hire_response = client.get("/hire")
+        lease_response = client.get("/lease")
+
+        assert hire_response.status_code == 200
+        assert b"Cars available for hire" in hire_response.data
+        assert lease_response.status_code == 200
+        assert b"Cars available for lease" in lease_response.data
+
+
+def test_hire_and_lease_request_forms_require_login():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        hire_response = client.get("/car/1/hire-request")
+        lease_response = client.get("/car/1/lease-request")
+
+        assert hire_response.status_code == 302
+        assert "/login" in hire_response.headers["Location"]
+        assert lease_response.status_code == 302
+        assert "/login" in lease_response.headers["Location"]

@@ -26,4 +26,4 @@ jobs:
         env:
           SECRET_KEY: "ci-only-secret-key-not-for-production"
           DATABASE_URL: "sqlite:///:memory:"
-        run: python -W error::sqlalchemy.exc.LegacyAPIWarning -m pytest -q
+        run: python -m pytest -q

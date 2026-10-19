@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My Hire & Lease Requests | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h1>My Hire &amp; Lease Requests</h1>
+  <p class="text-muted">Track your enquiries and continue the conversation with the vehicle owner. An accepted request is not itself a confirmed booking or signed lease.</p>
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endwith %}
+  {% for service, items in [('hire', hire_requests), ('lease', lease_requests)] %}
+  <section class="mb-4">
+    <h2 class="h4">{{ 'Car hire requests' if service == 'hire' else 'Car lease enquiries' }}</h2>
+    {% if items %}
+      {% for item in items %}
+      <article class="card mb-3"><div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between gap-2"><h3 class="h5">{{ item.vehicle.year }} {{ item.vehicle.brand }} {{ item.vehicle.model }}</h3><span class="badge text-bg-secondary">{{ item.status }}</span></div>
+        {% if service == 'hire' %}<p class="mb-1">Dates: {{ item.start_date }} – {{ item.end_date }} · Pickup: {{ item.pickup_location }}</p>{% else %}<p class="mb-1">Start: {{ item.requested_start_date }} · Duration: {{ item.duration_months }} month(s) · Location: {{ item.location }}</p>{% endif %}
+        
+        <div class="bg-light rounded p-3 my-3"><strong>Conversation with {{ item.seller.name }}</strong>
+          {% for message in thread_messages.get(service ~ '-' ~ item.id, []) %}
+          <div class="small mt-2"><strong>{{ 'You' if message.sender_id == current_user.id else item.seller.name }} · {{ message.created_at.strftime('%d %b %Y, %H:%M') }}</strong><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{ message.body }}</div></div>
+          {% else %}{% if item.seller_response %}<p class="small mt-2 mb-0">{{ item.seller_response }}</p>{% else %}<p class="small text-muted mt-2 mb-0">No replies yet.</p>{% endif %}{% endfor %}
+        </div>
+        <form method="POST" action="{{ url_for('hire_lease.send_service_message', service=service, request_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="form-label" for="body-{{ service }}-{{ item.id }}">Send a message</label><textarea class="form-control mb-2" id="body-{{ service }}-{{ item.id }}" name="body" rows="2" maxlength="2000" required></textarea><button class="btn btn-warning" type="submit">Send message</button></form>
+      </div></article>
+      {% endfor %}
+    {% else %}<p class="text-muted">You have no {{ 'hire requests' if service == 'hire' else 'lease enquiries' }} yet.</p>{% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

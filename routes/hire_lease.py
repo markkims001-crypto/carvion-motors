@@ -18,6 +18,7 @@ from flask_login import current_user, login_required
 from extensions import db
 from service_vehicle_models import (
     HireVehicle, LeaseVehicle, HireServiceRequest, LeaseServiceRequest,
+    ServiceRequestMessage,
 )
 
 hire_lease = Blueprint("hire_lease", __name__)
@@ -294,7 +295,11 @@ def request_hire(vehicle_id):
         except (ValueError, TypeError) as error:
             flash(str(error) or "Enter valid hire dates.", "danger")
             return redirect(url_for("hire_lease.request_hire", vehicle_id=vehicle.id))
-        db.session.add(HireServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, start_date=start, end_date=end, pickup_location=pickup, message=message))
+        service_request = HireServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, start_date=start, end_date=end, pickup_location=pickup, message=message)
+        db.session.add(service_request)
+        db.session.flush()
+        if message:
+            db.session.add(ServiceRequestMessage(service="hire", request_id=service_request.id, sender_id=current_user.id, receiver_id=vehicle.seller_id, body=message))
         db.session.commit()
         flash("Hire request sent. It is pending and is not a confirmed booking.", "success")
         return redirect(url_for("hire_lease.hire_listings"))
@@ -324,7 +329,11 @@ def request_lease(vehicle_id):
         except (ValueError, TypeError) as error:
             flash(str(error) or "Enter valid lease details.", "danger")
             return redirect(url_for("hire_lease.request_lease", vehicle_id=vehicle.id))
-        db.session.add(LeaseServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, requested_start_date=start, duration_months=duration, location=location, message=message))
+        service_request = LeaseServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, requested_start_date=start, duration_months=duration, location=location, message=message)
+        db.session.add(service_request)
+        db.session.flush()
+        if message:
+            db.session.add(ServiceRequestMessage(service="lease", request_id=service_request.id, sender_id=current_user.id, receiver_id=vehicle.seller_id, body=message))
         db.session.commit()
         flash("Lease enquiry sent. No lease agreement has been created.", "success")
         return redirect(url_for("hire_lease.lease_listings"))
@@ -337,7 +346,70 @@ def seller_requests():
     _seller_required()
     hire_requests = HireServiceRequest.query.filter_by(seller_id=current_user.id).order_by(HireServiceRequest.created_at.desc()).all()
     lease_requests = LeaseServiceRequest.query.filter_by(seller_id=current_user.id).order_by(LeaseServiceRequest.created_at.desc()).all()
-    return render_template("service_requests_inbox.html", hire_requests=hire_requests, lease_requests=lease_requests)
+    unread = ServiceRequestMessage.query.filter_by(receiver_id=current_user.id, is_read=False).all()
+    for message in unread:
+        message.is_read = True
+    if unread:
+        db.session.commit()
+    thread_messages = {}
+    for service, items in (("hire", hire_requests), ("lease", lease_requests)):
+        for item in items:
+            thread_messages[f"{service}-{item.id}"] = ServiceRequestMessage.query.filter_by(
+                service=service, request_id=item.id
+            ).order_by(ServiceRequestMessage.created_at.asc()).all()
+    return render_template("service_requests_inbox.html", hire_requests=hire_requests, lease_requests=lease_requests, thread_messages=thread_messages)
+
+
+
+
+@hire_lease.route("/my-hire-lease-requests", methods=["GET"])
+@login_required
+def my_service_requests():
+    """Customer inbox for hire requests, lease enquiries and conversation history."""
+    hire_requests = HireServiceRequest.query.filter_by(renter_id=current_user.id).order_by(HireServiceRequest.created_at.desc()).all()
+    lease_requests = LeaseServiceRequest.query.filter_by(renter_id=current_user.id).order_by(LeaseServiceRequest.created_at.desc()).all()
+    unread = ServiceRequestMessage.query.filter_by(receiver_id=current_user.id, is_read=False).all()
+    for message in unread:
+        message.is_read = True
+    if unread:
+        db.session.commit()
+    thread_messages = {}
+    for service, items in (("hire", hire_requests), ("lease", lease_requests)):
+        for item in items:
+            thread_messages[f"{service}-{item.id}"] = ServiceRequestMessage.query.filter_by(
+                service=service, request_id=item.id
+            ).order_by(ServiceRequestMessage.created_at.asc()).all()
+    return render_template(
+        "my_service_requests.html",
+        hire_requests=hire_requests,
+        lease_requests=lease_requests,
+        thread_messages=thread_messages,
+    )
+
+
+@hire_lease.route("/hire-lease/requests/<service>/<int:request_id>/message", methods=["POST"])
+@login_required
+def send_service_message(service, request_id):
+    """Send a message only within a request owned by the sender or assigned seller."""
+    if service not in {"hire", "lease"}:
+        abort(404)
+    item = _request_model(service).query.filter_by(id=request_id).first_or_404()
+    if current_user.id not in {item.renter_id, item.seller_id}:
+        abort(403)
+    body = request.form.get("body", "").strip()
+    if not body or len(body) > 2000:
+        flash("Enter a message of 1–2,000 characters.", "danger")
+        destination = "hire_lease.my_service_requests" if current_user.id == item.renter_id else "hire_lease.seller_requests"
+        return redirect(url_for(destination))
+    receiver_id = item.seller_id if current_user.id == item.renter_id else item.renter_id
+    db.session.add(ServiceRequestMessage(
+        service=service, request_id=item.id, sender_id=current_user.id,
+        receiver_id=receiver_id, body=body
+    ))
+    db.session.commit()
+    flash("Message sent.", "success")
+    destination = "hire_lease.my_service_requests" if current_user.id == item.renter_id else "hire_lease.seller_requests"
+    return redirect(url_for(destination))
 
 
 @hire_lease.route("/hire/requests/<int:request_id>/respond", methods=["POST"])
@@ -402,6 +474,12 @@ def _respond(item, service):
     if len(response) > 2000:
         flash("Response must be 2,000 characters or fewer.", "danger")
         return redirect(url_for("hire_lease.seller_requests"))
+    if action in {"accept", "decline"} and item.status != "Pending":
+        flash("Only pending requests can be accepted or declined. You can still send a reply.", "warning")
+        return redirect(url_for("hire_lease.seller_requests"))
+    if action == "respond" and not response:
+        flash("Enter a reply before sending it.", "danger")
+        return redirect(url_for("hire_lease.seller_requests"))
     if action == "accept":
         has_conflict = (
             _hire_request_conflicts(item)
@@ -416,12 +494,19 @@ def _respond(item, service):
             )
             return redirect(url_for("hire_lease.seller_requests"))
         item.status = "Accepted"
-        item.seller_response = response or "The seller has accepted your enquiry. Contact the seller to agree on next steps."
+        response = response or "The seller has accepted your enquiry. Contact the seller to agree on next steps."
+        item.seller_response = response
     elif action == "decline":
         item.status = "Declined"
-        item.seller_response = response or "The seller is unable to proceed with this request."
+        response = response or "The seller is unable to proceed with this request."
+        item.seller_response = response
     else:
         item.seller_response = response
+    if response:
+        db.session.add(ServiceRequestMessage(
+            service=service, request_id=item.id, sender_id=current_user.id,
+            receiver_id=item.renter_id, body=response
+        ))
     db.session.commit()
-    flash("Response saved. This does not confirm a hire booking or create a lease agreement.", "success")
+    flash("Response saved. The customer can view it in My Hire & Lease Requests. Acceptance is not a confirmed booking or signed lease.", "success")
     return redirect(url_for("hire_lease.seller_requests"))

@@ -102,3 +102,24 @@ class LeaseServiceRequest(db.Model):
     vehicle = db.relationship("LeaseVehicle")
     renter = db.relationship("User", foreign_keys=[renter_id])
     seller = db.relationship("User", foreign_keys=[seller_id])
+
+
+class ServiceRequestMessage(db.Model):
+    """Persistent two-way conversation messages for a hire request or lease enquiry."""
+    __tablename__ = "service_request_messages"
+    __table_args__ = (
+        CheckConstraint("service IN ('hire', 'lease')", name="ck_service_request_message_service"),
+        CheckConstraint("length(trim(body)) > 0", name="ck_service_request_message_body"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    service = db.Column(db.String(10), nullable=False, index=True)
+    request_id = db.Column(db.Integer, nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    receiver_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    body = db.Column(db.String(2000), nullable=False)
+    is_read = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    sender = db.relationship("User", foreign_keys=[sender_id])
+    receiver = db.relationship("User", foreign_keys=[receiver_id])

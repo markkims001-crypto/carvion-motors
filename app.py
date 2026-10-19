@@ -32,6 +32,7 @@ from service_vehicle_models import (  # noqa: F401, E402
     LeaseVehicle,
     HireServiceRequest,
     LeaseServiceRequest,
+    ServiceRequestMessage,
 )
 
 
@@ -67,6 +68,7 @@ def create_app():
             "unread_inquiries": 0,
             "unread_vehicle_updates": 0,
             "unread_messages": 0,
+            "unread_service_requests": 0,
         }
 
         if not current_user.is_authenticated:
@@ -122,6 +124,14 @@ def create_app():
             .filter(
                 Message.receiver_id == current_user.id,
                 Message.is_read.is_(False),
+            )
+            .count()
+        )
+        data["unread_service_requests"] = (
+            ServiceRequestMessage.query
+            .filter(
+                ServiceRequestMessage.receiver_id == current_user.id,
+                ServiceRequestMessage.is_read.is_(False),
             )
             .count()
         )

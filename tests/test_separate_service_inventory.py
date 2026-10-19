@@ -12,6 +12,7 @@ from extensions import db  # noqa: E402
 from models import User  # noqa: E402
 from service_vehicle_models import (  # noqa: E402
     HireVehicle, LeaseVehicle, HireServiceRequest, LeaseServiceRequest,
+    ServiceRequestMessage,
 )
 from routes.hire_lease import (  # noqa: E402
     _add_months, _hire_request_conflicts, _lease_request_conflicts,
@@ -200,3 +201,102 @@ def test_lease_acceptance_conflict_uses_monthly_periods():
         candidate.requested_start_date = date(2027, 2, 28)
         assert _lease_request_conflicts(candidate) is False
 
+
+
+def test_service_request_message_table_is_registered():
+    app = create_app()
+    with app.app_context():
+        assert "service_request_messages" in db.metadata.tables
+        assert "sender_id" in db.metadata.tables["service_request_messages"].columns
+        assert "receiver_id" in db.metadata.tables["service_request_messages"].columns
+        assert "body" in db.metadata.tables["service_request_messages"].columns
+
+
+def test_customer_service_request_inbox_requires_login():
+    app = create_app()
+    with app.test_client() as client:
+        assert client.get("/my-hire-lease-requests").status_code == 302
+
+
+
+def _login_test_client(client, user_id):
+    with client.session_transaction() as session:
+        session["_user_id"] = str(user_id)
+        session["_fresh"] = True
+
+
+def test_customer_can_send_a_message_inside_their_hire_request():
+    app = create_app()
+    app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller, renter = _make_service_test_users()
+        vehicle = HireVehicle(
+            seller_id=seller.id, registration_number="KDA901A",
+            brand="Toyota", model="Vitz", year=2022, mileage=0,
+            fuel="Petrol", transmission="Automatic", location="Nairobi",
+            daily_price=3000, minimum_days=1, status="Published",
+        )
+        db.session.add(vehicle)
+        db.session.flush()
+        service_request = HireServiceRequest(
+            vehicle_id=vehicle.id, renter_id=renter.id, seller_id=seller.id,
+            start_date=date(2027, 6, 1), end_date=date(2027, 6, 2),
+            pickup_location="Nairobi", status="Pending",
+        )
+        db.session.add(service_request)
+        db.session.commit()
+        renter_id, request_id = renter.id, service_request.id
+
+    with app.test_client() as client:
+        _login_test_client(client, renter_id)
+        response = client.post(
+            f"/hire-lease/requests/hire/{request_id}/message",
+            data={"body": "Can I collect the car at 9 AM?"},
+        )
+        assert response.status_code == 302
+
+    with app.app_context():
+        message = ServiceRequestMessage.query.filter_by(
+            service="hire", request_id=request_id
+        ).one()
+        assert message.body == "Can I collect the car at 9 AM?"
+        assert message.sender_id == renter_id
+        assert message.receiver_id != renter_id
+
+
+def test_seller_cannot_accept_a_request_that_is_not_pending():
+    app = create_app()
+    app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller, renter = _make_service_test_users()
+        vehicle = HireVehicle(
+            seller_id=seller.id, registration_number="KDA902A",
+            brand="Toyota", model="Vitz", year=2022, mileage=0,
+            fuel="Petrol", transmission="Automatic", location="Nairobi",
+            daily_price=3000, minimum_days=1, status="Published",
+        )
+        db.session.add(vehicle)
+        db.session.flush()
+        service_request = HireServiceRequest(
+            vehicle_id=vehicle.id, renter_id=renter.id, seller_id=seller.id,
+            start_date=date(2027, 7, 1), end_date=date(2027, 7, 2),
+            pickup_location="Nairobi", status="Accepted",
+        )
+        db.session.add(service_request)
+        db.session.commit()
+        seller_id, request_id = seller.id, service_request.id
+
+    with app.test_client() as client:
+        _login_test_client(client, seller_id)
+        response = client.post(
+            f"/hire/requests/{request_id}/respond",
+            data={"action": "decline", "seller_response": "Changed my mind"},
+        )
+        assert response.status_code == 302
+
+    with app.app_context():
+        service_request = db.session.get(HireServiceRequest, request_id)
+        assert service_request.status == "Accepted"
+        assert ServiceRequestMessage.query.filter_by(
+            service="hire", request_id=request_id
+        ).count() == 0

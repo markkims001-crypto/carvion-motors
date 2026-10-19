@@ -348,7 +348,7 @@ def all_cars():
 @cars.route("/car/<int:car_id>")
 def car_details(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     if car.status != "Approved":
 
@@ -1121,7 +1121,7 @@ def my_cars():
 @login_required
 def edit_car(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     if car.seller_id != current_user.id:
 
@@ -1234,7 +1234,7 @@ def edit_car(car_id):
 @login_required
 def delete_car(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     if car.seller_id != current_user.id:
 
@@ -1314,7 +1314,7 @@ def delete_image(image_id):
 
     image = CarImage.query.get_or_404(image_id)
 
-    car = Car.query.get_or_404(image.car_id)
+    car = db.get_or_404(Car, image.car_id)
 
     if car.seller_id != current_user.id:
 
@@ -1400,7 +1400,7 @@ def delete_image(image_id):
 @login_required
 def toggle_favorite(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     if (
         car.status != "Approved"
@@ -1544,7 +1544,7 @@ def remove_favorite(car_id):
 @login_required
 def toggle_compare(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     if (
         car.status != "Approved"
@@ -1854,7 +1854,7 @@ def mark_all_notifications_read():
 
 def process_vehicle_inquiry(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     # Only publicly available listings may receive buyer inquiries.
     # Do not let direct POST requests bypass the public listing filter.
@@ -2012,7 +2012,7 @@ def seller_inquiries():
 @login_required
 def report_listing(car_id):
 
-    car = Car.query.get_or_404(car_id)
+    car = db.get_or_404(Car, car_id)
 
     # Only allow reports on publicly available listings.
     if car.status != "Approved":

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container py-4">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-    <div><h1>{{ 'Cars for Hire' if service == 'hire' else 'Cars for Lease' }}</h1><p class="text-muted mb-0">{{ 'Short-term rentals with daily pricing.' if service == 'hire' else 'Longer-term vehicles with monthly pricing.' }} These are separate listings from vehicles for sale.</p></div>
+    <div><h1>{{ 'Cars available for hire' if service == 'hire' else 'Cars available for lease' }}</h1><p class="text-muted mb-0">{{ 'Short-term rentals with daily pricing.' if service == 'hire' else 'Longer-term vehicles with monthly pricing.' }} These are separate listings from vehicles for sale.</p></div>
     {% if current_user.is_authenticated and current_user.role in ['seller','admin'] %}<a class="btn btn-warning" href="{{ url_for('hire_lease.manage_hire' if service == 'hire' else 'hire_lease.manage_lease') }}">Manage my {{ service }} listings</a>{% endif %}
   </div>
   {% if listings %}<div class="row g-4">{% for vehicle in listings %}

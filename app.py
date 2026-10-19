@@ -145,32 +145,6 @@ def create_app():
     from routes.messages import messages
     from routes.chat import chat
 
-    # The current cars.py contains an accidental duplicate report route at
-    # the end of the file. Remove only the duplicate deferred registration
-    # while preserving the complete marketplace route implementation.
-    report_route_seen = False
-    filtered_deferred = []
-
-    for deferred in cars.deferred_functions:
-        is_report_route = False
-        for cell in getattr(deferred, "__closure__", ()) or ():
-            try:
-                value = cell.cell_contents
-            except ValueError:
-                continue
-            if getattr(value, "__name__", None) == "report_listing":
-                is_report_route = True
-                break
-
-        if is_report_route:
-            if report_route_seen:
-                continue
-            report_route_seen = True
-
-        filtered_deferred.append(deferred)
-
-    cars.deferred_functions = filtered_deferred
-
     app.register_blueprint(auth)
     app.register_blueprint(cars)
     app.register_blueprint(hire_lease)
@@ -302,9 +276,12 @@ def create_app():
                     "CARVION_ADMIN_EMAIL and CARVION_ADMIN_PASSWORD if needed."
                 )
 
-        except Exception:
+        except Exception as error:
             db.session.rollback()
             app.logger.exception("DATABASE INITIALIZATION ERROR")
+            raise RuntimeError(
+                "Database initialization failed; refusing to start the application."
+            ) from error
 
     @app.route("/")
     def home():

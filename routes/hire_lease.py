@@ -44,7 +44,8 @@ def manage_options(car_id):
             if hire_enabled:
                 daily_price = _optional_positive_int("daily_price", "Daily hire price")
                 weekly_price = _optional_positive_int("weekly_price", "Weekly hire price")
-                minimum_days = _optional_positive_int("minimum_days", "Minimum hire days") or 1
+                minimum_days = _optional_positive_int("minimum_days", "Minimum hire days")
+                minimum_days = 1 if minimum_days is None else minimum_days
                 hire_deposit = _optional_positive_int("hire_security_deposit", "Hire security deposit", allow_zero=True)
                 if daily_price is None:
                     raise ValueError("Enter a daily hire price to enable car hire.")
@@ -53,7 +54,8 @@ def manage_options(car_id):
 
             if lease_enabled:
                 monthly_price = _optional_positive_int("monthly_price", "Monthly lease price")
-                minimum_months = _optional_positive_int("minimum_months", "Minimum lease months") or 12
+                minimum_months = _optional_positive_int("minimum_months", "Minimum lease months")
+                minimum_months = 12 if minimum_months is None else minimum_months
                 lease_deposit = _optional_positive_int("lease_security_deposit", "Lease security deposit", allow_zero=True)
                 if monthly_price is None:
                     raise ValueError("Enter a monthly lease price to enable car lease.")

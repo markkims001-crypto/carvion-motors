@@ -404,6 +404,93 @@ def test_admin_cannot_delete_user_who_owns_vehicle_listings():
         assert db.session.get(User, seller_id) is not None
         assert db.session.get(Car, car_id) is not None
 
+
+def _create_car_form_data(**overrides):
+    data = {
+        "registration_number": "CREATE-TEST-1",
+        "brand": "Toyota",
+        "model": "Corolla",
+        "year": "2022",
+        "price": "1500000",
+        "mileage": "25000",
+        "fuel": "Petrol",
+        "transmission": "Automatic",
+        "location": "Nairobi",
+        "engine": "1.8L",
+        "color": "White",
+        "condition": "Local Used",
+        "description": "Well maintained vehicle",
+    }
+    data.update(overrides)
+    return data
+
+
+def test_add_car_rejects_negative_mileage_before_uploading_images():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller, _ = _create_inquiry_test_users_and_car("Approved")
+        seller_id = User.query.filter_by(email="seller@example.test").one().id
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post("/add_car", data=_create_car_form_data(
+            registration_number="NEG-MILEAGE-1", mileage="-1"
+        ))
+    assert response.status_code == 302
+    with app.app_context():
+        assert Car.query.filter_by(registration_number="NEG-MILEAGE-1").first() is None
+
+
+def test_add_car_rejects_unreasonable_year_before_uploading_images():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller, _ = _create_inquiry_test_users_and_car("Approved")
+        seller_id = User.query.filter_by(email="seller@example.test").one().id
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post("/add_car", data=_create_car_form_data(
+            registration_number="BAD-YEAR-1", year="1800"
+        ))
+    assert response.status_code == 302
+    with app.app_context():
+        assert Car.query.filter_by(registration_number="BAD-YEAR-1").first() is None
+
+
+def test_add_car_requires_fuel_transmission_and_location():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        _create_inquiry_test_users_and_car("Approved")
+        seller_id = User.query.filter_by(email="seller@example.test").one().id
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        for field in ("fuel", "transmission", "location"):
+            data = _create_car_form_data(registration_number=f"MISSING-{field.upper()}")
+            data[field] = ""
+            response = client.post("/add_car", data=data)
+            assert response.status_code == 302
+    with app.app_context():
+        assert Car.query.filter(Car.registration_number.like("MISSING-%")).count() == 0
+
+
+def test_add_car_rejects_fields_longer_than_database_columns():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        _create_inquiry_test_users_and_car("Approved")
+        seller_id = User.query.filter_by(email="seller@example.test").one().id
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post("/add_car", data=_create_car_form_data(
+            registration_number="LONG-BRAND-1", brand="B" * 51
+        ))
+    assert response.status_code == 302
+    with app.app_context():
+        assert Car.query.filter_by(registration_number="LONG-BRAND-1").first() is None
+
+
+
 def _create_edit_car_test_data():
     seller = User(
         name="Edit Test Seller",

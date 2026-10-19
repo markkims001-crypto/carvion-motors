@@ -505,3 +505,92 @@ def test_edit_car_accepts_valid_changes():
         assert car.location == "Mombasa"
         assert car.description == "Updated listing"
 
+def _create_car_with_images_for_delete_test(image_count=5, registration="IMG-DELETE-TEST"):
+    from models import CarImage
+    seller = User(
+        name="Image Delete Seller",
+        email=f"{registration.lower()}@example.test",
+        phone="0700000040",
+        password="test-password",
+        role="seller",
+    )
+    db.session.add(seller)
+    db.session.flush()
+    car = Car(
+        registration_number=registration,
+        seller_id=seller.id,
+        brand="Toyota",
+        model="Corolla",
+        year=2022,
+        price=1500000,
+        mileage=25000,
+        fuel="Petrol",
+        transmission="Automatic",
+        location="Nairobi",
+        status="Approved",
+    )
+    db.session.add(car)
+    db.session.flush()
+    for index in range(image_count):
+        db.session.add(CarImage(
+            car_id=car.id,
+            filename=f"https://example.test/{registration}-{index}.jpg",
+            public_id=None,
+        ))
+    db.session.commit()
+    return seller.id, car.id
+
+
+def test_delete_car_cleans_up_reports_without_foreign_key_error():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    from models import Report
+    with app.app_context():
+        seller_id, car_id = _create_car_with_images_for_delete_test(
+            image_count=5, registration="REPORT-CAR-DELETE"
+        )
+        reporter = User(
+            name="Reporter",
+            email="reporter-car-delete@example.test",
+            phone="0700000041",
+            password="test-password",
+            role="buyer",
+        )
+        db.session.add(reporter)
+        db.session.flush()
+        db.session.add(Report(
+            car_id=car_id,
+            reporter_id=reporter.id,
+            reason="Incorrect information",
+            details="Testing deletion",
+        ))
+        db.session.commit()
+
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(f"/delete_car/{car_id}")
+
+    assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(Car, car_id) is None
+        assert Report.query.filter_by(car_id=car_id).count() == 0
+
+
+def test_delete_image_keeps_five_image_minimum():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    from models import CarImage
+    with app.app_context():
+        seller_id, car_id = _create_car_with_images_for_delete_test(
+            image_count=5, registration="MINIMUM-IMAGE-TEST"
+        )
+        image_id = CarImage.query.filter_by(car_id=car_id).first().id
+
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(f"/delete_image/{image_id}")
+
+    assert response.status_code == 302
+    with app.app_context():
+        assert CarImage.query.filter_by(car_id=car_id).count() == 5
+

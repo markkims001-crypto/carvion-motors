@@ -272,6 +272,7 @@
 
                     {% set seller_phone = car.seller.phone|default('', true)|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
 
+                    {% if not current_user.is_authenticated or current_user.id != car.seller_id %}
                     {% if car.seller.allow_phone_contact|default(true) and seller_phone %}
                     <a href="tel:{{ seller_phone }}"
                        class="btn btn-outline-dark w-100 mb-2">
@@ -299,7 +300,6 @@
                         WhatsApp Seller
                     </a>
                     {% endif %}
-
                     {% endif %}
 
                     {% if current_user.is_authenticated

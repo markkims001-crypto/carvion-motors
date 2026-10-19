@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Cars for Hire' if service == 'hire' else 'Cars for Lease' }} | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div><h1>{{ 'Cars for Hire' if service == 'hire' else 'Cars for Lease' }}</h1><p class="text-muted mb-0">{{ 'Short-term rentals with daily pricing.' if service == 'hire' else 'Longer-term vehicles with monthly pricing.' }} These are separate listings from vehicles for sale.</p></div>
+    {% if current_user.is_authenticated and current_user.role in ['seller','admin'] %}<a class="btn btn-warning" href="{{ url_for('hire_lease.manage_hire' if service == 'hire' else 'hire_lease.manage_lease') }}">Manage my {{ service }} listings</a>{% endif %}
+  </div>
+  {% if listings %}<div class="row g-4">{% for vehicle in listings %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100">
+    {% if vehicle.image_url %}<img src="{{ vehicle.image_url }}" class="card-img-top" alt="{{ vehicle.brand }} {{ vehicle.model }}" style="height:220px;object-fit:cover">{% else %}<div class="bg-light d-flex align-items-center justify-content-center" style="height:150px"><span class="text-muted">Vehicle photo not provided</span></div>{% endif %}
+    <div class="card-body d-flex flex-column"><h2 class="h5">{{ vehicle.year }} {{ vehicle.brand }} {{ vehicle.model }}</h2><p class="text-muted mb-2">{{ vehicle.location }} · {{ vehicle.fuel }} · {{ vehicle.transmission }}</p>
+      <p class="fs-5 fw-bold">KES {{ '{:,}'.format(vehicle.daily_price if service == 'hire' else vehicle.monthly_price) }} <small class="text-muted fs-6">/ {{ 'day' if service == 'hire' else 'month' }}</small></p>
+      {% if service == 'hire' %}<p class="small">Minimum hire: {{ vehicle.minimum_days }} day(s)</p>{% else %}<p class="small">Minimum lease: {{ vehicle.minimum_months }} month(s)</p>{% endif %}
+      {% if vehicle.description %}<p>{{ vehicle.description }}</p>{% endif %}
+      {% if current_user.is_authenticated and current_user.id != vehicle.seller_id %}<a class="btn btn-warning mt-auto" href="{{ url_for('hire_lease.request_hire' if service == 'hire' else 'hire_lease.request_lease', vehicle_id=vehicle.id) }}">Send {{ 'hire request' if service == 'hire' else 'lease enquiry' }}</a>{% elif not current_user.is_authenticated %}<a class="btn btn-outline-dark mt-auto" href="{{ url_for('auth.login') }}">Log in to enquire</a>{% endif %}
+    </div>
+  </div></div>{% endfor %}</div>{% else %}<div class="alert alert-light border">No vehicles are currently listed for {{ service }}. Check back soon.</div>{% endif %}
+</div>
+{% endblock %}

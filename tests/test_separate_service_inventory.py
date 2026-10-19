@@ -12,6 +12,7 @@ from extensions import db  # noqa: E402
 from models import User  # noqa: E402
 from service_vehicle_models import (  # noqa: E402
     HireVehicle, LeaseVehicle, HireServiceRequest, LeaseServiceRequest,
+    ServiceRequestMessage,
 )
 from routes.hire_lease import (  # noqa: E402
     _add_months, _hire_request_conflicts, _lease_request_conflicts,
@@ -200,3 +201,18 @@ def test_lease_acceptance_conflict_uses_monthly_periods():
         candidate.requested_start_date = date(2027, 2, 28)
         assert _lease_request_conflicts(candidate) is False
 
+
+
+def test_service_request_message_table_is_registered():
+    app = create_app()
+    with app.app_context():
+        assert "service_request_messages" in db.metadata.tables
+        assert "sender_id" in db.metadata.tables["service_request_messages"].columns
+        assert "receiver_id" in db.metadata.tables["service_request_messages"].columns
+        assert "body" in db.metadata.tables["service_request_messages"].columns
+
+
+def test_customer_service_request_inbox_requires_login():
+    app = create_app()
+    with app.test_client() as client:
+        assert client.get("/my-hire-lease-requests").status_code == 302

@@ -122,6 +122,7 @@ def create_app():
 
     from routes.auth import auth
     from routes.cars import cars
+    from routes.hire_lease import hire_lease
     from routes.admin import admin
     from routes.messages import messages
     from routes.chat import chat
@@ -154,6 +155,7 @@ def create_app():
 
     app.register_blueprint(auth)
     app.register_blueprint(cars)
+    app.register_blueprint(hire_lease)
     app.register_blueprint(admin)
     app.register_blueprint(messages)
     app.register_blueprint(chat)

@@ -101,3 +101,13 @@ def test_hire_and_lease_models_are_registered_without_changing_car_table():
         assert "monthly_price" in db.metadata.tables["car_lease_options"].columns
         assert "start_date" in db.metadata.tables["hire_requests"].columns
         assert "requested_start_date" in db.metadata.tables["lease_requests"].columns
+
+
+
+def test_hire_lease_settings_page_requires_login():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        response = client.get("/car/1/hire-lease")
+        assert response.status_code == 302
+        assert "/login" in response.headers["Location"]

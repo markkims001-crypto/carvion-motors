@@ -1,338 +1,298 @@
-"""Public discovery and customer request flows for vehicle hire and lease."""
+"""Independent public listings and management workflows for hire and lease.
 
+This blueprint never reads or writes the sale-marketplace Car table. Hire and
+lease each use their own inventory and request tables.
+"""
 from datetime import date
+from urllib.parse import urlparse
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from hire_lease_models import CarHireOption, CarLeaseOption, HireRequest, LeaseRequest
-from models import Car
+from service_vehicle_models import (
+    HireVehicle, LeaseVehicle, HireServiceRequest, LeaseServiceRequest,
+)
 
 hire_lease = Blueprint("hire_lease", __name__)
 
 
-def _optional_positive_int(field_name, label, allow_zero=False):
-    raw = request.form.get(field_name, "").strip()
+def _seller_required():
+    if not current_user.is_authenticated:
+        abort(401)
+    if (getattr(current_user, "role", "") or "").lower() not in {"seller", "admin"}:
+        abort(403)
+
+
+def _positive_int(field, label, default=None, allow_zero=False):
+    raw = request.form.get(field, "").strip()
+    if not raw and default is not None:
+        return default
     if not raw:
-        return None
+        raise ValueError(f"{label} is required.")
     try:
         value = int(raw)
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         raise ValueError(f"{label} must be a whole number.")
     if value < 0 or (value == 0 and not allow_zero):
-        qualifier = "zero or greater" if allow_zero else "greater than zero"
-        raise ValueError(f"{label} must be {qualifier}.")
+        raise ValueError(f"{label} must be {'zero or greater' if allow_zero else 'greater than zero'}.")
     return value
 
 
-def _public_car_or_404(car_id):
-    car = Car.query.filter_by(id=car_id, status="Approved").first()
-    if car is None:
-        abort(404)
-    return car
+def _form_values(service):
+    values = {
+        "registration_number": request.form.get("registration_number", "").strip().upper(),
+        "brand": request.form.get("brand", "").strip(),
+        "model": request.form.get("model", "").strip(),
+        "year": _positive_int("year", "Year"),
+        "mileage": _positive_int("mileage", "Mileage", default=0, allow_zero=True),
+        "fuel": request.form.get("fuel", "").strip(),
+        "transmission": request.form.get("transmission", "").strip(),
+        "location": request.form.get("location", "").strip(),
+        "description": request.form.get("description", "").strip() or None,
+        "image_url": request.form.get("image_url", "").strip() or None,
+    }
+    for field, maximum in (("registration_number", 30), ("brand", 80), ("model", 100), ("fuel", 30), ("transmission", 30), ("location", 100)):
+        if not values[field] or len(values[field]) > maximum:
+            raise ValueError(f"Enter a valid {field.replace('_', ' ')} (maximum {maximum} characters).")
+    if not 1900 <= values["year"] <= date.today().year + 1:
+        raise ValueError("Enter a valid vehicle year.")
+    if values["image_url"]:
+        parsed = urlparse(values["image_url"])
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("Vehicle image must be a valid http or https URL.")
+    if values["description"] and len(values["description"]) > 4000:
+        raise ValueError("Description must be 4,000 characters or fewer.")
+    if service == "hire":
+        values["daily_price"] = _positive_int("daily_price", "Daily hire price")
+        values["weekly_price"] = _positive_int("weekly_price", "Weekly price", allow_zero=False) if request.form.get("weekly_price", "").strip() else None
+        values["minimum_days"] = _positive_int("minimum_days", "Minimum hire days", default=1)
+        values["security_deposit"] = _positive_int("security_deposit", "Security deposit", allow_zero=True) if request.form.get("security_deposit", "").strip() else None
+    else:
+        values["monthly_price"] = _positive_int("monthly_price", "Monthly lease price")
+        values["minimum_months"] = _positive_int("minimum_months", "Minimum lease months", default=12)
+        values["security_deposit"] = _positive_int("security_deposit", "Security deposit", allow_zero=True) if request.form.get("security_deposit", "").strip() else None
+    return values
 
 
-def _requester_can_request(car):
-    if car.seller_id == current_user.id:
-        flash("You cannot request your own vehicle.", "warning")
-        return False
-    return True
+def _inventory(service):
+    return HireVehicle if service == "hire" else LeaseVehicle
 
 
-@hire_lease.route("/car/<int:car_id>/hire-lease", methods=["GET", "POST"])
-@login_required
-def manage_options(car_id):
-    car = Car.query.get_or_404(car_id)
+def _request_model(service):
+    return HireServiceRequest if service == "hire" else LeaseServiceRequest
 
-    if car.seller_id != current_user.id:
-        flash("You are not allowed to manage hire or lease settings for this vehicle.", "danger")
-        return redirect(url_for("cars.seller_dashboard"))
 
-    hire_option = CarHireOption.query.filter_by(car_id=car.id).first()
-    lease_option = CarLeaseOption.query.filter_by(car_id=car.id).first()
+def _manage_endpoint(service):
+    return "hire_lease.manage_hire" if service == "hire" else "hire_lease.manage_lease"
 
-    if request.method == "POST":
-        hire_enabled = request.form.get("hire_enabled") == "on"
-        lease_enabled = request.form.get("lease_enabled") == "on"
 
-        try:
-            if hire_enabled:
-                daily_price = _optional_positive_int("daily_price", "Daily hire price")
-                weekly_price = _optional_positive_int("weekly_price", "Weekly hire price")
-                minimum_days = _optional_positive_int("minimum_days", "Minimum hire days")
-                minimum_days = 1 if minimum_days is None else minimum_days
-                hire_deposit = _optional_positive_int("hire_security_deposit", "Hire security deposit", allow_zero=True)
-                if daily_price is None:
-                    raise ValueError("Enter a daily hire price to enable car hire.")
-                if minimum_days < 1:
-                    raise ValueError("Minimum hire days must be at least 1.")
+def _listing_endpoint(service):
+    return "hire_lease.hire_listings" if service == "hire" else "hire_lease.lease_listings"
 
-            if lease_enabled:
-                monthly_price = _optional_positive_int("monthly_price", "Monthly lease price")
-                minimum_months = _optional_positive_int("minimum_months", "Minimum lease months")
-                minimum_months = 12 if minimum_months is None else minimum_months
-                lease_deposit = _optional_positive_int("lease_security_deposit", "Lease security deposit", allow_zero=True)
-                if monthly_price is None:
-                    raise ValueError("Enter a monthly lease price to enable car lease.")
-                if minimum_months < 1:
-                    raise ValueError("Minimum lease months must be at least 1.")
-        except ValueError as error:
-            flash(str(error), "danger")
-            return redirect(url_for("hire_lease.manage_options", car_id=car.id))
 
-        try:
-            if hire_enabled:
-                if hire_option is None:
-                    hire_option = CarHireOption(car_id=car.id, daily_price=daily_price)
-                    db.session.add(hire_option)
-                hire_option.daily_price = daily_price
-                hire_option.weekly_price = weekly_price
-                hire_option.minimum_days = minimum_days
-                hire_option.security_deposit = hire_deposit
-                hire_option.available = True
-            elif hire_option is not None:
-                hire_option.available = False
-
-            if lease_enabled:
-                if lease_option is None:
-                    lease_option = CarLeaseOption(car_id=car.id, monthly_price=monthly_price)
-                    db.session.add(lease_option)
-                lease_option.monthly_price = monthly_price
-                lease_option.minimum_months = minimum_months
-                lease_option.security_deposit = lease_deposit
-                lease_option.available = True
-            elif lease_option is not None:
-                lease_option.available = False
-
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            flash("We could not save these settings. Please try again.", "danger")
-            return redirect(url_for("hire_lease.manage_options", car_id=car.id))
-
-        flash("Hire and lease settings saved. A customer request will not automatically confirm a booking.", "success")
-        return redirect(url_for("hire_lease.manage_options", car_id=car.id))
-
-    return render_template(
-        "manage_hire_lease.html",
-        car=car,
-        hire_option=hire_option,
-        lease_option=lease_option,
-    )
+def _save_vehicle(service, vehicle=None):
+    _seller_required()
+    model = _inventory(service)
+    try:
+        values = _form_values(service)
+    except ValueError as error:
+        flash(str(error), "danger")
+        return redirect(url_for(_manage_endpoint(service), edit_id=vehicle.id if vehicle else None))
+    if vehicle is None:
+        vehicle = model(seller_id=current_user.id)
+        db.session.add(vehicle)
+    for key, value in values.items():
+        setattr(vehicle, key, value)
+    vehicle.status = vehicle.status if vehicle.status in {"Published", "Paused"} else "Published"
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash("We could not save this vehicle. Please check the details and try again.", "danger")
+        return redirect(url_for(_manage_endpoint(service)))
+    flash(f"Your vehicle was saved in the separate {service} inventory.", "success")
+    return redirect(url_for(_manage_endpoint(service)))
 
 
 @hire_lease.route("/hire")
 def hire_listings():
-    listings = (
-        db.session.query(Car, CarHireOption)
-        .join(CarHireOption, CarHireOption.car_id == Car.id)
-        .filter(Car.status == "Approved", CarHireOption.available.is_(True))
-        .order_by(Car.created_at.desc())
-        .all()
-    )
-    return render_template("hire_listings.html", listings=listings)
+    listings = HireVehicle.query.filter_by(status="Published").order_by(HireVehicle.created_at.desc()).all()
+    return render_template("service_listings.html", service="hire", listings=listings)
 
 
 @hire_lease.route("/lease")
 def lease_listings():
-    listings = (
-        db.session.query(Car, CarLeaseOption)
-        .join(CarLeaseOption, CarLeaseOption.car_id == Car.id)
-        .filter(Car.status == "Approved", CarLeaseOption.available.is_(True))
-        .order_by(Car.created_at.desc())
-        .all()
-    )
-    return render_template("lease_listings.html", listings=listings)
+    listings = LeaseVehicle.query.filter_by(status="Published").order_by(LeaseVehicle.created_at.desc()).all()
+    return render_template("service_listings.html", service="lease", listings=listings)
 
 
-@hire_lease.route("/car/<int:car_id>/hire-request", methods=["GET", "POST"])
+@hire_lease.route("/hire/manage")
 @login_required
-def request_hire(car_id):
-    car = _public_car_or_404(car_id)
-    option = CarHireOption.query.filter_by(car_id=car.id, available=True).first_or_404()
+def manage_hire():
+    _seller_required()
+    listings = HireVehicle.query.filter_by(seller_id=current_user.id).order_by(HireVehicle.created_at.desc()).all()
+    edit_id = request.args.get("edit_id", type=int)
+    vehicle = HireVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
+    return render_template("service_inventory.html", service="hire", listings=listings, vehicle=vehicle)
 
-    if not _requester_can_request(car):
-        return redirect(url_for("hire_lease.hire_listings"))
 
+@hire_lease.route("/lease/manage")
+@login_required
+def manage_lease():
+    _seller_required()
+    listings = LeaseVehicle.query.filter_by(seller_id=current_user.id).order_by(LeaseVehicle.created_at.desc()).all()
+    edit_id = request.args.get("edit_id", type=int)
+    vehicle = LeaseVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
+    return render_template("service_inventory.html", service="lease", listings=listings, vehicle=vehicle)
+
+
+@hire_lease.route("/hire/manage/save", methods=["POST"])
+@login_required
+def save_hire():
+    _seller_required()
+    edit_id = request.form.get("vehicle_id", type=int)
+    vehicle = HireVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
+    if edit_id and vehicle is None:
+        abort(404)
+    return _save_vehicle("hire", vehicle)
+
+
+@hire_lease.route("/lease/manage/save", methods=["POST"])
+@login_required
+def save_lease():
+    _seller_required()
+    edit_id = request.form.get("vehicle_id", type=int)
+    vehicle = LeaseVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
+    if edit_id and vehicle is None:
+        abort(404)
+    return _save_vehicle("lease", vehicle)
+
+
+@hire_lease.route("/hire/manage/<int:vehicle_id>/status", methods=["POST"])
+@login_required
+def toggle_hire_status(vehicle_id):
+    _seller_required()
+    vehicle = HireVehicle.query.filter_by(id=vehicle_id, seller_id=current_user.id).first_or_404()
+    vehicle.status = "Paused" if vehicle.status == "Published" else "Published"
+    db.session.commit()
+    flash(f"Hire listing is now {vehicle.status.lower()}.", "success")
+    return redirect(url_for("hire_lease.manage_hire"))
+
+
+@hire_lease.route("/lease/manage/<int:vehicle_id>/status", methods=["POST"])
+@login_required
+def toggle_lease_status(vehicle_id):
+    _seller_required()
+    vehicle = LeaseVehicle.query.filter_by(id=vehicle_id, seller_id=current_user.id).first_or_404()
+    vehicle.status = "Paused" if vehicle.status == "Published" else "Published"
+    db.session.commit()
+    flash(f"Lease listing is now {vehicle.status.lower()}.", "success")
+    return redirect(url_for("hire_lease.manage_lease"))
+
+
+@hire_lease.route("/hire/vehicle/<int:vehicle_id>/request", methods=["GET", "POST"])
+@login_required
+def request_hire(vehicle_id):
+    vehicle = HireVehicle.query.filter_by(id=vehicle_id, status="Published").first_or_404()
+    if vehicle.seller_id == current_user.id:
+        abort(403)
     if request.method == "POST":
         try:
-            start_date = date.fromisoformat(request.form.get("start_date", "").strip())
-            end_date = date.fromisoformat(request.form.get("end_date", "").strip())
-            pickup_location = request.form.get("pickup_location", "").strip()
-            return_location = request.form.get("return_location", "").strip() or None
+            start = date.fromisoformat(request.form.get("start_date", ""))
+            end = date.fromisoformat(request.form.get("end_date", ""))
+            pickup = request.form.get("pickup_location", "").strip()
             message = request.form.get("message", "").strip() or None
-
-            if start_date < date.today():
-                raise ValueError("The start date cannot be in the past.")
-            if end_date < start_date:
-                raise ValueError("The return date must be on or after the start date.")
-            days = (end_date - start_date).days + 1
-            if days < option.minimum_days:
-                raise ValueError(f"This vehicle requires a minimum hire period of {option.minimum_days} day(s).")
-            if not pickup_location or len(pickup_location) > 120:
+            if start < date.today() or end < start:
+                raise ValueError("Choose valid hire dates; the end date must not precede the start date.")
+            days = (end - start).days + 1
+            if days < vehicle.minimum_days:
+                raise ValueError(f"Minimum hire period is {vehicle.minimum_days} day(s).")
+            if not pickup or len(pickup) > 120:
                 raise ValueError("Enter a pickup location (maximum 120 characters).")
-            if return_location and len(return_location) > 120:
-                raise ValueError("Return location must be 120 characters or fewer.")
             if message and len(message) > 2000:
                 raise ValueError("Message must be 2,000 characters or fewer.")
         except (ValueError, TypeError) as error:
             flash(str(error) or "Enter valid hire dates.", "danger")
-            return redirect(url_for("hire_lease.request_hire", car_id=car.id))
-
-        hire_request = HireRequest(
-            car_id=car.id,
-            renter_id=current_user.id,
-            seller_id=car.seller_id,
-            start_date=start_date,
-            end_date=end_date,
-            pickup_location=pickup_location,
-            return_location=return_location,
-            message=message,
-            estimated_total=days * option.daily_price,
-            status="Pending",
-        )
-        try:
-            db.session.add(hire_request)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            flash("We could not submit your request. Please try again.", "danger")
-            return redirect(url_for("hire_lease.request_hire", car_id=car.id))
-
-        flash("Your hire request was sent to the seller. It is pending and is not a confirmed booking.", "success")
+            return redirect(url_for("hire_lease.request_hire", vehicle_id=vehicle.id))
+        db.session.add(HireServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, start_date=start, end_date=end, pickup_location=pickup, message=message))
+        db.session.commit()
+        flash("Hire request sent. It is pending and is not a confirmed booking.", "success")
         return redirect(url_for("hire_lease.hire_listings"))
+    return render_template("service_request_form.html", service="hire", vehicle=vehicle, today=date.today().isoformat())
 
-    return render_template("hire_request.html", car=car, option=option, today=date.today().isoformat())
 
-
-@hire_lease.route("/car/<int:car_id>/lease-request", methods=["GET", "POST"])
+@hire_lease.route("/lease/vehicle/<int:vehicle_id>/request", methods=["GET", "POST"])
 @login_required
-def request_lease(car_id):
-    car = _public_car_or_404(car_id)
-    option = CarLeaseOption.query.filter_by(car_id=car.id, available=True).first_or_404()
-
-    if not _requester_can_request(car):
-        return redirect(url_for("hire_lease.lease_listings"))
-
+def request_lease(vehicle_id):
+    vehicle = LeaseVehicle.query.filter_by(id=vehicle_id, status="Published").first_or_404()
+    if vehicle.seller_id == current_user.id:
+        abort(403)
     if request.method == "POST":
         try:
-            requested_start_date = date.fromisoformat(request.form.get("requested_start_date", "").strip())
-            duration_months = _optional_positive_int("duration_months", "Lease duration")
-            budget = _optional_positive_int("requested_monthly_budget", "Monthly budget")
+            start = date.fromisoformat(request.form.get("requested_start_date", ""))
+            duration = _positive_int("duration_months", "Lease duration")
             location = request.form.get("location", "").strip()
             message = request.form.get("message", "").strip() or None
-
-            if requested_start_date < date.today():
-                raise ValueError("The requested start date cannot be in the past.")
-            if duration_months is None or duration_months < option.minimum_months:
-                raise ValueError(f"This vehicle requires a lease of at least {option.minimum_months} month(s).")
+            if start < date.today():
+                raise ValueError("The requested lease start date cannot be in the past.")
+            if duration < vehicle.minimum_months:
+                raise ValueError(f"Minimum lease term is {vehicle.minimum_months} month(s).")
             if not location or len(location) > 120:
                 raise ValueError("Enter a location (maximum 120 characters).")
             if message and len(message) > 2000:
                 raise ValueError("Message must be 2,000 characters or fewer.")
         except (ValueError, TypeError) as error:
             flash(str(error) or "Enter valid lease details.", "danger")
-            return redirect(url_for("hire_lease.request_lease", car_id=car.id))
-
-        lease_request = LeaseRequest(
-            car_id=car.id,
-            renter_id=current_user.id,
-            seller_id=car.seller_id,
-            requested_start_date=requested_start_date,
-            duration_months=duration_months,
-            requested_monthly_budget=budget,
-            location=location,
-            message=message,
-            status="Pending",
-        )
-        try:
-            db.session.add(lease_request)
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-            flash("We could not submit your request. Please try again.", "danger")
-            return redirect(url_for("hire_lease.request_lease", car_id=car.id))
-
-        flash("Your lease enquiry was sent to the seller. It is pending and is not a confirmed lease.", "success")
+            return redirect(url_for("hire_lease.request_lease", vehicle_id=vehicle.id))
+        db.session.add(LeaseServiceRequest(vehicle_id=vehicle.id, renter_id=current_user.id, seller_id=vehicle.seller_id, requested_start_date=start, duration_months=duration, location=location, message=message))
+        db.session.commit()
+        flash("Lease enquiry sent. No lease agreement has been created.", "success")
         return redirect(url_for("hire_lease.lease_listings"))
-
-    return render_template("lease_request.html", car=car, option=option, today=date.today().isoformat())
-
-
-def _seller_only():
-    if (getattr(current_user, "role", "") or "").lower() != "seller":
-        flash("Seller access required.", "danger")
-        return False
-    return True
+    return render_template("service_request_form.html", service="lease", vehicle=vehicle, today=date.today().isoformat())
 
 
 @hire_lease.route("/seller/hire-lease-requests")
 @login_required
 def seller_requests():
-    if not _seller_only():
-        return redirect(url_for("home"))
-
-    hire_requests = (
-        HireRequest.query.filter_by(seller_id=current_user.id)
-        .order_by(HireRequest.created_at.desc()).all()
-    )
-    lease_requests = (
-        LeaseRequest.query.filter_by(seller_id=current_user.id)
-        .order_by(LeaseRequest.created_at.desc()).all()
-    )
-    return render_template(
-        "seller_hire_lease_requests.html",
-        hire_requests=hire_requests,
-        lease_requests=lease_requests,
-    )
+    _seller_required()
+    hire_requests = HireServiceRequest.query.filter_by(seller_id=current_user.id).order_by(HireServiceRequest.created_at.desc()).all()
+    lease_requests = LeaseServiceRequest.query.filter_by(seller_id=current_user.id).order_by(LeaseServiceRequest.created_at.desc()).all()
+    return render_template("service_requests_inbox.html", hire_requests=hire_requests, lease_requests=lease_requests)
 
 
-@hire_lease.route("/seller/hire-lease-requests/<string:request_type>/<int:request_id>", methods=["POST"])
+@hire_lease.route("/hire/requests/<int:request_id>/respond", methods=["POST"])
 @login_required
-def respond_to_request(request_type, request_id):
-    if not _seller_only():
-        return redirect(url_for("home"))
+def respond_hire_request(request_id):
+    _seller_required()
+    item = HireServiceRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
+    return _respond(item, "hire")
 
-    if request_type == "hire":
-        item = HireRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
-    elif request_type == "lease":
-        item = LeaseRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
-    else:
-        abort(404)
 
+@hire_lease.route("/lease/requests/<int:request_id>/respond", methods=["POST"])
+@login_required
+def respond_lease_request(request_id):
+    _seller_required()
+    item = LeaseServiceRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
+    return _respond(item, "lease")
+
+
+def _respond(item, service):
     action = request.form.get("action", "").strip().lower()
-    response_text = request.form.get("seller_response", "").strip()
+    response = request.form.get("seller_response", "").strip()
     if action not in {"accept", "decline", "respond"}:
         abort(400)
-    if len(response_text) > 2000:
-        flash("Your response must be 2,000 characters or fewer.", "danger")
+    if len(response) > 2000:
+        flash("Response must be 2,000 characters or fewer.", "danger")
         return redirect(url_for("hire_lease.seller_requests"))
-
-    if item.status != "Pending" and action in {"accept", "decline"}:
-        flash("Only pending requests can be accepted or declined.", "warning")
-        return redirect(url_for("hire_lease.seller_requests"))
-
     if action == "accept":
         item.status = "Accepted"
-        item.seller_response = response_text or "The seller has accepted this request. This is not a confirmed booking or lease."
-        message = "Request marked accepted. No booking, payment, or lease agreement has been created."
+        item.seller_response = response or "The seller has accepted your enquiry. Contact the seller to agree on next steps."
     elif action == "decline":
         item.status = "Declined"
-        item.seller_response = response_text or "The seller has declined this request."
-        message = "Request declined."
+        item.seller_response = response or "The seller is unable to proceed with this request."
     else:
-        if not response_text:
-            flash("Enter a response before submitting.", "warning")
-            return redirect(url_for("hire_lease.seller_requests"))
-        item.seller_response = response_text
-        message = "Your response was saved."
-
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        flash("We could not update this request. Please try again.", "danger")
-        return redirect(url_for("hire_lease.seller_requests"))
-
-    flash(message, "success")
+        item.seller_response = response
+    db.session.commit()
+    flash("Response saved. This does not confirm a hire booking or create a lease agreement.", "success")
     return redirect(url_for("hire_lease.seller_requests"))

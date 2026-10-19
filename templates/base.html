@@ -244,7 +244,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('home') }}">Home</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('cars.all_cars') }}">🚗 Carvion Cars</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('hire_lease.hire_lease_home') }}">🚘 Hire &amp; Lease</a></li>
-                {% if current_user.is_authenticated %}<li class="nav-item"><a class="nav-link" href="{{ url_for('hire_lease.my_service_requests') }}">💬 My Hire &amp; Lease Requests</a></li>{% endif %}
+                {% if current_user.is_authenticated %}<li class="nav-item"><a class="nav-link {% if unread_service_requests > 0 %}nav-unread{% endif %}" href="{{ url_for('hire_lease.my_service_requests') }}">💬 My Hire &amp; Lease Requests{% if unread_service_requests > 0 %} <span class="notification-badge">{{ unread_service_requests }}</span>{% endif %}</a></li>{% endif %}
                 {% if current_user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link {% if unread_favorites > 0 %}nav-unread{% endif %}" href="{{ url_for('cars.favorites') }}">

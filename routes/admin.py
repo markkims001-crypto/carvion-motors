@@ -14,14 +14,13 @@ from flask import (
 
 from sqlalchemy import or_
 
-from extensions import utcnow
 
 from flask_login import (
     login_required,
     current_user
 )
 
-from extensions import db
+from extensions import db, utcnow
 
 from models import (
     User,
@@ -179,7 +178,7 @@ def users():
 @admin_required
 def user_details(user_id):
 
-    user = User.query.get_or_404(
+    user = db.get_or_404(User, 
         user_id
     )
 
@@ -205,7 +204,7 @@ def user_details(user_id):
 @admin_required
 def change_role(user_id, role):
 
-    user = User.query.get_or_404(
+    user = db.get_or_404(User, 
         user_id
     )
 
@@ -251,7 +250,7 @@ def change_role(user_id, role):
 @admin_required
 def delete_user(user_id):
 
-    user = User.query.get_or_404(
+    user = db.get_or_404(User, 
         user_id
     )
 
@@ -392,7 +391,7 @@ def cars():
 @admin_required
 def car_details(car_id):
 
-    car = Car.query.get_or_404(
+    car = db.get_or_404(Car, 
         car_id
     )
 
@@ -415,7 +414,7 @@ def car_details(car_id):
 @admin_required
 def approve_car(car_id):
 
-    car = Car.query.get_or_404(
+    car = db.get_or_404(Car, 
         car_id
     )
 
@@ -463,7 +462,7 @@ def approve_car(car_id):
 @admin_required
 def reject_car(car_id):
 
-    car = Car.query.get_or_404(
+    car = db.get_or_404(Car, 
         car_id
     )
 
@@ -512,7 +511,7 @@ def reject_car(car_id):
 @admin_required
 def delete_car(car_id):
 
-    car = Car.query.get_or_404(
+    car = db.get_or_404(Car, 
         car_id
     )
 
@@ -678,7 +677,7 @@ def inquiries():
 @admin_required
 def inquiry_details(inquiry_id):
 
-    inquiry = Inquiry.query.get_or_404(
+    inquiry = db.get_or_404(Inquiry, 
         inquiry_id
     )
 
@@ -706,7 +705,7 @@ def inquiry_details(inquiry_id):
 @admin_required
 def reply_inquiry(inquiry_id):
 
-    inquiry = Inquiry.query.get_or_404(
+    inquiry = db.get_or_404(Inquiry, 
         inquiry_id
     )
 
@@ -784,7 +783,7 @@ def reply_inquiry(inquiry_id):
 @admin_required
 def resolve_inquiry(inquiry_id):
 
-    inquiry = Inquiry.query.get_or_404(
+    inquiry = db.get_or_404(Inquiry, 
         inquiry_id
     )
 
@@ -820,7 +819,7 @@ def resolve_inquiry(inquiry_id):
 @admin_required
 def delete_inquiry(inquiry_id):
 
-    inquiry = Inquiry.query.get_or_404(
+    inquiry = db.get_or_404(Inquiry, 
         inquiry_id
     )
 
@@ -1122,7 +1121,7 @@ def reports():
 @admin_required
 def report_details(report_id):
 
-    report = Report.query.get_or_404(report_id)
+    report = db.get_or_404(Report, report_id)
 
     return render_template(
         "admin_report_details.html",
@@ -1141,7 +1140,7 @@ def report_details(report_id):
 @admin_required
 def update_report(report_id):
 
-    report = Report.query.get_or_404(report_id)
+    report = db.get_or_404(Report, report_id)
 
     status = request.form.get("status", "").strip()
     admin_notes = request.form.get(

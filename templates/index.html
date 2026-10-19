@@ -118,7 +118,7 @@
         .empty-state h3 { margin: 0 0 6px; }
         .empty-state p { margin: 0 0 18px; color: var(--muted); }
         .services-section { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 70px 0 20px; }
-        .services-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+        .services-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
         .service-card { display: flex; gap: 20px; align-items: flex-start; padding: 28px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 26px rgba(15,23,42,.05); }
         .service-card-icon { display: grid; place-items: center; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 14px; background: #fff4cc; font-size: 25px; }
         .service-card-copy { min-width: 0; }
@@ -188,9 +188,8 @@
     </a>
     <ul class="nav-links">
         <li><a href="{{ url_for('home') }}">Home</a></li>
-        <li><a href="{{ url_for('cars.all_cars') }}">Browse Cars</a></li>
-        <li><a href="{{ url_for('hire_lease.hire_listings') }}">Car Hire</a></li>
-        <li><a href="{{ url_for('hire_lease.lease_listings') }}">Car Lease</a></li>
+        <li><a href="{{ url_for('cars.all_cars') }}">Carvion Cars</a></li>
+        <li><a href="{{ url_for('hire_lease.hire_lease_home') }}">Hire &amp; Lease</a></li>
         {% if current_user.is_authenticated %}
             <li><a href="{{ url_for('cars.favorites') }}">Favorites</a></li>
             <li><a href="{{ url_for('cars.compare') }}">Compare</a></li>
@@ -265,28 +264,22 @@
         <div class="services-inner">
             <div class="section-heading">
                 <div>
-                    <p class="section-kicker">More ways to get moving</p>
-                    <h2 id="services-title">Choose the service that fits you</h2>
-                    <p>Looking for a vehicle to use temporarily or for a longer term? Explore our separate hire and lease listings.</p>
+                    <p class="section-kicker">Another Carvion Motors service</p>
+                    <h2 id="services-title">Carvion Hire &amp; Lease</h2>
+                    <p>Need a vehicle without buying one? Explore short-term hire or longer-term leasing in one service.</p>
                 </div>
             </div>
             <div class="services-grid">
                 <article class="service-card">
                     <div class="service-card-icon" aria-hidden="true">🚘</div>
                     <div class="service-card-copy">
-                        <p class="service-label">Flexible use</p>
-                        <h3>Car Hire</h3>
-                        <p>Find vehicles available for daily or weekly hire, review the listed terms, and send a hire request directly to the vehicle owner.</p>
-                        <a class="button button-primary" href="{{ url_for('hire_lease.hire_listings') }}">Explore Car Hire <span aria-hidden="true">→</span></a>
-                    </div>
-                </article>
-                <article class="service-card">
-                    <div class="service-card-icon" aria-hidden="true">🗓️</div>
-                    <div class="service-card-copy">
-                        <p class="service-label">Longer-term options</p>
-                        <h3>Car Lease</h3>
-                        <p>Explore vehicles offered on a monthly lease basis, compare the terms, and contact the owner with an enquiry.</p>
-                        <a class="button button-primary" href="{{ url_for('hire_lease.lease_listings') }}">Explore Car Lease <span aria-hidden="true">→</span></a>
+                        <p class="service-label">One service, two options</p>
+                        <h3>Choose Hire or Lease</h3>
+                        <p>Find vehicles available for daily or weekly hire, or explore monthly lease options. Review each vehicle's terms and contact the owner with a request.</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="button button-primary" href="{{ url_for('hire_lease.hire_listings') }}">Explore Hire <span aria-hidden="true">→</span></a>
+                            <a class="button button-primary" href="{{ url_for('hire_lease.lease_listings') }}">Explore Lease <span aria-hidden="true">→</span></a>
+                        </div>
                     </div>
                 </article>
             </div>
@@ -296,9 +289,9 @@
     <section class="section" aria-labelledby="featured-title">
         <div class="section-heading">
             <div>
-                <p class="section-kicker">Explore the marketplace</p>
-                <h2 id="featured-title">Recently listed vehicles</h2>
-                <p>Take a closer look at the latest vehicles available on Carvion Motors.</p>
+                <p class="section-kicker">Carvion Cars</p>
+                <h2 id="featured-title">Buy &amp; Sell Marketplace</h2>
+                <p>Explore recently listed vehicles on Carvion Cars, part of the Carvion Motors platform.</p>
             </div>
             <a class="text-link" href="{{ url_for('cars.all_cars') }}">View all cars <span aria-hidden="true">→</span></a>
         </div>

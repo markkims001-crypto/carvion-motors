@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Car Hire' if service == 'hire' else 'Car Lease' }} Management | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1>{{ 'Car Hire' if service == 'hire' else 'Car Lease' }} Inventory</h1>
+      <p class="text-muted mb-0">This is a separate inventory and does not change your Buy & Sell listings.</p>
+    </div>
+    <a class="btn btn-outline-dark" href="{{ url_for('hire_lease.hire_listings' if service == 'hire' else 'hire_lease.lease_listings') }}">View public listings</a>
+  </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}
+  {% endwith %}
+  <div class="card mb-4">
+    <div class="card-body p-4">
+      <h2 class="h4">{{ 'Edit hire vehicle' if vehicle and service == 'hire' else 'Add a hire vehicle' if service == 'hire' else 'Edit lease vehicle' if vehicle else 'Add a lease vehicle' }}</h2>
+      <form method="POST" action="{{ url_for('hire_lease.save_hire' if service == 'hire' else 'hire_lease.save_lease') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if vehicle %}<input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">{% endif %}
+        <div class="row g-3">
+          {% for field, label, kind, required in [('registration_number','Registration number','text',true),('brand','Make / brand','text',true),('model','Model','text',true),('year','Year','number',true),('mileage','Mileage (km)','number',true),('fuel','Fuel type','text',true),('transmission','Transmission','text',true),('location','Location','text',true),('image_url','Vehicle image URL (optional)','url',false)] %}
+          <div class="col-md-6"><label class="form-label" for="{{ field }}">{{ label }}</label><input class="form-control" id="{{ field }}" name="{{ field }}" type="{{ kind }}" {% if kind == 'number' %}min="{{ 1900 if field == 'year' else 0 }}" max="{{ 2100 if field == 'year' else '' }}"{% endif %} value="{{ request.form.get(field, (vehicle|attr(field)) if vehicle else '') }}" {% if required %}required{% endif %}></div>
+          {% endfor %}
+          <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" name="description" rows="3">{{ request.form.get('description', vehicle.description if vehicle else '') }}</textarea></div>
+          {% if service == 'hire' %}
+          <div class="col-md-6"><label class="form-label" for="daily_price">Daily hire price (KES)</label><input class="form-control" id="daily_price" name="daily_price" type="number" min="1" value="{{ vehicle.daily_price if vehicle else '' }}" required></div>
+          <div class="col-md-6"><label class="form-label" for="weekly_price">Weekly price (KES, optional)</label><input class="form-control" id="weekly_price" name="weekly_price" type="number" min="1" value="{{ vehicle.weekly_price if vehicle and vehicle.weekly_price else '' }}"></div>
+          <div class="col-md-6"><label class="form-label" for="minimum_days">Minimum hire days</label><input class="form-control" id="minimum_days" name="minimum_days" type="number" min="1" value="{{ vehicle.minimum_days if vehicle else 1 }}" required></div>
+          {% else %}
+          <div class="col-md-6"><label class="form-label" for="monthly_price">Monthly lease price (KES)</label><input class="form-control" id="monthly_price" name="monthly_price" type="number" min="1" value="{{ vehicle.monthly_price if vehicle else '' }}" required></div>
+          <div class="col-md-6"><label class="form-label" for="minimum_months">Minimum lease months</label><input class="form-control" id="minimum_months" name="minimum_months" type="number" min="1" value="{{ vehicle.minimum_months if vehicle else 12 }}" required></div>
+          {% endif %}
+          <div class="col-md-6"><label class="form-label" for="security_deposit">Security deposit (KES, optional)</label><input class="form-control" id="security_deposit" name="security_deposit" type="number" min="0" value="{{ vehicle.security_deposit if vehicle and vehicle.security_deposit is not none else '' }}"></div>
+        </div>
+        <div class="d-flex gap-2 mt-4"><button class="btn btn-warning" type="submit">{{ 'Save changes' if vehicle else 'Add to ' + ('hire' if service == 'hire' else 'lease') + ' inventory' }}</button>{% if vehicle %}<a class="btn btn-outline-secondary" href="{{ url_for('hire_lease.manage_hire' if service == 'hire' else 'hire_lease.manage_lease') }}">Cancel edit</a>{% endif %}</div>
+      </form>
+      <p class="small text-muted mt-3 mb-0">Use a direct image URL from a trusted image host. A listing appears only in this service; it is not added to Buy & Sell.</p>
+    </div>
+  </div>
+  <h2 class="h4 mb-3">Your {{ 'hire' if service == 'hire' else 'lease' }} vehicles</h2>
+  {% if listings %}
+  <div class="row g-3">
+    {% for item in listings %}
+    <div class="col-md-6 col-xl-4"><div class="card h-100">
+      {% if item.image_url %}<img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.brand }} {{ item.model }}" style="height:190px;object-fit:cover">{% endif %}
+      <div class="card-body"><div class="d-flex justify-content-between gap-2"><h3 class="h5">{{ item.year }} {{ item.brand }} {{ item.model }}</h3><span class="badge text-bg-{{ 'success' if item.status == 'Published' else 'secondary' }}">{{ item.status }}</span></div>
+        <p class="mb-1">{{ item.location }} · {{ item.registration_number }}</p>
+        <p class="fw-bold mb-3">KES {{ '{:,}'.format(item.daily_price if service == 'hire' else item.monthly_price) }} / {{ 'day' if service == 'hire' else 'month' }}</p>
+        <div class="d-flex gap-2"><a class="btn btn-outline-dark btn-sm" href="{{ url_for('hire_lease.manage_hire' if service == 'hire' else 'hire_lease.manage_lease', edit_id=item.id) }}">Edit</a>
+          <form method="POST" action="{{ url_for('hire_lease.toggle_hire_status' if service == 'hire' else 'hire_lease.toggle_lease_status', vehicle_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm {{ 'btn-outline-secondary' if item.status == 'Published' else 'btn-success' }}" type="submit">{{ 'Pause listing' if item.status == 'Published' else 'Publish listing' }}</button></form>
+        </div>
+      </div>
+    </div></div>
+    {% endfor %}
+  </div>
+  {% else %}<div class="alert alert-light border">You have not added any vehicles to this service yet.</div>{% endif %}
+</div>
+{% endblock %}

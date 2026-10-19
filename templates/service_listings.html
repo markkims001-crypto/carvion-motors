@@ -14,7 +14,7 @@
       {% if service == 'hire' %}<p class="small">Minimum hire: {{ vehicle.minimum_days }} day(s)</p>{% else %}<p class="small">Minimum lease: {{ vehicle.minimum_months }} month(s)</p>{% endif %}
       {% if vehicle.description %}<p>{{ vehicle.description }}</p>{% endif %}
       {% set seller_phone = vehicle.seller.phone|default('', true)|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
-      {% if seller_phone and (vehicle.seller.allow_phone_contact|default(true) or vehicle.seller.allow_whatsapp_contact|default(true)) %}
+      {% if (not current_user.is_authenticated or current_user.id != vehicle.seller_id) and seller_phone and (vehicle.seller.allow_phone_contact|default(true) or vehicle.seller.allow_whatsapp_contact|default(true)) %}
         <div class="border-top pt-3 mt-auto">
           <p class="fw-semibold mb-2">Contact {{ vehicle.seller.name }}</p>
           {% if vehicle.seller.allow_phone_contact|default(true) and seller_phone %}

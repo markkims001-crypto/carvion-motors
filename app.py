@@ -18,6 +18,14 @@ from models import (
     PasswordResetCode,
 )
 
+# Register hire/lease tables before db.create_all() runs.
+from hire_lease_models import (  # noqa: F401, E402
+    CarHireOption,
+    CarLeaseOption,
+    HireRequest,
+    LeaseRequest,
+)
+
 
 def create_app():
     app = Flask(__name__)

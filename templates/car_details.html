@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-{{ car.brand }} {{ car.model }} | Carvion Motors
+{{ car.brand }} {{ car.model }} | Carvion Cars
 
 
 
@@ -291,7 +291,7 @@
                         {% endif %}
 
                     <a
-                        href="https://wa.me/{{ whatsapp_phone }}?text={{ ('Hello, I am interested in your ' ~ car.brand ~ ' ' ~ car.model ~ ' listed on Carvion Motors.')|urlencode }}"
+                        href="https://wa.me/{{ whatsapp_phone }}?text={{ ('Hello, I am interested in your ' ~ car.brand ~ ' ' ~ car.model ~ ' listed on Carvion Cars, part of Carvion Motors.')|urlencode }}"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="btn btn-success w-100 mb-3">
@@ -490,7 +490,7 @@
 
     const pageUrl = window.location.href;
     const title = document.title;
-    const text = {{ (car.brand ~ " " ~ car.model ~ " — KSh " ~ "{:,.0f}".format(car.price) ~ " on Carvion Motors")|tojson }};
+    const text = {{ (car.brand ~ " " ~ car.model ~ " — KSh " ~ "{:,.0f}".format(car.price) ~ " on Carvion Cars by Carvion Motors")|tojson }};
 
     whatsappButton.href = "https://wa.me/?text=" + encodeURIComponent(text + " " + pageUrl);
 

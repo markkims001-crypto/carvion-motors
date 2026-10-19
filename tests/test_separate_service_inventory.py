@@ -1,5 +1,6 @@
 """Regression tests for independent hire and lease inventory."""
 import os
+from datetime import date
 
 os.environ["SECRET_KEY"] = "test-only-secret-key-not-for-production"
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
@@ -11,6 +12,9 @@ from extensions import db  # noqa: E402
 from models import User  # noqa: E402
 from service_vehicle_models import (  # noqa: E402
     HireVehicle, LeaseVehicle, HireServiceRequest, LeaseServiceRequest,
+)
+from routes.hire_lease import (  # noqa: E402
+    _add_months, _hire_request_conflicts, _lease_request_conflicts,
 )
 
 
@@ -85,4 +89,114 @@ def test_buyer_can_start_a_service_inventory_and_is_promoted_to_seller():
         user = db.session.get(User, user_id)
         assert user.role == "seller"
         assert HireVehicle.query.filter_by(seller_id=user_id).count() == 1
+
+def _make_service_test_users():
+    seller = User(
+        name="Test Seller",
+        email="overlap-seller@example.com",
+        phone="0700000001",
+        password="test-password",
+        role="seller",
+    )
+    renter = User(
+        name="Test Renter",
+        email="overlap-renter@example.com",
+        phone="0700000002",
+        password="test-password",
+        role="buyer",
+    )
+    db.session.add_all([seller, renter])
+    db.session.flush()
+    return seller, renter
+
+
+def test_hire_acceptance_conflict_detects_overlapping_dates():
+    app = create_app()
+    with app.app_context():
+        seller, renter = _make_service_test_users()
+        vehicle = HireVehicle(
+            seller_id=seller.id,
+            registration_number="KDA900A",
+            brand="Toyota",
+            model="Axio",
+            year=2022,
+            mileage=0,
+            fuel="Petrol",
+            transmission="Automatic",
+            location="Nairobi",
+            daily_price=3000,
+            minimum_days=1,
+            status="Published",
+        )
+        db.session.add(vehicle)
+        db.session.flush()
+        accepted = HireServiceRequest(
+            vehicle_id=vehicle.id,
+            renter_id=renter.id,
+            seller_id=seller.id,
+            start_date=date(2027, 5, 1),
+            end_date=date(2027, 5, 5),
+            pickup_location="Nairobi",
+            status="Accepted",
+        )
+        candidate = HireServiceRequest(
+            vehicle_id=vehicle.id,
+            renter_id=renter.id,
+            seller_id=seller.id,
+            start_date=date(2027, 5, 5),
+            end_date=date(2027, 5, 8),
+            pickup_location="Nairobi",
+            status="Pending",
+        )
+        db.session.add_all([accepted, candidate])
+        db.session.flush()
+        assert _hire_request_conflicts(candidate) is True
+        candidate.start_date = date(2027, 5, 6)
+        assert _hire_request_conflicts(candidate) is False
+
+
+def test_lease_acceptance_conflict_uses_monthly_periods():
+    app = create_app()
+    with app.app_context():
+        seller, renter = _make_service_test_users()
+        vehicle = LeaseVehicle(
+            seller_id=seller.id,
+            registration_number="KDB900B",
+            brand="Toyota",
+            model="Premio",
+            year=2021,
+            mileage=1000,
+            fuel="Petrol",
+            transmission="Automatic",
+            location="Nairobi",
+            monthly_price=45000,
+            minimum_months=1,
+            status="Published",
+        )
+        db.session.add(vehicle)
+        db.session.flush()
+        accepted = LeaseServiceRequest(
+            vehicle_id=vehicle.id,
+            renter_id=renter.id,
+            seller_id=seller.id,
+            requested_start_date=date(2027, 1, 31),
+            duration_months=1,
+            location="Nairobi",
+            status="Accepted",
+        )
+        candidate = LeaseServiceRequest(
+            vehicle_id=vehicle.id,
+            renter_id=renter.id,
+            seller_id=seller.id,
+            requested_start_date=date(2027, 2, 15),
+            duration_months=1,
+            location="Nairobi",
+            status="Pending",
+        )
+        db.session.add_all([accepted, candidate])
+        db.session.flush()
+        assert _add_months(date(2027, 1, 31), 1) == date(2027, 2, 28)
+        assert _lease_request_conflicts(candidate) is True
+        candidate.requested_start_date = date(2027, 2, 28)
+        assert _lease_request_conflicts(candidate) is False
 

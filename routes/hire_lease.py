@@ -23,6 +23,12 @@ from service_vehicle_models import (
 hire_lease = Blueprint("hire_lease", __name__)
 
 
+@hire_lease.route("/hire-lease")
+def hire_lease_home():
+    """Combined public entry point for the Carvion Hire & Lease service."""
+    return render_template("hire_lease_home.html")
+
+
 def _seller_required(allow_buyer=False):
     if not current_user.is_authenticated:
         abort(401)

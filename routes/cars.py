@@ -2072,9 +2072,3 @@ def report_listing(car_id):
     return redirect(
         url_for("cars.car_details", car_id=car.id)
     )
-    @cars.route(
-    "/car/<int:car_id>/report",
-    methods=["POST"]
-     )
-    @login_required
-    def report_listing(car_id):()

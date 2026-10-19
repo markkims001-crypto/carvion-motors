@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Lease Enquiry | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:760px">
+    <a href="{{ url_for('hire_lease.lease_listings') }}" class="text-decoration-none">&larr; Back to lease listings</a>
+    <div class="card mt-3"><div class="card-body p-4 p-md-5">
+        <h1 class="h2">Enquire about leasing this car</h1>
+        <p class="text-muted">{{ car.year }} {{ car.brand }} {{ car.model }} · {{ car.location }}</p>
+        <p><strong>KSh {{ "{:,.0f}".format(option.monthly_price) }} per month</strong> · Minimum {{ option.minimum_months }} month(s)</p>
+        {% if option.security_deposit is not none %}<p class="small text-muted">Seller-listed security deposit: KSh {{ "{:,.0f}".format(option.security_deposit) }}. This is not charged by this form.</p>{% endif %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-6"><label for="requested_start_date" class="form-label">Requested start date</label><input class="form-control" type="date" id="requested_start_date" name="requested_start_date" min="{{ today }}" required></div>
+                <div class="col-md-6"><label for="duration_months" class="form-label">Lease duration (months)</label><input class="form-control" type="number" id="duration_months" name="duration_months" min="{{ option.minimum_months }}" value="{{ option.minimum_months }}" step="1" required></div>
+                <div class="col-12"><label for="requested_monthly_budget" class="form-label">Monthly budget (KES, optional)</label><input class="form-control" type="number" id="requested_monthly_budget" name="requested_monthly_budget" min="1" step="1" placeholder="Your preferred monthly budget"></div>
+                <div class="col-12"><label for="location" class="form-label">Where will the vehicle be based?</label><input class="form-control" id="location" name="location" maxlength="120" required></div>
+                <div class="col-12"><label for="message" class="form-label">Message to seller (optional)</label><textarea class="form-control" id="message" name="message" rows="4" maxlength="2000" placeholder="Share any details the seller should know."></textarea></div>
+            </div>
+            <div class="alert alert-info mt-4 mb-3">This sends an enquiry only. It does not create a lease contract or take payment.</div>
+            <button class="btn btn-warning" type="submit">Send lease enquiry</button>
+        </form>
+    </div></div>
+</div>
+{% endblock %}

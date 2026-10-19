@@ -1,10 +1,11 @@
-"""Seller controls for configuring car hire and lease pricing."""
+"""Public discovery and customer request flows for vehicle hire and lease."""
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from datetime import date
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from extensions import db
-from hire_lease_models import CarHireOption, CarLeaseOption
+from hire_lease_models import CarHireOption, CarLeaseOption, HireRequest, LeaseRequest
 from models import Car
 
 hire_lease = Blueprint("hire_lease", __name__)
@@ -22,6 +23,20 @@ def _optional_positive_int(field_name, label, allow_zero=False):
         qualifier = "zero or greater" if allow_zero else "greater than zero"
         raise ValueError(f"{label} must be {qualifier}.")
     return value
+
+
+def _public_car_or_404(car_id):
+    car = Car.query.filter_by(id=car_id, status="Approved").first()
+    if car is None:
+        abort(404)
+    return car
+
+
+def _requester_can_request(car):
+    if car.seller_id == current_user.id:
+        flash("You cannot request your own vehicle.", "warning")
+        return False
+    return True
 
 
 @hire_lease.route("/car/<int:car_id>/hire-lease", methods=["GET", "POST"])
@@ -95,7 +110,7 @@ def manage_options(car_id):
             flash("We could not save these settings. Please try again.", "danger")
             return redirect(url_for("hire_lease.manage_options", car_id=car.id))
 
-        flash("Hire and lease settings saved. Customers can send requests; bookings are not confirmed automatically.", "success")
+        flash("Hire and lease settings saved. A customer request will not automatically confirm a booking.", "success")
         return redirect(url_for("hire_lease.manage_options", car_id=car.id))
 
     return render_template(
@@ -104,3 +119,141 @@ def manage_options(car_id):
         hire_option=hire_option,
         lease_option=lease_option,
     )
+
+
+@hire_lease.route("/hire")
+def hire_listings():
+    listings = (
+        db.session.query(Car, CarHireOption)
+        .join(CarHireOption, CarHireOption.car_id == Car.id)
+        .filter(Car.status == "Approved", CarHireOption.available.is_(True))
+        .order_by(Car.created_at.desc())
+        .all()
+    )
+    return render_template("hire_listings.html", listings=listings)
+
+
+@hire_lease.route("/lease")
+def lease_listings():
+    listings = (
+        db.session.query(Car, CarLeaseOption)
+        .join(CarLeaseOption, CarLeaseOption.car_id == Car.id)
+        .filter(Car.status == "Approved", CarLeaseOption.available.is_(True))
+        .order_by(Car.created_at.desc())
+        .all()
+    )
+    return render_template("lease_listings.html", listings=listings)
+
+
+@hire_lease.route("/car/<int:car_id>/hire-request", methods=["GET", "POST"])
+@login_required
+def request_hire(car_id):
+    car = _public_car_or_404(car_id)
+    option = CarHireOption.query.filter_by(car_id=car.id, available=True).first_or_404()
+
+    if not _requester_can_request(car):
+        return redirect(url_for("hire_lease.hire_listings"))
+
+    if request.method == "POST":
+        try:
+            start_date = date.fromisoformat(request.form.get("start_date", "").strip())
+            end_date = date.fromisoformat(request.form.get("end_date", "").strip())
+            pickup_location = request.form.get("pickup_location", "").strip()
+            return_location = request.form.get("return_location", "").strip() or None
+            message = request.form.get("message", "").strip() or None
+
+            if start_date < date.today():
+                raise ValueError("The start date cannot be in the past.")
+            if end_date < start_date:
+                raise ValueError("The return date must be on or after the start date.")
+            days = (end_date - start_date).days + 1
+            if days < option.minimum_days:
+                raise ValueError(f"This vehicle requires a minimum hire period of {option.minimum_days} day(s).")
+            if not pickup_location or len(pickup_location) > 120:
+                raise ValueError("Enter a pickup location (maximum 120 characters).")
+            if return_location and len(return_location) > 120:
+                raise ValueError("Return location must be 120 characters or fewer.")
+            if message and len(message) > 2000:
+                raise ValueError("Message must be 2,000 characters or fewer.")
+        except (ValueError, TypeError) as error:
+            flash(str(error) or "Enter valid hire dates.", "danger")
+            return redirect(url_for("hire_lease.request_hire", car_id=car.id))
+
+        hire_request = HireRequest(
+            car_id=car.id,
+            renter_id=current_user.id,
+            seller_id=car.seller_id,
+            start_date=start_date,
+            end_date=end_date,
+            pickup_location=pickup_location,
+            return_location=return_location,
+            message=message,
+            estimated_total=days * option.daily_price,
+            status="Pending",
+        )
+        try:
+            db.session.add(hire_request)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flash("We could not submit your request. Please try again.", "danger")
+            return redirect(url_for("hire_lease.request_hire", car_id=car.id))
+
+        flash("Your hire request was sent to the seller. It is pending and is not a confirmed booking.", "success")
+        return redirect(url_for("hire_lease.hire_listings"))
+
+    return render_template("hire_request.html", car=car, option=option, today=date.today().isoformat())
+
+
+@hire_lease.route("/car/<int:car_id>/lease-request", methods=["GET", "POST"])
+@login_required
+def request_lease(car_id):
+    car = _public_car_or_404(car_id)
+    option = CarLeaseOption.query.filter_by(car_id=car.id, available=True).first_or_404()
+
+    if not _requester_can_request(car):
+        return redirect(url_for("hire_lease.lease_listings"))
+
+    if request.method == "POST":
+        try:
+            requested_start_date = date.fromisoformat(request.form.get("requested_start_date", "").strip())
+            duration_months = _optional_positive_int("duration_months", "Lease duration")
+            budget = _optional_positive_int("requested_monthly_budget", "Monthly budget")
+            location = request.form.get("location", "").strip()
+            message = request.form.get("message", "").strip() or None
+
+            if requested_start_date < date.today():
+                raise ValueError("The requested start date cannot be in the past.")
+            if duration_months is None or duration_months < option.minimum_months:
+                raise ValueError(f"This vehicle requires a lease of at least {option.minimum_months} month(s).")
+            if not location or len(location) > 120:
+                raise ValueError("Enter a location (maximum 120 characters).")
+            if message and len(message) > 2000:
+                raise ValueError("Message must be 2,000 characters or fewer.")
+        except (ValueError, TypeError) as error:
+            flash(str(error) or "Enter valid lease details.", "danger")
+            return redirect(url_for("hire_lease.request_lease", car_id=car.id))
+
+        lease_request = LeaseRequest(
+            car_id=car.id,
+            renter_id=current_user.id,
+            seller_id=car.seller_id,
+            requested_start_date=requested_start_date,
+            duration_months=duration_months,
+            requested_monthly_budget=budget,
+            location=location,
+            message=message,
+            status="Pending",
+        )
+        try:
+            db.session.add(lease_request)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flash("We could not submit your request. Please try again.", "danger")
+            return redirect(url_for("hire_lease.request_lease", car_id=car.id))
+
+        flash("Your lease enquiry was sent to the seller. It is pending and is not a confirmed lease.", "success")
+        return redirect(url_for("hire_lease.lease_listings"))
+
+    return render_template("lease_request.html", car=car, option=option, today=date.today().isoformat())

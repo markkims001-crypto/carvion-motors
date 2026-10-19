@@ -886,6 +886,11 @@ def add_car():
                 cloudinary_public_id
             )
 
+            # Record the remote asset immediately so it can be cleaned up
+            # if the response is incomplete or the database save later fails.
+            if cloudinary_public_id:
+                uploaded_public_ids.append(cloudinary_public_id)
+
             if not image_url:
 
                 raise RuntimeError(
@@ -911,10 +916,6 @@ def add_car():
             )
 
             db.session.add(car_image)
-
-            uploaded_public_ids.append(
-                cloudinary_public_id
-            )
 
         # ====================================================
         # VERIFY IMAGE COUNT

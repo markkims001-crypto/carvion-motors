@@ -4,11 +4,9 @@ These tables are deliberately separate from the existing cars table so that
 adding hire/lease capability does not require altering existing vehicle rows.
 """
 
-from datetime import datetime
-
 from sqlalchemy import CheckConstraint, UniqueConstraint
 
-from extensions import db
+from extensions import db, utcnow
 
 
 class CarHireOption(db.Model):
@@ -44,12 +42,12 @@ class CarHireOption(db.Model):
     minimum_days = db.Column(db.Integer, nullable=False, default=1, server_default="1")
     security_deposit = db.Column(db.Integer, nullable=True)
     available = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     car = db.relationship("Car")
@@ -88,12 +86,12 @@ class CarLeaseOption(db.Model):
     )
     security_deposit = db.Column(db.Integer, nullable=True)
     available = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     car = db.relationship("Car")
@@ -144,12 +142,12 @@ class HireRequest(db.Model):
         index=True,
     )
     seller_response = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     car = db.relationship("Car")
@@ -204,12 +202,12 @@ class LeaseRequest(db.Model):
         index=True,
     )
     seller_response = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     updated_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
     )
 
     car = db.relationship("Car")

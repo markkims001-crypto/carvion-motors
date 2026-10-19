@@ -1,6 +1,4 @@
 
-from datetime import datetime
-
 from flask import (
     Blueprint,
     render_template,
@@ -13,7 +11,7 @@ from flask import (
 
 from flask_login import login_required, current_user
 
-from extensions import db
+from extensions import db, utcnow
 
 from models import (
     User,
@@ -136,7 +134,7 @@ def send_inquiry_message(inquiry, sender, message_text):
     db.session.add(message)
 
     inquiry.status = "Open"
-    inquiry.updated_at = datetime.utcnow()
+    inquiry.updated_at = utcnow()
 
     notification = Notification(
         user_id=receiver_id,
@@ -520,7 +518,7 @@ def admin_chat():
                 notification_type="message",
                 is_read=False,
             ))
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = utcnow()
             db.session.commit()
 
             flash("Message sent.", "success")
@@ -680,7 +678,7 @@ def admin_conversation(conversation_id):
             )
 
             db.session.add(notification)
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = utcnow()
             db.session.commit()
 
             flash("Message sent.", "success")

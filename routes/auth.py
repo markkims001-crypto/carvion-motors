@@ -8,7 +8,7 @@ import importlib
 import os
 import secrets
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from urllib.parse import urlsplit
 
 from flask import (
@@ -37,7 +37,7 @@ from werkzeug.security import (
     generate_password_hash,
 )
 
-from extensions import db
+from extensions import db, utcnow
 from models import PasswordResetCode, User, Notification
 
 auth = Blueprint("auth", __name__)
@@ -315,7 +315,7 @@ def reset_password_sms():
 
     reset_record = db.session.get(PasswordResetCode, code_id)
     user = db.session.get(User, user_id)
-    now = datetime.utcnow()
+    now = utcnow()
 
     if (
         reset_record is None
@@ -391,7 +391,7 @@ def forgot_password_sms():
         )
         return redirect(url_for("auth.login"))
 
-    now = datetime.utcnow()
+    now = utcnow()
     most_recent = (
         PasswordResetCode.query
         .filter_by(user_id=user.id)
@@ -458,7 +458,7 @@ def verify_reset_code():
     if (
         reset_record is None
         or reset_record.user_id != user_id
-        or reset_record.expires_at <= datetime.utcnow()
+        or reset_record.expires_at <= utcnow()
     ):
         clear_sms_reset_session()
         flash("Your reset code expired. Request a new one.", "warning")

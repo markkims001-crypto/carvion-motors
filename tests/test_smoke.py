@@ -10,6 +10,13 @@ os.environ.pop("CARVION_ADMIN_EMAIL", None)
 os.environ.pop("CARVION_ADMIN_PASSWORD", None)
 
 from app import create_app  # noqa: E402
+from extensions import db  # noqa: E402
+from hire_lease_models import (  # noqa: E402
+    CarHireOption,
+    CarLeaseOption,
+    HireRequest,
+    LeaseRequest,
+)
 
 
 def make_test_app():
@@ -75,3 +82,22 @@ def test_contact_page_shows_official_contact_details():
         assert response.status_code == 200
         assert b"+0182709886" in response.data
         assert b"carvionmotor@gmail.com" in response.data
+
+
+def test_hire_and_lease_models_are_registered_without_changing_car_table():
+    app = make_test_app()
+
+    with app.app_context():
+        assert CarHireOption.__tablename__ == "car_hire_options"
+        assert CarLeaseOption.__tablename__ == "car_lease_options"
+        assert HireRequest.__tablename__ == "hire_requests"
+        assert LeaseRequest.__tablename__ == "lease_requests"
+
+        # The feature uses new tables; the existing cars table remains intact.
+        assert "price" in db.metadata.tables["cars"].columns
+        assert "registration_number" in db.metadata.tables["cars"].columns
+        assert "car_id" in db.metadata.tables["car_hire_options"].columns
+        assert "daily_price" in db.metadata.tables["car_hire_options"].columns
+        assert "monthly_price" in db.metadata.tables["car_lease_options"].columns
+        assert "start_date" in db.metadata.tables["hire_requests"].columns
+        assert "requested_start_date" in db.metadata.tables["lease_requests"].columns

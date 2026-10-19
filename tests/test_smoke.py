@@ -11,6 +11,7 @@ os.environ.pop("CARVION_ADMIN_PASSWORD", None)
 
 from app import create_app  # noqa: E402
 from extensions import db  # noqa: E402
+from models import Car, Inquiry, InquiryMessage, User  # noqa: E402
 from hire_lease_models import (  # noqa: E402
     CarHireOption,
     CarLeaseOption,
@@ -175,3 +176,100 @@ def test_seller_hire_lease_actions_reject_get_requests():
     with app.test_client() as client:
         assert client.get("/hire/requests/1/respond").status_code == 405
         assert client.get("/lease/requests/1/respond").status_code == 405
+
+
+
+def _login_test_user(client, user_id):
+    with client.session_transaction() as session:
+        session["_user_id"] = str(user_id)
+        session["_fresh"] = True
+
+
+def _create_inquiry_test_users_and_car(status):
+    seller = User(
+        name="Test Seller",
+        email="seller@example.test",
+        phone="0700000001",
+        password="test-password",
+        role="seller",
+    )
+    buyer = User(
+        name="Test Buyer",
+        email="buyer@example.test",
+        phone="0700000002",
+        password="test-password",
+        role="buyer",
+    )
+    db.session.add_all([seller, buyer])
+    db.session.flush()
+
+    car = Car(
+        registration_number=f"TEST-{status.upper()}",
+        seller_id=seller.id,
+        brand="Toyota",
+        model="Corolla",
+        year=2022,
+        price=1500000,
+        mileage=25000,
+        fuel="Petrol",
+        transmission="Automatic",
+        location="Nairobi",
+        status=status,
+    )
+    db.session.add(car)
+    db.session.commit()
+    return buyer, car
+
+
+def test_inquiry_rejects_unpublished_listing():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+
+    with app.app_context():
+        buyer, car = _create_inquiry_test_users_and_car("Pending")
+        buyer_id, car_id = buyer.id, car.id
+
+    with app.test_client() as client:
+        _login_test_user(client, buyer_id)
+        response = client.post(
+            f"/inquiry/{car_id}",
+            data={"message": "Is this vehicle available?"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/cars")
+
+    with app.app_context():
+        assert Inquiry.query.filter_by(car_id=car_id).count() == 0
+        assert InquiryMessage.query.count() == 0
+
+
+def test_inquiry_still_works_for_approved_listing():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+
+    with app.app_context():
+        buyer, car = _create_inquiry_test_users_and_car("Approved")
+        buyer_id, car_id = buyer.id, car.id
+
+    with app.test_client() as client:
+        _login_test_user(client, buyer_id)
+        response = client.post(
+            f"/inquiry/{car_id}",
+            data={"message": "Is this vehicle available?"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert "/chat/inquiry/" in response.headers["Location"]
+
+    with app.app_context():
+        inquiry = Inquiry.query.filter_by(
+            car_id=car_id,
+            buyer_id=buyer_id,
+        ).one()
+        assert InquiryMessage.query.filter_by(
+            inquiry_id=inquiry.id,
+            message="Is this vehicle available?",
+        ).count() == 1

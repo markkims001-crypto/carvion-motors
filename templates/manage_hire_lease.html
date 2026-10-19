@@ -21,6 +21,7 @@
     {% endwith %}
 
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="card mb-4">
             <div class="card-body p-4">
                 <div class="form-check form-switch mb-3">

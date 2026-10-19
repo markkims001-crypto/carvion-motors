@@ -4,9 +4,8 @@ These models intentionally do not reference the sale-marketplace Car table. A
 vehicle listed here exists only in its own service inventory unless separately
 created as a sale listing.
 """
-from datetime import datetime
 from sqlalchemy import CheckConstraint
-from extensions import db
+from extensions import db, utcnow
 
 
 class HireVehicle(db.Model):
@@ -34,8 +33,8 @@ class HireVehicle(db.Model):
     minimum_days = db.Column(db.Integer, nullable=False, default=1, server_default="1")
     security_deposit = db.Column(db.Integer)
     status = db.Column(db.String(20), nullable=False, default="Published", server_default="Published", index=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
     seller = db.relationship("User", foreign_keys=[seller_id])
 
 
@@ -63,8 +62,8 @@ class LeaseVehicle(db.Model):
     minimum_months = db.Column(db.Integer, nullable=False, default=12, server_default="12")
     security_deposit = db.Column(db.Integer)
     status = db.Column(db.String(20), nullable=False, default="Published", server_default="Published", index=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
     seller = db.relationship("User", foreign_keys=[seller_id])
 
 
@@ -80,7 +79,7 @@ class HireServiceRequest(db.Model):
     message = db.Column(db.Text)
     status = db.Column(db.String(20), nullable=False, default="Pending", server_default="Pending", index=True)
     seller_response = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     vehicle = db.relationship("HireVehicle")
     renter = db.relationship("User", foreign_keys=[renter_id])
     seller = db.relationship("User", foreign_keys=[seller_id])
@@ -98,7 +97,7 @@ class LeaseServiceRequest(db.Model):
     message = db.Column(db.Text)
     status = db.Column(db.String(20), nullable=False, default="Pending", server_default="Pending", index=True)
     seller_response = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     vehicle = db.relationship("LeaseVehicle")
     renter = db.relationship("User", foreign_keys=[renter_id])
     seller = db.relationship("User", foreign_keys=[seller_id])
@@ -119,7 +118,7 @@ class ServiceRequestMessage(db.Model):
     receiver_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     body = db.Column(db.String(2000), nullable=False)
     is_read = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
 
     sender = db.relationship("User", foreign_keys=[sender_id])
     receiver = db.relationship("User", foreign_keys=[receiver_id])

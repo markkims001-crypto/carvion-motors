@@ -1,6 +1,5 @@
-from extensions import db, login_manager
+from extensions import db, login_manager, utcnow
 from flask_login import UserMixin
-from datetime import datetime
 
 
 # ============================================================
@@ -384,7 +383,7 @@ class CarImage(db.Model):
 
     uploaded_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -443,13 +442,13 @@ class Inquiry(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     updated_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        default=utcnow,
+        onupdate=utcnow
     )
 
     # ========================================================
@@ -544,7 +543,7 @@ class InquiryMessage(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -611,13 +610,13 @@ class Conversation(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     updated_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        default=utcnow,
+        onupdate=utcnow
     )
 
     # ========================================================
@@ -699,7 +698,7 @@ class Message(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -759,7 +758,7 @@ class Favorite(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -820,7 +819,7 @@ class CompareCar(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -903,7 +902,7 @@ class Notification(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     # ========================================================
@@ -947,7 +946,7 @@ class PasswordResetCode(db.Model):
     created_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow
+        default=utcnow
     )
 
 
@@ -1002,7 +1001,7 @@ class Report(db.Model):
     created_at = db.Column(
         db.DateTime,
         nullable=False,
-        default=datetime.utcnow
+        default=utcnow
     )
 
     reviewed_at = db.Column(

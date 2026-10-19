@@ -1,6 +1,5 @@
 # routes/admin.py
 
-from datetime import datetime
 from functools import wraps
 
 from flask import (
@@ -14,6 +13,8 @@ from flask import (
 )
 
 from sqlalchemy import or_
+
+from extensions import utcnow
 
 from flask_login import (
     login_required,
@@ -1195,7 +1196,7 @@ def update_report(report_id):
         if status == "Pending":
             report.reviewed_at = None
         else:
-            report.reviewed_at = datetime.utcnow()
+            report.reviewed_at = utcnow()
 
         db.session.commit()
 

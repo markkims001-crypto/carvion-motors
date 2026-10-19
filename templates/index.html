@@ -117,6 +117,14 @@
         .empty-state { grid-column: 1 / -1; padding: 36px 24px; text-align: center; background: #fff; border: 1px dashed #cbd5e1; border-radius: 14px; }
         .empty-state h3 { margin: 0 0 6px; }
         .empty-state p { margin: 0 0 18px; color: var(--muted); }
+        .services-section { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 70px 0 20px; }
+        .services-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+        .service-card { display: flex; gap: 20px; align-items: flex-start; padding: 28px; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 8px 26px rgba(15,23,42,.05); }
+        .service-card-icon { display: grid; place-items: center; flex: 0 0 54px; width: 54px; height: 54px; border-radius: 14px; background: #fff4cc; font-size: 25px; }
+        .service-card-copy { min-width: 0; }
+        .service-label { margin: 0 0 6px; color: #997000; font-size: 11px; font-weight: 850; letter-spacing: 1.2px; text-transform: uppercase; }
+        .service-card h3 { margin: 0 0 8px; font-size: 23px; letter-spacing: -.6px; }
+        .service-card-copy > p:not(.service-label) { margin: 0 0 18px; color: var(--muted); font-size: 14px; }
         .features { background: #fff; border-top: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; }
         .features-inner { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 74px 0; }
         .feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 28px; }
@@ -156,7 +164,10 @@
             .search-panel { padding: 18px; }
             .search-heading { align-items: flex-start; flex-direction: column; }
             .search-grid { grid-template-columns: 1fr; }
-            .section, .features-inner, .sell-cta { width: calc(100% - 36px); padding-top: 56px; padding-bottom: 56px; }
+            .section, .features-inner, .sell-cta, .services-section { width: calc(100% - 36px); padding-top: 56px; padding-bottom: 56px; }
+            .services-grid { grid-template-columns: 1fr; }
+            .service-card { padding: 22px; gap: 14px; }
+            .service-card-icon { flex-basis: 46px; width: 46px; height: 46px; font-size: 22px; }
             .section-heading { align-items: flex-start; flex-direction: column; }
             .vehicle-grid, .feature-grid { grid-template-columns: 1fr; }
             .vehicle-image { height: 230px; }
@@ -178,6 +189,8 @@
     <ul class="nav-links">
         <li><a href="{{ url_for('home') }}">Home</a></li>
         <li><a href="{{ url_for('cars.all_cars') }}">Browse Cars</a></li>
+        <li><a href="{{ url_for('hire_lease.hire_listings') }}">Car Hire</a></li>
+        <li><a href="{{ url_for('hire_lease.lease_listings') }}">Car Lease</a></li>
         {% if current_user.is_authenticated %}
             <li><a href="{{ url_for('cars.favorites') }}">Favorites</a></li>
             <li><a href="{{ url_for('cars.compare') }}">Compare</a></li>
@@ -247,6 +260,38 @@
             </div>
         </form>
     </div>
+
+    <section class="services-section" aria-labelledby="services-title">
+        <div class="services-inner">
+            <div class="section-heading">
+                <div>
+                    <p class="section-kicker">More ways to get moving</p>
+                    <h2 id="services-title">Choose the service that fits you</h2>
+                    <p>Looking for a vehicle to use temporarily or for a longer term? Explore our separate hire and lease listings.</p>
+                </div>
+            </div>
+            <div class="services-grid">
+                <article class="service-card">
+                    <div class="service-card-icon" aria-hidden="true">🚘</div>
+                    <div class="service-card-copy">
+                        <p class="service-label">Flexible use</p>
+                        <h3>Car Hire</h3>
+                        <p>Find vehicles available for daily or weekly hire, review the listed terms, and send a hire request directly to the vehicle owner.</p>
+                        <a class="button button-primary" href="{{ url_for('hire_lease.hire_listings') }}">Explore Car Hire <span aria-hidden="true">→</span></a>
+                    </div>
+                </article>
+                <article class="service-card">
+                    <div class="service-card-icon" aria-hidden="true">🗓️</div>
+                    <div class="service-card-copy">
+                        <p class="service-label">Longer-term options</p>
+                        <h3>Car Lease</h3>
+                        <p>Explore vehicles offered on a monthly lease basis, compare the terms, and contact the owner with an enquiry.</p>
+                        <a class="button button-primary" href="{{ url_for('hire_lease.lease_listings') }}">Explore Car Lease <span aria-hidden="true">→</span></a>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
 
     <section class="section" aria-labelledby="featured-title">
         <div class="section-heading">

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Request Car Hire | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width:760px">
+    <a href="{{ url_for('hire_lease.hire_listings') }}" class="text-decoration-none">&larr; Back to hire listings</a>
+    <div class="card mt-3"><div class="card-body p-4 p-md-5">
+        <h1 class="h2">Request this car for hire</h1>
+        <p class="text-muted">{{ car.year }} {{ car.brand }} {{ car.model }} · {{ car.location }}</p>
+        <p><strong>KSh {{ "{:,.0f}".format(option.daily_price) }} per day</strong> · Minimum {{ option.minimum_days }} day(s)</p>
+        {% if option.security_deposit is not none %}<p class="small text-muted">Seller-listed security deposit: KSh {{ "{:,.0f}".format(option.security_deposit) }}. This is not charged by this form.</p>{% endif %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="row g-3">
+                <div class="col-md-6"><label for="start_date" class="form-label">Pickup date</label><input class="form-control" type="date" id="start_date" name="start_date" min="{{ today }}" required></div>
+                <div class="col-md-6"><label for="end_date" class="form-label">Return date</label><input class="form-control" type="date" id="end_date" name="end_date" min="{{ today }}" required></div>
+                <div class="col-12"><label for="pickup_location" class="form-label">Pickup location</label><input class="form-control" id="pickup_location" name="pickup_location" maxlength="120" required></div>
+                <div class="col-12"><label for="return_location" class="form-label">Return location (optional)</label><input class="form-control" id="return_location" name="return_location" maxlength="120"></div>
+                <div class="col-12"><label for="message" class="form-label">Message to seller (optional)</label><textarea class="form-control" id="message" name="message" rows="4" maxlength="2000" placeholder="Share any details the seller should know."></textarea></div>
+            </div>
+            <div class="alert alert-info mt-4 mb-3">This sends a request only. The seller must respond to confirm availability and terms. No payment is taken here.</div>
+            <button class="btn btn-warning" type="submit">Send hire request</button>
+        </form>
+    </div></div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const start = document.getElementById("start_date");
+    const end = document.getElementById("end_date");
+    start.addEventListener("change", function () { end.min = start.value || "{{ today }}"; if (end.value && end.value < end.min) end.value = end.min; });
+});
+</script>
+{% endblock %}

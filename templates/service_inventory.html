@@ -15,13 +15,15 @@
   <div class="card mb-4">
     <div class="card-body p-4">
       <h2 class="h4">{{ 'Edit hire vehicle' if vehicle and service == 'hire' else 'Add a hire vehicle' if service == 'hire' else 'Edit lease vehicle' if vehicle else 'Add a lease vehicle' }}</h2>
-      <form method="POST" action="{{ url_for('hire_lease.save_hire' if service == 'hire' else 'hire_lease.save_lease') }}">
+      <form method="POST" enctype="multipart/form-data" action="{{ url_for('hire_lease.save_hire' if service == 'hire' else 'hire_lease.save_lease') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if vehicle %}<input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">{% endif %}
         <div class="row g-3">
           {% for field, label, kind, required in [('registration_number','Registration number','text',true),('brand','Make / brand','text',true),('model','Model','text',true),('year','Year','number',true),('mileage','Mileage (km)','number',true),('fuel','Fuel type','text',true),('transmission','Transmission','text',true),('location','Location','text',true),('image_url','Vehicle image URL (optional)','url',false)] %}
           <div class="col-md-6"><label class="form-label" for="{{ field }}">{{ label }}</label><input class="form-control" id="{{ field }}" name="{{ field }}" type="{{ kind }}" {% if kind == 'number' %}min="{{ 1900 if field == 'year' else 0 }}" max="{{ 2100 if field == 'year' else '' }}"{% endif %} value="{{ request.form.get(field, (vehicle|attr(field)) if vehicle else '') }}" {% if required %}required{% endif %}></div>
           {% endfor %}
+          <div class="col-md-6"><label class="form-label" for="cover_image">Upload cover photo (JPG, PNG or WEBP, max 8 MB)</label><input class="form-control" id="cover_image" name="cover_image" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"><div class="form-text">Upload a photo from your device, or keep using the image URL field. Uploading a new photo replaces the displayed cover image.</div></div>
+          {% if vehicle and vehicle.image_url %}<div class="col-md-6"><span class="form-label d-block">Current cover photo</span><img src="{{ vehicle.image_url }}" alt="Current {{ vehicle.brand }} {{ vehicle.model }} cover" class="img-thumbnail" style="max-height:140px;max-width:100%;object-fit:cover"></div>{% endif %}
           <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" name="description" rows="3">{{ request.form.get('description', vehicle.description if vehicle else '') }}</textarea></div>
           {% if service == 'hire' %}
           <div class="col-md-6"><label class="form-label" for="daily_price">Daily hire price (KES)</label><input class="form-control" id="daily_price" name="daily_price" type="number" min="1" value="{{ vehicle.daily_price if vehicle else '' }}" required></div>
@@ -35,7 +37,7 @@
         </div>
         <div class="d-flex gap-2 mt-4"><button class="btn btn-warning" type="submit">{{ 'Save changes' if vehicle else 'Add to ' + ('hire' if service == 'hire' else 'lease') + ' inventory' }}</button>{% if vehicle %}<a class="btn btn-outline-secondary" href="{{ url_for('hire_lease.manage_hire' if service == 'hire' else 'hire_lease.manage_lease') }}">Cancel edit</a>{% endif %}</div>
       </form>
-      <p class="small text-muted mt-3 mb-0">Use a direct image URL from a trusted image host. A listing appears only in this service; it is not added to Buy & Sell.</p>
+      <p class="small text-muted mt-3 mb-0">Upload a cover photo to Cloudinary or provide a direct image URL. A listing appears only in this service; it is not added to Buy & Sell.</p>
     </div>
   </div>
   <h2 class="h4 mb-3">Your {{ 'hire' if service == 'hire' else 'lease' }} vehicles</h2>

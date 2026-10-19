@@ -108,7 +108,7 @@ def test_hire_lease_settings_page_requires_login():
     app = make_test_app()
 
     with app.test_client() as client:
-        response = client.get("/car/1/hire-lease")
+        response = client.get("/hire/manage")
         assert response.status_code == 302
         assert "/login" in response.headers["Location"]
 
@@ -131,8 +131,8 @@ def test_hire_and_lease_request_forms_require_login():
     app = make_test_app()
 
     with app.test_client() as client:
-        hire_response = client.get("/car/1/hire-request")
-        lease_response = client.get("/car/1/lease-request")
+        hire_response = client.get("/hire/vehicle/1/request")
+        lease_response = client.get("/lease/vehicle/1/request")
 
         assert hire_response.status_code == 302
         assert "/login" in hire_response.headers["Location"]
@@ -151,5 +151,5 @@ def test_seller_hire_lease_inbox_requires_login():
 def test_seller_hire_lease_actions_reject_get_requests():
     app = make_test_app()
     with app.test_client() as client:
-        assert client.get("/seller/hire-lease-requests/hire/1").status_code == 405
-        assert client.get("/seller/hire-lease-requests/lease/1").status_code == 405
+        assert client.get("/hire/requests/1/respond").status_code == 405
+        assert client.get("/lease/requests/1/respond").status_code == 405

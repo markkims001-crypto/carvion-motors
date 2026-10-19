@@ -13,7 +13,26 @@
       <p class="fs-5 fw-bold">KES {{ '{:,}'.format(vehicle.daily_price if service == 'hire' else vehicle.monthly_price) }} <small class="text-muted fs-6">/ {{ 'day' if service == 'hire' else 'month' }}</small></p>
       {% if service == 'hire' %}<p class="small">Minimum hire: {{ vehicle.minimum_days }} day(s)</p>{% else %}<p class="small">Minimum lease: {{ vehicle.minimum_months }} month(s)</p>{% endif %}
       {% if vehicle.description %}<p>{{ vehicle.description }}</p>{% endif %}
-      {% if current_user.is_authenticated and current_user.id != vehicle.seller_id %}<a class="btn btn-warning mt-auto" href="{{ url_for('hire_lease.request_hire' if service == 'hire' else 'hire_lease.request_lease', vehicle_id=vehicle.id) }}">Send {{ 'hire request' if service == 'hire' else 'lease enquiry' }}</a>{% elif not current_user.is_authenticated %}<a class="btn btn-outline-dark mt-auto" href="{{ url_for('auth.login') }}">Log in to enquire</a>{% endif %}
+      {% set seller_phone = vehicle.seller.phone|default('', true)|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
+      {% if seller_phone and (vehicle.seller.allow_phone_contact|default(true) or vehicle.seller.allow_whatsapp_contact|default(true)) %}
+        <div class="border-top pt-3 mt-auto">
+          <p class="fw-semibold mb-2">Contact {{ vehicle.seller.name }}</p>
+          {% if vehicle.seller.allow_phone_contact|default(true) and seller_phone %}
+          <a href="tel:{{ seller_phone }}" class="btn btn-outline-dark w-100 mb-2"><i class="bi bi-telephone"></i> Call owner</a>
+          {% endif %}
+          {% if vehicle.seller.allow_whatsapp_contact|default(true) and seller_phone %}
+            {% if seller_phone.startswith('0') %}
+              {% set whatsapp_phone = '254' ~ seller_phone[1:] %}
+            {% elif seller_phone.startswith('254') %}
+              {% set whatsapp_phone = seller_phone %}
+            {% else %}
+              {% set whatsapp_phone = seller_phone %}
+            {% endif %}
+          <a href="https://wa.me/{{ whatsapp_phone }}?text={{ ('Hello, I am interested in your ' ~ vehicle.brand ~ ' ' ~ vehicle.model ~ ' available for ' ~ service ~ ' on Carvion Motors.')|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-success w-100 mb-2"><i class="bi bi-whatsapp"></i> WhatsApp owner</a>
+          {% endif %}
+        </div>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.id != vehicle.seller_id %}<a class="btn btn-warning w-100 mt-2" href="{{ url_for('hire_lease.request_hire' if service == 'hire' else 'hire_lease.request_lease', vehicle_id=vehicle.id) }}">Send {{ 'hire request' if service == 'hire' else 'lease enquiry' }}</a>{% elif not current_user.is_authenticated %}<a class="btn btn-outline-dark w-100 mt-2" href="{{ url_for('auth.login') }}">Log in to enquire</a>{% endif %}
     </div>
   </div></div>{% endfor %}</div>{% else %}<div class="alert alert-light border">No vehicles are currently listed for {{ service }}. Check back soon.</div>{% endif %}
 </div>

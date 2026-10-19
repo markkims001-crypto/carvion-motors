@@ -1312,7 +1312,7 @@ def delete_car(car_id):
 @login_required
 def delete_image(image_id):
 
-    image = CarImage.query.get_or_404(image_id)
+    image = db.get_or_404(CarImage, image_id)
 
     car = db.get_or_404(Car, image.car_id)
 

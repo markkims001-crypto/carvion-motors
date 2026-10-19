@@ -403,3 +403,105 @@ def test_admin_cannot_delete_user_who_owns_vehicle_listings():
     with app.app_context():
         assert db.session.get(User, seller_id) is not None
         assert db.session.get(Car, car_id) is not None
+
+def _create_edit_car_test_data():
+    seller = User(
+        name="Edit Test Seller",
+        email="edit-seller@example.test",
+        phone="0700000030",
+        password="test-password",
+        role="seller",
+    )
+    db.session.add(seller)
+    db.session.flush()
+    car = Car(
+        registration_number="EDIT-TEST-1",
+        seller_id=seller.id,
+        brand="Toyota",
+        model="Corolla",
+        year=2022,
+        price=1500000,
+        mileage=25000,
+        fuel="Petrol",
+        transmission="Automatic",
+        location="Nairobi",
+        description="Original description",
+        status="Approved",
+    )
+    db.session.add(car)
+    db.session.commit()
+    return seller.id, car.id
+
+
+def test_edit_car_rejects_negative_price_without_changing_listing():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller_id, car_id = _create_edit_car_test_data()
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(f"/edit_car/{car_id}", data={"price": "-1"})
+    assert response.status_code == 400
+    with app.app_context():
+        assert db.session.get(Car, car_id).price == 1500000
+
+
+def test_edit_car_rejects_negative_mileage_without_changing_listing():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller_id, car_id = _create_edit_car_test_data()
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(f"/edit_car/{car_id}", data={"mileage": "-5"})
+    assert response.status_code == 400
+    with app.app_context():
+        assert db.session.get(Car, car_id).mileage == 25000
+
+
+def test_edit_car_rejects_unreasonable_year_without_changing_listing():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller_id, car_id = _create_edit_car_test_data()
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(f"/edit_car/{car_id}", data={"year": "1800"})
+    assert response.status_code == 400
+    with app.app_context():
+        assert db.session.get(Car, car_id).year == 2022
+
+
+def test_edit_car_accepts_valid_changes():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller_id, car_id = _create_edit_car_test_data()
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(
+            f"/edit_car/{car_id}",
+            data={
+                "brand": "Honda",
+                "model": "Civic",
+                "year": "2024",
+                "price": "2200000",
+                "mileage": "12000",
+                "fuel": "Petrol",
+                "transmission": "Automatic",
+                "location": "Mombasa",
+                "description": "Updated listing",
+            },
+            follow_redirects=False,
+        )
+    assert response.status_code == 302
+    with app.app_context():
+        car = db.session.get(Car, car_id)
+        assert car.brand == "Honda"
+        assert car.model == "Civic"
+        assert car.year == 2024
+        assert car.price == 2200000
+        assert car.mileage == 12000
+        assert car.location == "Mombasa"
+        assert car.description == "Updated listing"
+

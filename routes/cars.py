@@ -3,6 +3,7 @@
 
 import os
 import uuid
+from datetime import datetime
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -1087,90 +1088,88 @@ def edit_car(car_id):
 
     if request.method == "POST":
 
+        # Validate all values before mutating the model.
         try:
-
-            car.brand = request.form.get(
-                "brand",
-                ""
-            ).strip()
-
-            car.model = request.form.get(
-                "model",
-                ""
-            ).strip()
-
-            car.year = int(
-                request.form.get(
-                    "year",
-                    car.year
-                )
+            brand = request.form.get("brand", car.brand).strip()
+            model = request.form.get("model", car.model).strip()
+            year = int(request.form.get("year", str(car.year)))
+            price = int(request.form.get("price", str(car.price)))
+            mileage = int(request.form.get("mileage", str(car.mileage)))
+            fuel = request.form.get("fuel", car.fuel).strip()
+            transmission = request.form.get("transmission", car.transmission).strip()
+            location = request.form.get("location", car.location).strip()
+            engine = (request.form.get("engine") or "").strip() or None
+            color = (request.form.get("color") or "").strip() or None
+            condition = (request.form.get("condition") or "").strip() or None
+            description = (request.form.get("description") or "").strip() or None
+        except (TypeError, ValueError):
+            flash(
+                "Enter a valid whole number for year, price, and mileage.",
+                "danger"
             )
+            return render_template("edit_car.html", car=car), 400
 
-            car.price = int(
-                request.form.get(
-                    "price",
-                    car.price
-                )
-            )
+        errors = []
+        if not brand or len(brand) > 50:
+            errors.append("Brand is required and must be 50 characters or fewer.")
+        if not model or len(model) > 50:
+            errors.append("Model is required and must be 50 characters or fewer.")
+        latest_year = datetime.now().year + 1
+        if year < 1900 or year > latest_year:
+            errors.append(f"Year must be between 1900 and {latest_year}.")
+        if price <= 0:
+            errors.append("Price must be greater than zero.")
+        if mileage < 0:
+            errors.append("Mileage cannot be negative.")
+        if not fuel or len(fuel) > 30:
+            errors.append("Fuel type is required and must be 30 characters or fewer.")
+        if not transmission or len(transmission) > 30:
+            errors.append("Transmission is required and must be 30 characters or fewer.")
+        if not location or len(location) > 100:
+            errors.append("Location is required and must be 100 characters or fewer.")
+        if engine and len(engine) > 50:
+            errors.append("Engine must be 50 characters or fewer.")
+        if color and len(color) > 30:
+            errors.append("Color must be 30 characters or fewer.")
+        if condition and len(condition) > 30:
+            errors.append("Condition must be 30 characters or fewer.")
+        if description and len(description) > 5000:
+            errors.append("Description must be 5,000 characters or fewer.")
 
-            car.mileage = int(
-                request.form.get(
-                    "mileage",
-                    car.mileage
-                )
-            )
+        if errors:
+            for message in errors:
+                flash(message, "danger")
+            return render_template("edit_car.html", car=car), 400
 
-            car.fuel = request.form.get(
-                "fuel",
-                car.fuel
-            )
-
-            car.transmission = request.form.get(
-                "transmission",
-                car.transmission
-            )
-
-            car.engine = request.form.get("engine")
-
-            car.color = request.form.get("color")
-
-            car.condition = request.form.get("condition")
-
-            car.location = request.form.get(
-                "location",
-                ""
-            ).strip()
-
-            car.description = request.form.get(
-                "description"
-            )
-
+        try:
+            car.brand = brand
+            car.model = model
+            car.year = year
+            car.price = price
+            car.mileage = mileage
+            car.fuel = fuel
+            car.transmission = transmission
+            car.engine = engine
+            car.color = color
+            car.condition = condition
+            car.location = location
+            car.description = description
             db.session.commit()
 
-            flash(
-                "Car updated successfully.",
-                "success"
-            )
+            flash("Car updated successfully.", "success")
+            return redirect(url_for("cars.seller_dashboard"))
 
-            return redirect(
-                url_for("cars.seller_dashboard")
-            )
-
-        except Exception as error:
-
+        except Exception:
             db.session.rollback()
-
-            print(
-                "CAR UPDATE ERROR:",
-                repr(error)
+            current_app.logger.exception(
+                "Unexpected error while updating vehicle %s", car_id
             )
-
             flash(
-                f"Unable to update vehicle: {error}",
+                "Unable to update vehicle right now. Please try again.",
                 "danger"
             )
 
-    return render_template(
+        return render_template(
         "edit_car.html",
         car=car
     )

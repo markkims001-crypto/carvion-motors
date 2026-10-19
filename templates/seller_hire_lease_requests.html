@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Hire & Lease Requests | Carvion Motors{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <h2 class="fw-bold mb-1">Hire & Lease Requests</h2>
+      <p class="text-muted mb-0">Review enquiries from customers about your vehicles.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('cars.seller_dashboard') }}">Back to Seller Dashboard</a>
+  </div>
+
+  <div class="alert alert-info">
+    Accepting a request records your response only. It does not confirm a booking, create a lease agreement, or collect payment.
+  </div>
+
+  <section class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white"><h4 class="fw-bold mb-0">Hire Requests</h4></div>
+    <div class="card-body">
+      {% if hire_requests %}
+        {% for item in hire_requests %}
+          <article class="border rounded p-3 mb-3">
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+              <h5 class="mb-1">{{ item.car.brand }} {{ item.car.model }} ({{ item.car.year }})</h5>
+              <span class="badge {% if item.status == 'Pending' %}bg-warning text-dark{% elif item.status == 'Accepted' %}bg-success{% else %}bg-secondary{% endif %}">{{ item.status }}</span>
+            </div>
+            <p class="mb-1"><strong>Customer:</strong> {{ item.renter.name if item.renter.name is defined else item.renter.email }}</p>
+            <p class="mb-1"><strong>Dates:</strong> {{ item.start_date.strftime('%d %b %Y') }} – {{ item.end_date.strftime('%d %b %Y') }}</p>
+            <p class="mb-1"><strong>Pickup:</strong> {{ item.pickup_location }}{% if item.return_location %} · <strong>Return:</strong> {{ item.return_location }}{% endif %}</p>
+            <p class="mb-1"><strong>Estimated total:</strong> KES {{ "{:,}".format(item.estimated_total or 0) }} <small class="text-muted">(estimate only)</small></p>
+            {% if item.message %}<p class="mb-2"><strong>Customer message:</strong> {{ item.message }}</p>{% endif %}
+            {% if item.seller_response %}<p class="mb-2"><strong>Your response:</strong> {{ item.seller_response }}</p>{% endif %}
+            <form method="POST" action="{{ url_for('hire_lease.respond_to_request', request_type='hire', request_id=item.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label class="form-label" for="hire-response-{{ item.id }}">Response to customer</label>
+              <textarea class="form-control mb-2" id="hire-response-{{ item.id }}" name="seller_response" rows="2" maxlength="2000" placeholder="Optional note, or required when choosing Respond"></textarea>
+              <div class="d-flex flex-wrap gap-2">
+                {% if item.status == 'Pending' %}
+                  <button class="btn btn-success btn-sm" name="action" value="accept" type="submit">Accept request</button>
+                  <button class="btn btn-outline-danger btn-sm" name="action" value="decline" type="submit">Decline</button>
+                {% endif %}
+                <button class="btn btn-outline-primary btn-sm" name="action" value="respond" type="submit">Save response</button>
+              </div>
+            </form>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted mb-0">You have no hire requests yet.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card border-0 shadow-sm">
+    <div class="card-header bg-white"><h4 class="fw-bold mb-0">Lease Requests</h4></div>
+    <div class="card-body">
+      {% if lease_requests %}
+        {% for item in lease_requests %}
+          <article class="border rounded p-3 mb-3">
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+              <h5 class="mb-1">{{ item.car.brand }} {{ item.car.model }} ({{ item.car.year }})</h5>
+              <span class="badge {% if item.status == 'Pending' %}bg-warning text-dark{% elif item.status == 'Accepted' %}bg-success{% else %}bg-secondary{% endif %}">{{ item.status }}</span>
+            </div>
+            <p class="mb-1"><strong>Customer:</strong> {{ item.renter.name if item.renter.name is defined else item.renter.email }}</p>
+            <p class="mb-1"><strong>Requested start:</strong> {{ item.requested_start_date.strftime('%d %b %Y') }}</p>
+            <p class="mb-1"><strong>Duration:</strong> {{ item.duration_months }} month(s)</p>
+            <p class="mb-1"><strong>Location:</strong> {{ item.location }}</p>
+            {% if item.requested_monthly_budget %}<p class="mb-1"><strong>Monthly budget:</strong> KES {{ "{:,}".format(item.requested_monthly_budget) }}</p>{% endif %}
+            {% if item.message %}<p class="mb-2"><strong>Customer message:</strong> {{ item.message }}</p>{% endif %}
+            {% if item.seller_response %}<p class="mb-2"><strong>Your response:</strong> {{ item.seller_response }}</p>{% endif %}
+            <form method="POST" action="{{ url_for('hire_lease.respond_to_request', request_type='lease', request_id=item.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <label class="form-label" for="lease-response-{{ item.id }}">Response to customer</label>
+              <textarea class="form-control mb-2" id="lease-response-{{ item.id }}" name="seller_response" rows="2" maxlength="2000" placeholder="Optional note, or required when choosing Respond"></textarea>
+              <div class="d-flex flex-wrap gap-2">
+                {% if item.status == 'Pending' %}
+                  <button class="btn btn-success btn-sm" name="action" value="accept" type="submit">Accept enquiry</button>
+                  <button class="btn btn-outline-danger btn-sm" name="action" value="decline" type="submit">Decline</button>
+                {% endif %}
+                <button class="btn btn-outline-primary btn-sm" name="action" value="respond" type="submit">Save response</button>
+              </div>
+            </form>
+          </article>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted mb-0">You have no lease enquiries yet.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

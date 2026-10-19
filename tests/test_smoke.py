@@ -114,6 +114,19 @@ def test_hire_lease_settings_page_requires_login():
 
 
 
+def test_combined_hire_lease_landing_page_is_public():
+    app = make_test_app()
+
+    with app.test_client() as client:
+        response = client.get("/hire-lease")
+
+        assert response.status_code == 200
+        assert b"Carvion Hire &amp; Lease" in response.data
+        assert b"Explore Hire Vehicles" in response.data
+        assert b"Explore Lease Vehicles" in response.data
+        assert b"Carvion Cars" in response.data
+
+
 def test_public_hire_and_lease_listing_pages_are_reachable():
     app = make_test_app()
 

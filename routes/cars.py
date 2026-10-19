@@ -1789,11 +1789,19 @@ def mark_all_notifications_read():
 def process_vehicle_inquiry(car_id):
 
     car = Car.query.get_or_404(car_id)
-    if current_user.role not in ("buyer", "seller"):
-     flash("Your account cannot contact sellers.", "danger")
-     return redirect(
-        url_for("cars.car_details", car_id=car.id)
-    )
+
+    # Only publicly available listings may receive buyer inquiries.
+    # Do not let direct POST requests bypass the public listing filter.
+    if car.status != "Approved":
+        flash("This vehicle is not available for inquiries.", "warning")
+        return redirect(url_for("cars.all_cars"))
+
+    role = (getattr(current_user, "role", "") or "").strip().lower()
+    if role not in ("buyer", "seller"):
+        flash("Your account cannot contact sellers.", "danger")
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
+        )
 
     if not car.seller_id:
         flash("This vehicle has no assigned seller.", "danger")
@@ -1807,6 +1815,10 @@ def process_vehicle_inquiry(car_id):
 
     if not message_text:
         flash("Please enter a message.", "warning")
+        return redirect(url_for("cars.car_details", car_id=car.id))
+
+    if len(message_text) > 5000:
+        flash("Your message is too long. Please keep it under 5,000 characters.", "warning")
         return redirect(url_for("cars.car_details", car_id=car.id))
 
     try:
@@ -1833,7 +1845,7 @@ def process_vehicle_inquiry(car_id):
             inquiry_id=inquiry.id,
             sender_id=current_user.id,
             receiver_id=car.seller_id,
-            sender_role=current_user.role,
+            sender_role=role,
             message=message_text,
             is_read=False,
         )

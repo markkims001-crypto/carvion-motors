@@ -759,7 +759,8 @@ def add_car():
 
         description=description or None,
 
-        status="Approved"
+        # All new listings require administrator approval before publication.
+        status="Pending"
     )
 
     uploaded_public_ids = []

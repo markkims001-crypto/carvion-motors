@@ -1727,6 +1727,17 @@ def clear_compare():
 @login_required
 def notifications():
 
+    # Opening the notifications page counts as viewing all notifications.
+    # Restrict the update to the signed-in user's notifications.
+    Notification.query.filter_by(
+        user_id=current_user.id,
+        is_read=False
+    ).update(
+        {"is_read": True},
+        synchronize_session=False
+    )
+    db.session.commit()
+
     notification_list = Notification.query.filter_by(
         user_id=current_user.id
     ).order_by(

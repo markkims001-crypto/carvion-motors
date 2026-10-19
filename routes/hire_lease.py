@@ -3,6 +3,7 @@
 This blueprint never reads or writes the sale-marketplace Car table. Hire and
 lease each use their own inventory and request tables.
 """
+import calendar
 from datetime import date
 from urllib.parse import urlparse
 
@@ -286,6 +287,44 @@ def respond_lease_request(request_id):
     return _respond(item, "lease")
 
 
+def _add_months(start_date, months):
+    """Return the date the lease period ends, clamping month-end dates safely."""
+    month_index = start_date.month - 1 + months
+    year = start_date.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(start_date.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _hire_request_conflicts(item):
+    """Check whether another accepted hire request overlaps this vehicle's dates."""
+    return HireServiceRequest.query.filter(
+        HireServiceRequest.vehicle_id == item.vehicle_id,
+        HireServiceRequest.status == "Accepted",
+        HireServiceRequest.id != item.id,
+        HireServiceRequest.start_date <= item.end_date,
+        HireServiceRequest.end_date >= item.start_date,
+    ).first() is not None
+
+
+def _lease_request_conflicts(item):
+    """Check accepted lease periods as half-open [start, end) date ranges."""
+    requested_end = _add_months(item.requested_start_date, item.duration_months)
+    accepted_items = LeaseServiceRequest.query.filter(
+        LeaseServiceRequest.vehicle_id == item.vehicle_id,
+        LeaseServiceRequest.status == "Accepted",
+        LeaseServiceRequest.id != item.id,
+    ).all()
+    for accepted in accepted_items:
+        accepted_end = _add_months(
+            accepted.requested_start_date,
+            accepted.duration_months,
+        )
+        if accepted.requested_start_date < requested_end and accepted_end > item.requested_start_date:
+            return True
+    return False
+
+
 def _respond(item, service):
     action = request.form.get("action", "").strip().lower()
     response = request.form.get("seller_response", "").strip()
@@ -295,6 +334,18 @@ def _respond(item, service):
         flash("Response must be 2,000 characters or fewer.", "danger")
         return redirect(url_for("hire_lease.seller_requests"))
     if action == "accept":
+        has_conflict = (
+            _hire_request_conflicts(item)
+            if service == "hire"
+            else _lease_request_conflicts(item)
+        )
+        if has_conflict:
+            flash(
+                "This vehicle already has an accepted request for an overlapping period. "
+                "Decline or resolve the conflicting request before accepting this one.",
+                "danger",
+            )
+            return redirect(url_for("hire_lease.seller_requests"))
         item.status = "Accepted"
         item.seller_response = response or "The seller has accepted your enquiry. Contact the seller to agree on next steps."
     elif action == "decline":

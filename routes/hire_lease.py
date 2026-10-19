@@ -17,10 +17,14 @@ from service_vehicle_models import (
 hire_lease = Blueprint("hire_lease", __name__)
 
 
-def _seller_required():
+def _seller_required(allow_buyer=False):
     if not current_user.is_authenticated:
         abort(401)
-    if (getattr(current_user, "role", "") or "").lower() not in {"seller", "admin"}:
+    role = (getattr(current_user, "role", "") or "").lower()
+    allowed_roles = {"seller", "admin"}
+    if allow_buyer:
+        allowed_roles.add("buyer")
+    if role not in allowed_roles:
         abort(403)
 
 
@@ -92,19 +96,24 @@ def _listing_endpoint(service):
 
 
 def _save_vehicle(service, vehicle=None):
-    _seller_required()
+    _seller_required(allow_buyer=True)
     model = _inventory(service)
     try:
         values = _form_values(service)
     except ValueError as error:
         flash(str(error), "danger")
         return redirect(url_for(_manage_endpoint(service), edit_id=vehicle.id if vehicle else None))
+    creating_first_service_listing = vehicle is None
     if vehicle is None:
         vehicle = model(seller_id=current_user.id)
         db.session.add(vehicle)
     for key, value in values.items():
         setattr(vehicle, key, value)
     vehicle.status = vehicle.status if vehicle.status in {"Published", "Paused"} else "Published"
+    # Match the existing marketplace onboarding: the first listing promotes a
+    # buyer to seller, but only within the same transaction as the new listing.
+    if creating_first_service_listing and (getattr(current_user, "role", "") or "").lower() == "buyer":
+        current_user.role = "seller"
     try:
         db.session.commit()
     except Exception:
@@ -130,7 +139,7 @@ def lease_listings():
 @hire_lease.route("/hire/manage")
 @login_required
 def manage_hire():
-    _seller_required()
+    _seller_required(allow_buyer=True)
     listings = HireVehicle.query.filter_by(seller_id=current_user.id).order_by(HireVehicle.created_at.desc()).all()
     edit_id = request.args.get("edit_id", type=int)
     vehicle = HireVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
@@ -140,7 +149,7 @@ def manage_hire():
 @hire_lease.route("/lease/manage")
 @login_required
 def manage_lease():
-    _seller_required()
+    _seller_required(allow_buyer=True)
     listings = LeaseVehicle.query.filter_by(seller_id=current_user.id).order_by(LeaseVehicle.created_at.desc()).all()
     edit_id = request.args.get("edit_id", type=int)
     vehicle = LeaseVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
@@ -150,7 +159,7 @@ def manage_lease():
 @hire_lease.route("/hire/manage/save", methods=["POST"])
 @login_required
 def save_hire():
-    _seller_required()
+    _seller_required(allow_buyer=True)
     edit_id = request.form.get("vehicle_id", type=int)
     vehicle = HireVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
     if edit_id and vehicle is None:
@@ -161,7 +170,7 @@ def save_hire():
 @hire_lease.route("/lease/manage/save", methods=["POST"])
 @login_required
 def save_lease():
-    _seller_required()
+    _seller_required(allow_buyer=True)
     edit_id = request.form.get("vehicle_id", type=int)
     vehicle = LeaseVehicle.query.filter_by(id=edit_id, seller_id=current_user.id).first() if edit_id else None
     if edit_id and vehicle is None:

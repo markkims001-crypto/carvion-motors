@@ -257,3 +257,82 @@ def request_lease(car_id):
         return redirect(url_for("hire_lease.lease_listings"))
 
     return render_template("lease_request.html", car=car, option=option, today=date.today().isoformat())
+
+
+def _seller_only():
+    if (getattr(current_user, "role", "") or "").lower() != "seller":
+        flash("Seller access required.", "danger")
+        return False
+    return True
+
+
+@hire_lease.route("/seller/hire-lease-requests")
+@login_required
+def seller_requests():
+    if not _seller_only():
+        return redirect(url_for("home"))
+
+    hire_requests = (
+        HireRequest.query.filter_by(seller_id=current_user.id)
+        .order_by(HireRequest.created_at.desc()).all()
+    )
+    lease_requests = (
+        LeaseRequest.query.filter_by(seller_id=current_user.id)
+        .order_by(LeaseRequest.created_at.desc()).all()
+    )
+    return render_template(
+        "seller_hire_lease_requests.html",
+        hire_requests=hire_requests,
+        lease_requests=lease_requests,
+    )
+
+
+@hire_lease.route("/seller/hire-lease-requests/<string:request_type>/<int:request_id>", methods=["POST"])
+@login_required
+def respond_to_request(request_type, request_id):
+    if not _seller_only():
+        return redirect(url_for("home"))
+
+    if request_type == "hire":
+        item = HireRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
+    elif request_type == "lease":
+        item = LeaseRequest.query.filter_by(id=request_id, seller_id=current_user.id).first_or_404()
+    else:
+        abort(404)
+
+    action = request.form.get("action", "").strip().lower()
+    response_text = request.form.get("seller_response", "").strip()
+    if action not in {"accept", "decline", "respond"}:
+        abort(400)
+    if len(response_text) > 2000:
+        flash("Your response must be 2,000 characters or fewer.", "danger")
+        return redirect(url_for("hire_lease.seller_requests"))
+
+    if item.status != "Pending" and action in {"accept", "decline"}:
+        flash("Only pending requests can be accepted or declined.", "warning")
+        return redirect(url_for("hire_lease.seller_requests"))
+
+    if action == "accept":
+        item.status = "Accepted"
+        item.seller_response = response_text or "The seller has accepted this request. This is not a confirmed booking or lease."
+        message = "Request marked accepted. No booking, payment, or lease agreement has been created."
+    elif action == "decline":
+        item.status = "Declined"
+        item.seller_response = response_text or "The seller has declined this request."
+        message = "Request declined."
+    else:
+        if not response_text:
+            flash("Enter a response before submitting.", "warning")
+            return redirect(url_for("hire_lease.seller_requests"))
+        item.seller_response = response_text
+        message = "Your response was saved."
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        flash("We could not update this request. Please try again.", "danger")
+        return redirect(url_for("hire_lease.seller_requests"))
+
+    flash(message, "success")
+    return redirect(url_for("hire_lease.seller_requests"))

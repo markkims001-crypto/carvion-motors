@@ -491,6 +491,70 @@ def test_add_car_rejects_fields_longer_than_database_columns():
 
 
 
+
+def test_add_car_cleans_up_cloudinary_asset_when_upload_response_is_incomplete(monkeypatch):
+    import importlib
+    import io
+
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    cars_module = importlib.import_module("routes.cars")
+    destroyed_ids = []
+
+    with app.app_context():
+        _create_inquiry_test_users_and_car("Approved")
+        seller_id = User.query.filter_by(email="seller@example.test").one().id
+
+    monkeypatch.setattr(
+        cars_module,
+        "configure_cloudinary",
+        lambda: {
+            "cloud_name": "test",
+            "api_key": "test",
+            "api_secret": "test",
+            "upload_preset": "test-preset",
+        },
+    )
+    monkeypatch.setattr(
+        cars_module.cloudinary.api,
+        "ping",
+        lambda: {"status": "ok"},
+    )
+    monkeypatch.setattr(
+        cars_module.cloudinary.uploader,
+        "upload",
+        lambda *args, **kwargs: {"public_id": "test/orphaned-asset"},
+    )
+    monkeypatch.setattr(
+        cars_module.cloudinary.uploader,
+        "destroy",
+        lambda public_id, **kwargs: (
+            destroyed_ids.append(public_id) or {"result": "ok"}
+        ),
+    )
+
+    data = _create_car_form_data(registration_number="UPLOAD-FAIL-1")
+    data["images"] = [
+        (io.BytesIO(b"fake image content"), f"vehicle-{index}.jpg")
+        for index in range(5)
+    ]
+
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post(
+            "/add_car",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    assert destroyed_ids == ["test/orphaned-asset"]
+    with app.app_context():
+        assert Car.query.filter_by(registration_number="UPLOAD-FAIL-1").first() is None
+
+
+
 def _create_edit_car_test_data():
     seller = User(
         name="Edit Test Seller",

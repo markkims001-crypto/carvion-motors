@@ -445,6 +445,21 @@
 
                                     <td class="text-end">
 
+                                        <!-- HIRE / LEASE SETTINGS -->
+
+                                        <a href="{{ url_for(
+                                            'hire_lease.manage_options',
+                                            car_id=car.id
+                                        ) }}"
+                                           class="btn btn-outline-warning btn-sm"
+                                           title="Manage hire and lease pricing">
+
+                                            <i class="bi bi-calendar2-check"></i>
+                                            Hire / Lease
+
+                                        </a>
+
+
                                         <!-- VIEW -->
 
                                         <a href="{{ url_for(

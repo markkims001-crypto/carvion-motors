@@ -4,8 +4,13 @@ This blueprint never reads or writes the sale-marketplace Car table. Hire and
 lease each use their own inventory and request tables.
 """
 import calendar
+import os
+import uuid
 from datetime import date
 from urllib.parse import urlparse
+
+import cloudinary
+import cloudinary.uploader
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -96,14 +101,67 @@ def _listing_endpoint(service):
     return "hire_lease.hire_listings" if service == "hire" else "hire_lease.lease_listings"
 
 
+def _upload_service_image(image, service):
+    """Upload one cover image to the existing private-configured Cloudinary account."""
+    if not image or not image.filename or not image.filename.strip():
+        return None
+    filename = image.filename.strip()
+    extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if extension not in {"jpg", "jpeg", "png", "webp"}:
+        raise ValueError("Choose a JPG, JPEG, PNG or WEBP image.")
+    if image.mimetype and not image.mimetype.lower().startswith("image/"):
+        raise ValueError("The uploaded file must be an image.")
+
+    # Reuse the same server-side Cloudinary configuration as sale listings.
+    from routes.cars import configure_cloudinary
+    settings = configure_cloudinary()
+    image.stream.seek(0, os.SEEK_END)
+    size = image.stream.tell()
+    image.stream.seek(0)
+    if size > 8 * 1024 * 1024:
+        raise ValueError("The cover image must be 8 MB or smaller.")
+
+    public_id = f"{service}_{uuid.uuid4().hex}"
+    result = cloudinary.uploader.upload(
+        image.stream,
+        upload_preset=settings["upload_preset"],
+        folder=f"carvion_motors/{service}",
+        public_id=public_id,
+        resource_type="image",
+        overwrite=False,
+        use_filename=False,
+        unique_filename=False,
+        secure=True,
+    )
+    image_url = result.get("secure_url")
+    uploaded_public_id = result.get("public_id")
+    if not image_url or not uploaded_public_id:
+        if uploaded_public_id:
+            try:
+                cloudinary.uploader.destroy(uploaded_public_id, resource_type="image")
+            except Exception:
+                current_app.logger.exception("Could not clean up incomplete service image upload")
+        raise RuntimeError("Cloudinary did not return the uploaded image details.")
+    return image_url, uploaded_public_id
+
+
 def _save_vehicle(service, vehicle=None):
     _seller_required(allow_buyer=True)
     model = _inventory(service)
+    image = request.files.get("cover_image")
     try:
         values = _form_values(service)
+        uploaded = _upload_service_image(image, service) if image and image.filename else None
+        if uploaded:
+            values["image_url"] = uploaded[0]
     except ValueError as error:
         flash(str(error), "danger")
         return redirect(url_for(_manage_endpoint(service), edit_id=vehicle.id if vehicle else None))
+    except Exception:
+        current_app.logger.exception("Failed to upload %s vehicle cover image", service)
+        flash("The image could not be uploaded. Check your Cloudinary configuration and try again.", "danger")
+        return redirect(url_for(_manage_endpoint(service), edit_id=vehicle.id if vehicle else None))
+
     creating_first_service_listing = vehicle is None
     if vehicle is None:
         vehicle = model(seller_id=current_user.id)
@@ -119,6 +177,11 @@ def _save_vehicle(service, vehicle=None):
         db.session.commit()
     except Exception:
         db.session.rollback()
+        if uploaded:
+            try:
+                cloudinary.uploader.destroy(uploaded[1], resource_type="image")
+            except Exception:
+                current_app.logger.exception("Could not clean up failed service image upload")
         flash("We could not save this vehicle. Please check the details and try again.", "danger")
         return redirect(url_for(_manage_endpoint(service)))
     flash(f"Your vehicle was saved in the separate {service} inventory.", "success")

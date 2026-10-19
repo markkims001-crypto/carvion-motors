@@ -538,6 +538,51 @@ def add_car():
         )
 
     # ========================================================
+    # VALIDATE VEHICLE DATA AGAINST THE DATABASE SCHEMA
+    # ========================================================
+
+    current_year = datetime.now().year
+    engine = (request.form.get("engine") or "").strip()
+    color = (request.form.get("color") or "").strip()
+    condition = (request.form.get("condition") or "").strip()
+    description = (request.form.get("description") or "").strip()
+
+    validation_error = None
+
+    if len(registration_number) > 20:
+        validation_error = "Registration number must be 20 characters or fewer."
+    elif not 1900 <= year <= current_year + 1:
+        validation_error = f"Enter a vehicle year between 1900 and {current_year + 1}."
+    elif mileage < 0:
+        validation_error = "Mileage cannot be negative."
+    elif len(brand) > 50 or len(model) > 50:
+        validation_error = "Brand and model must be 50 characters or fewer."
+    elif not fuel or len(fuel) > 30:
+        validation_error = "Please select a valid fuel type."
+    elif fuel not in {"Petrol", "Diesel", "Hybrid", "Plug-in Hybrid", "Electric", "Other"}:
+        validation_error = "Please select a valid fuel type."
+    elif not transmission or len(transmission) > 30:
+        validation_error = "Please select a valid transmission."
+    elif transmission not in {"Automatic", "Manual", "CVT", "Other"}:
+        validation_error = "Please select a valid transmission."
+    elif not location:
+        validation_error = "Location is required."
+    elif len(location) > 100:
+        validation_error = "Location must be 100 characters or fewer."
+    elif len(engine) > 50:
+        validation_error = "Engine details must be 50 characters or fewer."
+    elif len(color) > 30:
+        validation_error = "Color must be 30 characters or fewer."
+    elif len(condition) > 30 or (condition and condition not in {"Brand New", "Foreign Used", "Local Used"}):
+        validation_error = "Please select a valid vehicle condition."
+    elif len(description) > 5000:
+        validation_error = "Description must be 5,000 characters or fewer."
+
+    if validation_error:
+        flash(validation_error, "danger")
+        return redirect(url_for("cars.add_car"))
+
+    # ========================================================
     # GET IMAGES
     # ========================================================
 
@@ -670,8 +715,9 @@ def add_car():
         print("ERROR REPR:", repr(error))
         print("================================================")
 
+        current_app.logger.exception("Cloudinary connection failed during vehicle creation")
         flash(
-            f"Cloudinary connection error: {error}",
+            "Image hosting is temporarily unavailable. Please try again later.",
             "danger"
         )
 
@@ -703,15 +749,15 @@ def add_car():
 
         transmission=transmission,
 
-        engine=request.form.get("engine"),
+        engine=engine or None,
 
-        color=request.form.get("color"),
+        color=color or None,
 
-        condition=request.form.get("condition"),
+        condition=condition or None,
 
         location=location,
 
-        description=request.form.get("description"),
+        description=description or None,
 
         status="Approved"
     )
@@ -952,9 +998,10 @@ def add_car():
                     repr(cleanup_error)
                 )
 
-        # Show the actual error during troubleshooting.
+        current_app.logger.exception("Vehicle creation or image upload failed")
         flash(
-            f"Cloudinary upload error: {error}",
+            "We couldn't publish your listing because an upload or save failed. "
+            "Please try again.",
             "danger"
         )
 

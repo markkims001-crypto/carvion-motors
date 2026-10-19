@@ -34,9 +34,9 @@ def test_public_hire_and_lease_pages_render_independently():
         hire = client.get("/hire")
         lease = client.get("/lease")
         assert hire.status_code == 200
-        assert b"Cars for Hire" in hire.data
+        assert b"Cars available for hire" in hire.data
         assert lease.status_code == 200
-        assert b"Cars for Lease" in lease.data
+        assert b"Cars available for lease" in lease.data
 
 
 def test_separate_management_workflows_require_login():

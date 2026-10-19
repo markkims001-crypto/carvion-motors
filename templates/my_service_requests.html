@@ -13,7 +13,7 @@
       <article class="card mb-3"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between gap-2"><h3 class="h5">{{ item.vehicle.year }} {{ item.vehicle.brand }} {{ item.vehicle.model }}</h3><span class="badge text-bg-secondary">{{ item.status }}</span></div>
         {% if service == 'hire' %}<p class="mb-1">Dates: {{ item.start_date }} – {{ item.end_date }} · Pickup: {{ item.pickup_location }}</p>{% else %}<p class="mb-1">Start: {{ item.requested_start_date }} · Duration: {{ item.duration_months }} month(s) · Location: {{ item.location }}</p>{% endif %}
-        {% if item.message %}<p class="text-muted">{{ item.message }}</p>{% endif %}
+        
         <div class="bg-light rounded p-3 my-3"><strong>Conversation with {{ item.seller.name }}</strong>
           {% for message in thread_messages.get(service ~ '-' ~ item.id, []) %}
           <div class="small mt-2"><strong>{{ 'You' if message.sender_id == current_user.id else item.seller.name }} · {{ message.created_at.strftime('%d %b %Y, %H:%M') }}</strong><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{ message.body }}</div></div>

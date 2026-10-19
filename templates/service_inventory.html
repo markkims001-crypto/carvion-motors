@@ -20,7 +20,7 @@
         {% if vehicle %}<input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">{% endif %}
         <div class="row g-3">
           {% for field, label, kind, required in [('registration_number','Registration number','text',true),('brand','Make / brand','text',true),('model','Model','text',true),('year','Year','number',true),('mileage','Mileage (km)','number',true),('fuel','Fuel type','text',true),('transmission','Transmission','text',true),('location','Location','text',true),('image_url','Vehicle image URL (optional)','url',false)] %}
-          <div class="col-md-6"><label class="form-label" for="{{ field }}">{{ label }}</label><input class="form-control" id="{{ field }}" name="{{ field }}" type="{{ kind }}" {% if kind == 'number' %}min="{{ 1900 if field == 'year' else 0 }}" max="{{ 2100 if field == 'year' else '' }}"{% endif %} value="{{ request.form.get(field, getattr(vehicle, field, '') if vehicle else '') }}" {% if required %}required{% endif %}></div>
+          <div class="col-md-6"><label class="form-label" for="{{ field }}">{{ label }}</label><input class="form-control" id="{{ field }}" name="{{ field }}" type="{{ kind }}" {% if kind == 'number' %}min="{{ 1900 if field == 'year' else 0 }}" max="{{ 2100 if field == 'year' else '' }}"{% endif %} value="{{ request.form.get(field, (vehicle|attr(field)) if vehicle else '') }}" {% if required %}required{% endif %}></div>
           {% endfor %}
           <div class="col-12"><label class="form-label" for="description">Description</label><textarea class="form-control" id="description" name="description" rows="3">{{ request.form.get('description', vehicle.description if vehicle else '') }}</textarea></div>
           {% if service == 'hire' %}

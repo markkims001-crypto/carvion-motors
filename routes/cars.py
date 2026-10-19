@@ -1199,76 +1199,63 @@ def delete_car(car_id):
             url_for("cars.seller_dashboard")
         )
 
+    # Capture image identifiers, but only remove remote images after the
+    # database transaction succeeds.
+    public_ids = [
+        image.public_id
+        for image in list(car.images)
+        if getattr(image, "public_id", None)
+    ]
+
     try:
-
-        configure_cloudinary()
-
-    except Exception as error:
-
-        print(
-            "CLOUDINARY CONFIG ERROR:",
-            repr(error)
+        # Reports have a car foreign key without ON DELETE CASCADE.
+        Report.query.filter_by(car_id=car.id).delete(
+            synchronize_session=False
         )
+        Favorite.query.filter_by(car_id=car.id).delete(
+            synchronize_session=False
+        )
+        CompareCar.query.filter_by(car_id=car.id).delete(
+            synchronize_session=False
+        )
+        Notification.query.filter_by(car_id=car.id).delete(
+            synchronize_session=False
+        )
+        db.session.delete(car)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Unable to delete vehicle %s from the database", car_id
+        )
+        flash(
+            "Unable to remove this vehicle right now. Please try again.",
+            "danger"
+        )
+        return redirect(url_for("cars.seller_dashboard"))
 
-    for image in list(car.images):
-
-        try:
-
-            public_id = getattr(
-                image,
-                "public_id",
-                None
-            )
-
-            if public_id:
-
+    try:
+        configure_cloudinary()
+        for public_id in public_ids:
+            try:
                 cloudinary.uploader.destroy(
                     public_id,
                     resource_type="image"
                 )
+            except Exception:
+                current_app.logger.exception(
+                    "Unable to delete Cloudinary image %s for vehicle %s",
+                    public_id, car_id
+                )
+    except Exception:
+        current_app.logger.exception(
+            "Cloudinary is unavailable while cleaning up images for vehicle %s",
+            car_id
+        )
 
-        except Exception as error:
+    flash("Car removed successfully.", "success")
+    return redirect(url_for("cars.seller_dashboard"))
 
-            print(
-                "CLOUDINARY DELETE ERROR:",
-                repr(error)
-            )
-
-    Favorite.query.filter_by(
-        car_id=car.id
-    ).delete(
-        synchronize_session=False
-    )
-
-    CompareCar.query.filter_by(
-        car_id=car.id
-    ).delete(
-        synchronize_session=False
-    )
-
-    Notification.query.filter_by(
-        car_id=car.id
-    ).delete(
-        synchronize_session=False
-    )
-
-    db.session.delete(car)
-
-    db.session.commit()
-
-    flash(
-        "Car removed successfully.",
-        "success"
-    )
-
-    return redirect(
-        url_for("cars.seller_dashboard")
-    )
-
-
-# ============================================================
-# DELETE IMAGE
-# ============================================================
 
 @cars.route(
     "/delete_image/<int:image_id>",
@@ -1292,45 +1279,66 @@ def delete_image(image_id):
             url_for("cars.all_cars")
         )
 
-    try:
-
-        configure_cloudinary()
-
-        public_id = getattr(
-            image,
-            "public_id",
-            None
+    # Listings must retain at least five images.
+    if len(car.images) <= 5:
+        flash(
+            "A vehicle listing must keep at least 5 images. Add another image before removing one.",
+            "warning"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
         )
 
-        if public_id:
-
-            cloudinary.uploader.destroy(
+    public_id = getattr(image, "public_id", None)
+    if public_id:
+        try:
+            configure_cloudinary()
+            result = cloudinary.uploader.destroy(
                 public_id,
                 resource_type="image"
             )
+            if result and result.get("result") not in {"ok", "not found"}:
+                current_app.logger.error(
+                    "Unexpected Cloudinary delete result for image %s: %s",
+                    image_id, result.get("result")
+                )
+                flash(
+                    "The image could not be removed. Please try again.",
+                    "danger"
+                )
+                return redirect(
+                    url_for("cars.car_details", car_id=car.id)
+                )
+        except Exception:
+            current_app.logger.exception(
+                "Unable to delete Cloudinary image %s", image_id
+            )
+            flash(
+                "The image could not be removed. Please try again.",
+                "danger"
+            )
+            return redirect(
+                url_for("cars.car_details", car_id=car.id)
+            )
 
-    except Exception as error:
-
-        print(
-            "CLOUDINARY IMAGE DELETE ERROR:",
-            repr(error)
+    try:
+        db.session.delete(image)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Unable to remove image record %s", image_id
+        )
+        flash(
+            "Unable to remove the image right now. Please try again.",
+            "danger"
+        )
+        return redirect(
+            url_for("cars.car_details", car_id=car.id)
         )
 
-    db.session.delete(image)
-
-    db.session.commit()
-
-    flash(
-        "Image deleted.",
-        "success"
-    )
-
-    return redirect(
-        url_for(
-            "cars.car_details",
-            car_id=car.id
-        )
-    )
+    flash("Image deleted.", "success")
+    return redirect(url_for("cars.car_details", car_id=car.id))
 
 
 # ============================================================

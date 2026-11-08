@@ -346,6 +346,10 @@ def create_app():
     def privacy():
         return render_template("privacy.html")
 
+    @app.route("/terms")
+    def terms():
+        return render_template("terms.html")
+
     @app.route("/buyer")
     @login_required
     def buyer_home():

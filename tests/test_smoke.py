@@ -2,6 +2,8 @@
 
 import os
 
+import pytest
+
 # Set test-only configuration before importing app.py, whose module creates
 # the WSGI application at import time.
 os.environ["SECRET_KEY"] = "test-only-secret-key-not-for-production"
@@ -423,6 +425,92 @@ def _create_car_form_data(**overrides):
     }
     data.update(overrides)
     return data
+
+
+
+def test_new_car_listings_require_admin_approval(monkeypatch):
+    import importlib
+    import io
+
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    cars_module = importlib.import_module("routes.cars")
+
+    with app.app_context():
+        buyer, _ = _create_inquiry_test_users_and_car("Approved")
+        buyer_id = buyer.id
+
+    monkeypatch.setattr(
+        cars_module,
+        "configure_cloudinary",
+        lambda: {
+            "cloud_name": "test",
+            "api_key": "test",
+            "api_secret": "test",
+            "upload_preset": "test-preset",
+        },
+    )
+    monkeypatch.setattr(
+        cars_module.cloudinary.api,
+        "ping",
+        lambda: {"status": "ok"},
+    )
+    monkeypatch.setattr(
+        cars_module.cloudinary.uploader,
+        "upload",
+        lambda *args, **kwargs: {
+            "secure_url": f"https://example.test/{kwargs['public_id']}.jpg",
+            "public_id": kwargs["public_id"],
+        },
+    )
+
+    data = _create_car_form_data(registration_number="PENDING-TEST-1")
+    data["images"] = [
+        (io.BytesIO(b"fake image content"), f"vehicle-{index}.jpg")
+        for index in range(5)
+    ]
+
+    with app.test_client() as client:
+        _login_test_user(client, buyer_id)
+        response = client.post(
+            "/add_car",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 302
+    with app.app_context():
+        created_car = Car.query.filter_by(
+            registration_number="PENDING-TEST-1"
+        ).one()
+        upgraded_buyer = db.session.get(User, buyer_id)
+        assert created_car.status == "Pending"
+        assert upgraded_buyer.role == "seller"
+
+
+def test_report_listing_route_is_registered_once():
+    app = make_test_app()
+
+    report_rules = [
+        rule for rule in app.url_map.iter_rules()
+        if rule.rule == "/car/<int:car_id>/report"
+        and "POST" in rule.methods
+    ]
+    assert len(report_rules) == 1
+
+
+def test_database_initialization_failure_prevents_app_startup(monkeypatch):
+    def fail_create_all():
+        raise RuntimeError("test database unavailable")
+
+    monkeypatch.setattr(db, "create_all", fail_create_all)
+
+    with pytest.raises(
+        RuntimeError,
+        match="Database initialization failed; refusing to start",
+    ):
+        create_app()
 
 
 def test_add_car_rejects_negative_mileage_before_uploading_images():

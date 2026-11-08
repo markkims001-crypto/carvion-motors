@@ -3,6 +3,7 @@
 """Carvion Motors authentication and password-reset routes."""
 
 import hashlib
+import html
 import hmac
 import importlib
 import os
@@ -182,14 +183,14 @@ def send_reset_email(user, reset_url):
                 f"Hello {user.name},\n\n"
                 "Reset your password using this link:\n"
                 f"{reset_url}\n\n"
-                "This link expires in one hour. "
+                "This link expires in 30 minutes. "
                 "If you did not request this, ignore this email."
             ),
             "html": (
-                f"<p>Hello {user.name},</p>"
+                f"<p>Hello {html.escape(user.name or 'there')},</p>"
                 "<p>Use the link below to reset your Carvion Motors "
-                "password. It expires in one hour.</p>"
-                f'<p><a href="{reset_url}">Reset my password</a></p>'
+                "password. It expires in 30 minutes.</p>"
+                f'<p><a href="{html.escape(reset_url, quote=True)}">Reset my password</a></p>'
                 "<p>If you did not request this, ignore this email.</p>"
             ),
         })

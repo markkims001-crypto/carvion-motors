@@ -27,18 +27,13 @@ from flask_login import (
     login_user,
     logout_user,
 )
-from itsdangerous import (
-    BadSignature,
-    SignatureExpired,
-    URLSafeTimedSerializer,
-)
 from werkzeug.security import (
     check_password_hash,
     generate_password_hash,
 )
 
 from extensions import db, utcnow
-from models import PasswordResetCode, User, Notification
+from models import PasswordResetCode, EmailPasswordResetToken, User, Notification
 
 auth = Blueprint("auth", __name__)
 
@@ -109,29 +104,23 @@ def find_user_by_email(email):
     ).first()
 
 
-def generate_reset_token(email):
-    serializer = URLSafeTimedSerializer(
-        current_app.config["SECRET_KEY"]
-    )
-    return serializer.dumps(
-        email,
-        salt="carvion-password-reset",
-    )
+def generate_reset_token():
+    """Generate an opaque, cryptographically random one-time reset token."""
+    return secrets.token_urlsafe(32)
 
 
-def verify_reset_token(token, max_age=3600):
-    serializer = URLSafeTimedSerializer(
-        current_app.config["SECRET_KEY"]
-    )
+def hash_reset_token(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
-    try:
-        return serializer.loads(
-            token,
-            salt="carvion-password-reset",
-            max_age=max_age,
-        )
-    except (SignatureExpired, BadSignature):
-        return None
+
+def password_meets_requirements(password):
+    """Require a longer password with mixed character types."""
+    return (
+        len(password) >= 10
+        and any(character.islower() for character in password)
+        and any(character.isupper() for character in password)
+        and any(character.isdigit() for character in password)
+    )
 
 
 def otp_digest(code):
@@ -342,8 +331,11 @@ def reset_password_sms():
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
-        if len(password) < 6:
-            flash("Password must be at least 6 characters.", "danger")
+        if not password_meets_requirements(password):
+            flash(
+                "Use at least 10 characters, including uppercase, lowercase, and a number.",
+                "danger",
+            )
             return redirect(url_for("auth.reset_password_sms"))
 
         if password != confirm_password:
@@ -513,111 +505,122 @@ def verify_reset_code():
 def forgot_password_email():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        user = (
-            find_user_by_email(email)
-            if email
-            else None
-        )
+        user = find_user_by_email(email) if email else None
 
-        # Diagnostic logging deliberately excludes the submitted address.
-        current_app.logger.warning(
-            "Password reset lookup (email route): email_submitted=%s, "
-            "account_found=%s",
-            bool(email),
-            user is not None,
-        )
-
+        # Keep the response identical for known and unknown email addresses.
         if user:
-            try:
-                token = generate_reset_token(user.email)
-                reset_url = url_for(
-                    "auth.reset_password",
-                    token=token,
-                    _external=True,
+            now = utcnow()
+            latest_request = (
+                EmailPasswordResetToken.query
+                .filter_by(user_id=user.id)
+                .order_by(EmailPasswordResetToken.created_at.desc())
+                .first()
+            )
+
+            # Per-account cooldown prevents repeated email delivery attempts.
+            can_send = (
+                latest_request is None
+                or (now - latest_request.created_at).total_seconds() >= 60
+            )
+
+            if can_send:
+                raw_token = generate_reset_token()
+                reset_record = EmailPasswordResetToken(
+                    user_id=user.id,
+                    token_hash=hash_reset_token(raw_token),
+                    expires_at=now + timedelta(minutes=30),
                 )
-                sent = send_reset_email(user, reset_url)
-                current_app.logger.warning(
-                    "Password reset email helper returned: %s",
-                    sent,
-                )
-            except Exception:
-                current_app.logger.exception(
-                    "Password reset request failed in email route."
-                )
+
+                try:
+                    # A new request invalidates every earlier reset link.
+                    EmailPasswordResetToken.query.filter_by(
+                        user_id=user.id
+                    ).delete(synchronize_session=False)
+                    db.session.add(reset_record)
+                    db.session.commit()
+
+                    reset_url = url_for(
+                        "auth.reset_password",
+                        token=raw_token,
+                        _external=True,
+                    )
+                    if not send_reset_email(user, reset_url):
+                        current_app.logger.error(
+                            "Password reset email could not be sent for user_id=%s",
+                            user.id,
+                        )
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.exception(
+                        "Password reset request failed in email route."
+                    )
 
         flash(
-            "If an account exists for that email, "
-            "a password reset link has been sent.",
+            "If an account exists for that email, a password reset link "
+            "will be sent if delivery is available.",
             "info",
         )
         return redirect(url_for("auth.login"))
 
-    return render_template(
-        "forgot_password.html",
-        email_reset=True,
-    )
+    return render_template("forgot_password.html", email_reset=True)
 
 
 @auth.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
-    email = verify_reset_token(token)
+    token_hash = hash_reset_token(token)
+    reset_record = (
+        EmailPasswordResetToken.query
+        .filter_by(token_hash=token_hash, used_at=None)
+        .first()
+    )
 
-    if not email:
+    if reset_record is None or reset_record.expires_at <= utcnow():
         flash(
-            "The password reset link is invalid or has expired.",
+            "This password reset link is invalid, expired, or already used.",
             "danger",
         )
-        return redirect(
-            url_for("auth.forgot_password_email")
-        )
+        return redirect(url_for("auth.forgot_password_email"))
 
-    user = find_user_by_email(email)
-
-    if not user:
+    user = db.session.get(User, reset_record.user_id)
+    if user is None:
         flash("Account not found.", "danger")
-        return redirect(
-            url_for("auth.forgot_password_email")
-        )
+        return redirect(url_for("auth.forgot_password_email"))
 
     if request.method == "POST":
         password = request.form.get("password", "")
-        confirm_password = request.form.get(
-            "confirm_password",
-            "",
-        )
+        confirm_password = request.form.get("confirm_password", "")
 
-        if len(password) < 6:
+        if not password_meets_requirements(password):
             flash(
-                "Password must be at least 6 characters.",
+                "Use at least 10 characters, including uppercase, lowercase, "
+                "and a number.",
                 "danger",
             )
-            return redirect(
-                url_for("auth.reset_password", token=token)
-            )
+            return redirect(url_for("auth.reset_password", token=token))
 
         if password != confirm_password:
             flash("Passwords do not match.", "danger")
-            return redirect(
-                url_for("auth.reset_password", token=token)
-            )
+            return redirect(url_for("auth.reset_password", token=token))
 
         try:
             user.password = generate_password_hash(password)
+            reset_record.used_at = utcnow()
+            # Revoke every reset link for this account after a successful reset.
+            EmailPasswordResetToken.query.filter(
+                EmailPasswordResetToken.user_id == user.id,
+                EmailPasswordResetToken.id != reset_record.id,
+            ).delete(synchronize_session=False)
             db.session.commit()
-
         except Exception:
             db.session.rollback()
             current_app.logger.exception(
                 "Email password reset database update failed."
             )
             flash(
-                "Unable to update your password right now. "
-                "Please try again.",
+                "Unable to update your password right now. Please try again.",
                 "danger",
             )
-            return redirect(
-                url_for("auth.reset_password", token=token)
-            )
+            return redirect(url_for("auth.reset_password", token=token))
 
         flash(
             "Password reset successfully. You can now log in.",

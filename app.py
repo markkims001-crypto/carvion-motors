@@ -252,6 +252,41 @@ def create_app():
 
             print("=" * 60)
 
+            # One-time, explicitly configured migration for the existing admin email.
+            # This preserves the account ID, password, role, and related marketplace data.
+            migration_email = os.environ.get(
+                "CARVION_ADMIN_EMAIL_MIGRATION_TARGET", ""
+            ).strip().lower()
+            if migration_email:
+                matching_user = User.query.filter(
+                    db.func.lower(db.func.trim(User.email)) == migration_email
+                ).first()
+
+                if matching_user is not None:
+                    if (matching_user.role or "").lower() == "admin":
+                        print("Admin email migration already applied.")
+                    else:
+                        print(
+                            "Admin email migration stopped: target email "
+                            "already belongs to a non-admin account."
+                        )
+                else:
+                    admin_accounts = (
+                        User.query
+                        .filter(db.func.lower(db.func.trim(User.role)) == "admin")
+                        .order_by(User.id.asc())
+                        .all()
+                    )
+                    if len(admin_accounts) == 1:
+                        admin_accounts[0].email = migration_email
+                        db.session.commit()
+                        print("Existing admin email updated successfully.")
+                    else:
+                        print(
+                            "Admin email migration stopped: expected exactly "
+                            "one existing admin account."
+                        )
+
             admin_email = os.environ.get("CARVION_ADMIN_EMAIL", "").strip().lower()
             admin_password = os.environ.get("CARVION_ADMIN_PASSWORD", "")
 

@@ -98,6 +98,17 @@ def phone_matches(stored_phone, submitted_phone):
     )
 
 
+def find_user_by_email(email):
+    """Find an account without case or surrounding-whitespace mismatches."""
+    normalized_email = (email or "").strip().lower()
+    if not normalized_email:
+        return None
+
+    return User.query.filter(
+        db.func.lower(db.func.trim(User.email)) == normalized_email
+    ).first()
+
+
 def generate_reset_token(email):
     serializer = URLSafeTimedSerializer(
         current_app.config["SECRET_KEY"]
@@ -503,7 +514,7 @@ def forgot_password_email():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user = (
-            User.query.filter_by(email=email).first()
+            find_user_by_email(email)
             if email
             else None
         )
@@ -560,7 +571,7 @@ def reset_password(token):
             url_for("auth.forgot_password_email")
         )
 
-    user = User.query.filter_by(email=email).first()
+    user = find_user_by_email(email)
 
     if not user:
         flash("Account not found.", "danger")
@@ -662,7 +673,7 @@ def login():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
 
-        user = User.query.filter_by(email=email).first()
+        user = find_user_by_email(email)
 
         if user and check_password_hash(user.password, password):
             login_user(user)
@@ -714,7 +725,7 @@ def register():
         elif password != confirm_password:
             flash("Passwords do not match.", "danger")
 
-        elif User.query.filter_by(email=email).first():
+        elif find_user_by_email(email):
             flash(
                 "An account with that email already exists.",
                 "danger",
@@ -779,7 +790,7 @@ def forgot_password():
         email = request.form.get("email", "").strip().lower()
 
         if email:
-            user = User.query.filter_by(email=email).first()
+            user = find_user_by_email(email)
 
             # Log diagnostic status without exposing the email.
             current_app.logger.warning(

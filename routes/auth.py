@@ -508,14 +508,31 @@ def forgot_password_email():
             else None
         )
 
+        # Diagnostic logging deliberately excludes the submitted address.
+        current_app.logger.warning(
+            "Password reset lookup (email route): email_submitted=%s, "
+            "account_found=%s",
+            bool(email),
+            user is not None,
+        )
+
         if user:
-            token = generate_reset_token(user.email)
-            reset_url = url_for(
-                "auth.reset_password",
-                token=token,
-                _external=True,
-            )
-            send_reset_email(user, reset_url)
+            try:
+                token = generate_reset_token(user.email)
+                reset_url = url_for(
+                    "auth.reset_password",
+                    token=token,
+                    _external=True,
+                )
+                sent = send_reset_email(user, reset_url)
+                current_app.logger.warning(
+                    "Password reset email helper returned: %s",
+                    sent,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Password reset request failed in email route."
+                )
 
         flash(
             "If an account exists for that email, "

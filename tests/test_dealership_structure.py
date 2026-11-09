@@ -20,4 +20,4 @@ def test_showroom_uses_public_listing_filter():
     source = (ROOT / "routes" / "dealers.py").read_text(encoding="utf-8")
     assert 'status="Approved"' in source
     assert 'owner_id=current_user.id' in source
-    assert 'csrf_token()' in source
+    assert 'csrf_token()' in (ROOT / "templates" / "dealers" / "setup.html").read_text(encoding="utf-8")

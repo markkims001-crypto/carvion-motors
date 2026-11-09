@@ -888,3 +888,32 @@ def test_delete_image_keeps_five_image_minimum():
     with app.app_context():
         assert CarImage.query.filter_by(car_id=car_id).count() == 5
 
+
+
+def test_registration_password_policy_matches_reset_policy():
+    from routes.auth import password_meets_requirements
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    assert not password_meets_requirements("short1A")
+    assert not password_meets_requirements("lowercase12345")
+    assert password_meets_requirements("StrongPass123")
+    with app.test_client() as client:
+        weak = client.post("/register", data={
+            "name": "Weak Registration", "email": "weak-registration@example.test",
+            "phone": "0712345678", "role": "seller",
+            "password": "short1A", "confirm_password": "short1A",
+        }, follow_redirects=True)
+        assert b"at least 10 characters" in weak.data
+        with app.app_context():
+            assert User.query.filter_by(email="weak-registration@example.test").first() is None
+        strong = client.post("/register", data={
+            "name": "Strong Registration", "email": "strong-registration@example.test",
+            "phone": "0712345679", "role": "seller",
+            "password": "StrongPass123", "confirm_password": "StrongPass123",
+        }, follow_redirects=False)
+        assert strong.status_code in (200, 302)
+        with app.app_context():
+            created = User.query.filter_by(email="strong-registration@example.test").first()
+            assert created is not None
+            assert created.role == "seller"
+

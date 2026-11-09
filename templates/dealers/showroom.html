@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}{{ dealer.name }} | Carvion Motors{% endblock %}
+{% block content %}
+<main class="container py-5"><h1>{{ dealer.name }}</h1><p>{{ dealer.location }}</p><p>{{ dealer.description or 'Carvion Motors dealership showroom' }}</p>
+{% if dealer.is_verified %}<span class="badge bg-success">Verified dealership</span>{% endif %}
+<h2 class="mt-4">Available vehicles</h2><div class="row g-3">
+{% for car in vehicles %}<div class="col-md-4"><div class="card p-3"><h3 class="h5">{{ car.brand }} {{ car.model }}</h3><p>{{ car.year }} · KSh {{ '{:,}'.format(car.price) }}</p></div></div>
+{% else %}<p>No vehicles listed yet.</p>{% endfor %}</div></main>
+{% endblock %}

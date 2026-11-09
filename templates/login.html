@@ -32,6 +32,10 @@
             <span class="text-muted">New to Carvion Motors?</span>
             <a href="{{ url_for('auth.register') }}" class="fw-bold ms-1">Create an account</a>
         </div>
+        <div class="text-center mt-3">
+            <p class="text-muted small mb-2">Joining as a dealership?</p>
+            <a class="btn btn-outline-primary w-100" href="{{ url_for('auth.register') }}?account=dealership">Register your dealership</a>
+        </div>
     </div>
 </section>
 {% endblock %}

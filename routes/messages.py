@@ -9,7 +9,7 @@ from flask_login import login_required, current_user
 from urllib.parse import urlsplit
 
 from extensions import db
-from models import Inquiry, InquiryMessage, User
+from models import Inquiry, InquiryMessage
 
 
 messages = Blueprint("messages", __name__, url_prefix="/messages")
@@ -61,23 +61,12 @@ def send_message(inquiry_id):
 
     role = (getattr(current_user, "role", "") or "").strip().lower()
 
-    if role == "admin":
-        # Administrators can respond only to the inquiry's known participants.
-        receiver_id = (
-            inquiry.buyer_id
-            if inquiry.buyer_id != current_user.id
-            else inquiry.seller_id
-        )
-    elif current_user.id in (inquiry.buyer_id, inquiry.seller_id):
-        # Preserve the legacy workflow: buyer/seller messages are routed to an admin.
-        admin_user = User.query.filter(
-            db.func.lower(User.role) == "admin"
-        ).first()
-        if admin_user is None:
-            flash("No administrator is currently available.", "warning")
-            return _back_to_inquiry(inquiry_id)
-        receiver_id = admin_user.id
+    if current_user.id == inquiry.buyer_id:
+        receiver_id = inquiry.seller_id
+    elif current_user.id == inquiry.seller_id:
+        receiver_id = inquiry.buyer_id
     else:
+        # Admins and unrelated accounts must use their dedicated workflows.
         flash("Permission denied.", "danger")
         return redirect(url_for("home"))
 

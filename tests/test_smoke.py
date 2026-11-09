@@ -1006,3 +1006,85 @@ def test_legacy_favicon_path_serves_branded_icon():
         assert response.mimetype == "image/svg+xml"
         assert b"<svg" in response.data
 
+
+@pytest.mark.parametrize("sender_role,expected_receiver", [
+    ("buyer", "seller"),
+    ("seller", "buyer"),
+])
+def test_legacy_inquiry_messages_go_to_other_participant(sender_role, expected_receiver):
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        buyer = User(name="Buyer Message Test", email="msg-buyer@example.test",
+                     phone="254700002101", password="test", role="buyer")
+        seller = User(name="Seller Message Test", email="msg-seller@example.test",
+                      phone="254700002102", password="test", role="seller")
+        admin = User(name="Admin Message Test", email="msg-admin@example.test",
+                     phone="254700002103", password="test", role="admin")
+        db.session.add_all([buyer, seller, admin])
+        db.session.flush()
+        car = Car(registration_number="LEGACY-MSG-1", seller_id=seller.id,
+                  brand="Toyota", model="Corolla", year=2022, price=1500000,
+                  mileage=25000, fuel="Petrol", transmission="Automatic",
+                  location="Nairobi", status="Approved")
+        db.session.add(car)
+        db.session.flush()
+        inquiry = Inquiry(car_id=car.id, buyer_id=buyer.id,
+                          seller_id=seller.id, status="Open")
+        db.session.add(inquiry)
+        db.session.commit()
+        sender_id = buyer.id if sender_role == "buyer" else seller.id
+        recipient_id = seller.id if expected_receiver == "seller" else buyer.id
+        inquiry_id = inquiry.id
+        admin_id = admin.id
+    with app.test_client() as client:
+        _login_test_user(client, sender_id)
+        response = client.post(f"/messages/send/{inquiry_id}",
+                               data={"message": "Hello about the car"})
+        assert response.status_code == 302
+    with app.app_context():
+        message = InquiryMessage.query.filter_by(inquiry_id=inquiry_id).one()
+        assert message.sender_id == sender_id
+        assert message.receiver_id == recipient_id
+        assert message.receiver_id != admin_id
+
+
+def test_legacy_inquiry_messages_reject_unrelated_accounts():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        buyer = User(name="Buyer Access Test", email="access-buyer@example.test",
+                     phone="254700002111", password="test", role="buyer")
+        seller = User(name="Seller Access Test", email="access-seller@example.test",
+                      phone="254700002112", password="test", role="seller")
+        stranger = User(name="Stranger Access Test", email="access-stranger@example.test",
+                        phone="254700002113", password="test", role="buyer")
+        db.session.add_all([buyer, seller, stranger])
+        db.session.flush()
+        car = Car(registration_number="LEGACY-ACCESS-1", seller_id=seller.id,
+                  brand="Toyota", model="Corolla", year=2022, price=1500000,
+                  mileage=25000, fuel="Petrol", transmission="Automatic",
+                  location="Nairobi", status="Approved")
+        db.session.add(car)
+        db.session.flush()
+        inquiry = Inquiry(car_id=car.id, buyer_id=buyer.id,
+                          seller_id=seller.id, status="Open")
+        db.session.add(inquiry)
+        db.session.commit()
+        stranger_id, inquiry_id = stranger.id, inquiry.id
+    with app.test_client() as client:
+        _login_test_user(client, stranger_id)
+        response = client.post(f"/messages/send/{inquiry_id}",
+                               data={"message": "Not my inquiry"})
+        assert response.status_code == 302
+    with app.app_context():
+        assert InquiryMessage.query.filter_by(inquiry_id=inquiry_id).count() == 0
+
+def test_robots_txt_is_available_and_hides_private_routes():
+    app = make_test_app()
+    with app.test_client() as client:
+        response = client.get("/robots.txt")
+        assert response.status_code == 200
+        assert response.mimetype == "text/plain"
+        assert b"User-agent: *" in response.data
+        assert b"Disallow: /admin/" in response.data

@@ -156,6 +156,23 @@ def create_app():
     app.register_blueprint(chat)
     app.register_blueprint(dealers)
 
+    @app.get("/robots.txt")
+    def robots_txt():
+        """Provide crawler guidance without exposing private account pages."""
+        return (
+            "User-agent: *\\n"
+            "Disallow: /admin/\\n"
+            "Disallow: /seller/\\n"
+            "Disallow: /dashboard\\n"
+            "Disallow: /profile\\n"
+            "Disallow: /notifications\\n"
+            "Disallow: /chat/\\n"
+            "Disallow: /login\\n"
+            "Disallow: /register\\n",
+            200,
+            {"Content-Type": "text/plain; charset=utf-8"},
+        )
+
     @app.get("/favicon.ico")
     def favicon_ico():
         """Serve the existing SVG favicon at the conventional favicon path."""

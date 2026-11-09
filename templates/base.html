@@ -305,6 +305,16 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if current_user.role.lower() in ["buyer", "seller"] %}
+                <li class="nav-item">
+                    <form method="POST" action="{{ url_for('auth.switch_account_mode') }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-link border-0 bg-transparent text-warning">
+                            {% if current_user.role.lower() == "buyer" %}Switch to Seller{% else %}Switch to Buyer{% endif %}
+                        </button>
+                    </form>
+                </li>
+                {% endif %}
                 <li class="nav-item"><form method="POST" action="{{ url_for('auth.logout') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="nav-link text-danger border-0 bg-transparent">Logout</button></form></li>
                 {% else %}
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Login</a></li>

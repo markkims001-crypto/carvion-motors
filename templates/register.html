@@ -225,14 +225,14 @@
                     class="form-select"
                     required
                 >
-                    <option value="buyer" selected>
+                    <option value="buyer" {% if request.args.get("account") != "dealership" %}selected{% endif %}>
                         Buyer — I want to buy vehicles
                     </option>
 
                     <option value="seller">
                         Seller — I want to list and sell my own vehicles
                     </option>
-                    <option value="dealership">
+                    <option value="dealership" {% if request.args.get("account") == "dealership" %}selected{% endif %}>
                         Dealership — I manage a car dealership or showroom
                     </option>
                 </select>
@@ -330,6 +330,7 @@
         }
 
         roleSelect.addEventListener("change", updateRoleHelp);
+        updateRoleHelp();
 
         function checkPasswords() {
             const mismatch =

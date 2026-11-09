@@ -1,5 +1,8 @@
 name: Dealership tests
 on:
+  push:
+    branches:
+      - feature/dealership-profiles-mvp
   pull_request:
     paths:
       - 'dealership_models.py'

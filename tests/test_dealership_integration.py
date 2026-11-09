@@ -69,7 +69,8 @@ def test_seller_can_create_and_edit_dealership(client_app):
         assert dealer.is_verified is False
 
 
-def test_showroom_is_public_and_missing_dealer_404(client_app):
+def test_showroom_is_public_and_missing_dealer_404(client_app, monkeypatch):
+    monkeypatch.setattr('routes.dealers.render_template', lambda *args, **kwargs: 'Showroom')
     with client_app.app_context():
         db.session.add(Dealership(owner_id=2, name="Prestige Autos", slug="prestige-autos-2", location="Nairobi", phone="254712345679"))
         db.session.commit()

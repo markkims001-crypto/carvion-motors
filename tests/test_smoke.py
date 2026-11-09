@@ -483,7 +483,7 @@ def _create_car_form_data(**overrides):
 
 
 
-def test_new_car_listings_require_admin_approval(monkeypatch):
+def test_new_car_listings_are_published_automatically(monkeypatch):
     import importlib
     import io
 
@@ -519,7 +519,7 @@ def test_new_car_listings_require_admin_approval(monkeypatch):
         },
     )
 
-    data = _create_car_form_data(registration_number="PENDING-TEST-1")
+    data = _create_car_form_data(registration_number="AUTO-APPROVED-1")
     data["images"] = [
         (io.BytesIO(b"fake image content"), f"vehicle-{index}.jpg")
         for index in range(5)
@@ -537,10 +537,10 @@ def test_new_car_listings_require_admin_approval(monkeypatch):
     assert response.status_code == 302
     with app.app_context():
         created_car = Car.query.filter_by(
-            registration_number="PENDING-TEST-1"
+            registration_number="AUTO-APPROVED-1"
         ).one()
         upgraded_buyer = db.session.get(User, buyer_id)
-        assert created_car.status == "Pending"
+        assert created_car.status == "Approved"
         assert upgraded_buyer.role == "seller"
 
 

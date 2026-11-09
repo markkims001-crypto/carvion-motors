@@ -939,3 +939,61 @@ def test_dealership_signup_is_visible_and_creates_seller_account():
             user = User.query.filter_by(email="dealer-signup@example.test").one()
             assert user.role == "seller"
 
+
+
+def test_admin_can_delete_dealership_owner_without_vehicle_listings():
+    from dealership_models import Dealership
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        admin = User(name="Deletion Admin", email="delete-admin@example.test",
+                     phone="254700001111", password="test", role="admin")
+        owner = User(name="Empty Dealership", email="delete-dealer@example.test",
+                     phone="254700001112", password="test", role="seller")
+        db.session.add_all([admin, owner])
+        db.session.flush()
+        db.session.add(Dealership(owner_id=owner.id, slug=f"delete-dealer-{owner.id}",
+                                  name="Empty Dealership", location="Nairobi",
+                                  phone="254700001112"))
+        db.session.commit()
+        admin_id, owner_id = admin.id, owner.id
+    with app.test_client() as client:
+        _login_test_user(client, admin_id)
+        response = client.post(f"/admin/delete_user/{owner_id}")
+        assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(User, owner_id) is None
+        assert Dealership.query.filter_by(owner_id=owner_id).first() is None
+        assert db.session.get(User, admin_id) is not None
+
+
+def test_admin_cannot_delete_dealership_owner_with_vehicle_listing():
+    from dealership_models import Dealership
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        admin = User(name="Protected Admin", email="protected-admin@example.test",
+                     phone="254700001121", password="test", role="admin")
+        owner = User(name="Protected Dealer", email="protected-dealer@example.test",
+                     phone="254700001122", password="test", role="seller")
+        db.session.add_all([admin, owner])
+        db.session.flush()
+        db.session.add(Dealership(owner_id=owner.id, slug=f"protected-dealer-{owner.id}",
+                                  name="Protected Dealer", location="Nairobi",
+                                  phone="254700001122"))
+        db.session.add(Car(registration_number="DELETE-PROTECTED-1",
+                           seller_id=owner.id, brand="Toyota", model="Vitz",
+                           year=2022, price=1000000, mileage=12000,
+                           fuel="Petrol", transmission="Automatic",
+                           location="Nairobi", status="Approved"))
+        db.session.commit()
+        admin_id, owner_id = admin.id, owner.id
+    with app.test_client() as client:
+        _login_test_user(client, admin_id)
+        response = client.post(f"/admin/delete_user/{owner_id}")
+        assert response.status_code == 302
+    with app.app_context():
+        assert db.session.get(User, owner_id) is not None
+        assert Dealership.query.filter_by(owner_id=owner_id).first() is not None
+        assert Car.query.filter_by(seller_id=owner_id).count() == 1
+

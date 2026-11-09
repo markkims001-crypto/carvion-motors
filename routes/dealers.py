@@ -1,5 +1,6 @@
 """Public showrooms and seller-owned dealership profile setup."""
 import re
+from urllib.parse import urlsplit
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
@@ -27,7 +28,10 @@ def setup():
         location = request.form.get("location", "").strip()
         phone = request.form.get("phone", "").strip()
         description = request.form.get("description", "").strip()
-        if not name or len(name) > 120 or not location or len(location) > 160 or not phone or len(phone) > 20 or len(description) > 2000:
+        logo_url = request.form.get("logo_url", "").strip()
+        parsed_logo = urlsplit(logo_url)
+        valid_logo = not logo_url or (parsed_logo.scheme == "https" and bool(parsed_logo.hostname) and not parsed_logo.username and not parsed_logo.password and len(logo_url) <= 500)
+        if not name or len(name) > 120 or not location or len(location) > 160 or not phone or len(phone) > 20 or len(description) > 2000 or not valid_logo:
             flash("Enter valid dealership details.", "danger")
         else:
             if dealer is None:
@@ -36,6 +40,7 @@ def setup():
                 dealer = Dealership(owner_id=current_user.id, slug=slug)
                 db.session.add(dealer)
             dealer.name, dealer.location, dealer.phone, dealer.description = name, location, phone, description
+            dealer.logo_url = logo_url or None
             try:
                 db.session.commit()
                 flash("Dealership profile saved.", "success")

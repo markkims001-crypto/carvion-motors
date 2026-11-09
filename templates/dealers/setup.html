@@ -6,5 +6,6 @@
 <label class="form-label" for="dealer-location">Location</label><input id="dealer-location" class="form-control mb-3" name="location" maxlength="160" required value="{{ dealer.location if dealer else '' }}">
 <label class="form-label" for="dealer-phone">Business phone</label><input id="dealer-phone" class="form-control mb-3" name="phone" maxlength="20" required value="{{ dealer.phone if dealer else '' }}">
 <label class="form-label" for="dealer-description">Description</label><textarea id="dealer-description" class="form-control mb-3" name="description" maxlength="2000">{{ dealer.description if dealer and dealer.description else '' }}</textarea>
+<label class="form-label" for="dealer-logo">Logo image URL (optional, HTTPS)</label><input id="dealer-logo" class="form-control mb-2" type="url" name="logo_url" maxlength="500" pattern="https://.*" placeholder="https://example.com/logo.png" value="{{ dealer.logo_url if dealer and dealer.logo_url else '' }}"><p class="text-muted small">Use a publicly accessible HTTPS image URL. Direct logo uploads are not yet supported.</p>
 <button class="btn btn-warning" type="submit">Save dealership</button></form></main>
 {% endblock %}

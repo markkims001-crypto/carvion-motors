@@ -1,9 +1,42 @@
 {% extends 'base.html' %}
 {% block title %}{{ dealer.name }} | Carvion Motors{% endblock %}
 {% block content %}
-<main class="container py-5"><h1>{{ dealer.name }}</h1><p>{{ dealer.location }}</p><p>{{ dealer.description or 'Carvion Motors dealership showroom' }}</p>
-{% if dealer.is_verified %}<span class="badge bg-success">Verified dealership</span>{% endif %}
-<h2 class="mt-4">Available vehicles</h2><div class="row g-3">
-{% for car in vehicles %}<div class="col-md-4"><div class="card p-3"><h3 class="h5">{{ car.brand }} {{ car.model }}</h3><p>{{ car.year }} · KSh {{ '{:,}'.format(car.price) }}</p></div></div>
-{% else %}<p>No vehicles listed yet.</p>{% endfor %}</div></main>
+<main class="container py-5">
+  <div class="card border-0 shadow-sm mb-4"><div class="card-body p-4">
+    <div class="d-flex flex-column flex-sm-row align-items-start gap-3">
+      {% if dealer.logo_url %}<img src="{{ dealer.logo_url }}" alt="{{ dealer.name }} logo" style="width:100px;height:100px;object-fit:contain" class="rounded border bg-white" loading="lazy">{% endif %}
+      <div class="flex-grow-1">
+        <h1 class="mb-2">{{ dealer.name }}</h1>
+        <p class="mb-1"><strong>Location:</strong> {{ dealer.location }}</p>
+        {% if dealer.is_verified %}<span class="badge bg-success mb-2">Verified dealership</span>{% endif %}
+        {% if dealer.description %}<p class="mb-3">{{ dealer.description }}</p>{% endif %}
+        <a class="btn btn-warning" href="tel:{{ dealer.phone | replace(' ', '') }}">Call dealership: {{ dealer.phone }}</a>
+      </div>
+    </div>
+  </div></div>
+  <h2 class="h3 mb-3">Available vehicles ({{ vehicles|length }})</h2>
+  <div class="row g-4">
+    {% for car in vehicles %}
+    <div class="col-12 col-sm-6 col-lg-4">
+      <article class="card h-100">
+        <a href="{{ url_for('cars.car_details', car_id=car.id) }}" class="text-decoration-none text-dark" aria-label="View {{ car.brand }} {{ car.model }}">
+          {% if car.images %}
+          <img src="{{ car.images[0].filename }}" class="card-img-top" alt="{{ car.brand }} {{ car.model }}" style="height:210px;object-fit:cover" loading="lazy">
+          {% else %}
+          <div class="d-flex align-items-center justify-content-center bg-light text-muted" style="height:210px">Vehicle photo unavailable</div>
+          {% endif %}
+          <div class="card-body">
+            <h3 class="h5">{{ car.brand }} {{ car.model }}</h3>
+            <p class="mb-2">{{ car.year }} · {{ car.location }}</p>
+            <p class="fw-bold mb-0">KSh {{ '{:,}'.format(car.price) }}</p>
+          </div>
+        </a>
+        <div class="card-footer bg-white border-0 pt-0"><a class="btn btn-outline-dark w-100" href="{{ url_for('cars.car_details', car_id=car.id) }}">View vehicle</a></div>
+      </article>
+    </div>
+    {% else %}
+    <div class="col-12"><p>No vehicles available in this showroom yet.</p></div>
+    {% endfor %}
+  </div>
+</main>
 {% endblock %}

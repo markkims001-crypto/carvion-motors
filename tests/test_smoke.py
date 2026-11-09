@@ -926,7 +926,7 @@ def test_dealership_signup_is_visible_and_creates_seller_account():
         page = client.get("/register?account=dealership")
         assert page.status_code == 200
         assert b'value="dealership" selected' in page.data
-        assert b"Dealership" in client.get("/login").data
+        assert b"Register your dealership" in client.get("/login").data
         response = client.post("/register", data={
             "name": "Dealer Signup Test", "email": "dealer-signup@example.test",
             "phone": "0712345680", "role": "dealership",

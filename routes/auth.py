@@ -750,7 +750,8 @@ def register():
         email = request.form.get("email", "").strip().lower()
         phone_input = request.form.get("phone", "").strip()
         phone = normalise_phone(phone_input)
-        role = request.form.get("role", "buyer").strip().lower()
+        account_type = request.form.get("role", "buyer").strip().lower()
+        role = "seller" if account_type == "dealership" else account_type
         password = request.form.get("password", "")
         confirm_password = request.form.get(
             "confirm_password",
@@ -773,7 +774,7 @@ def register():
                 "danger",
             )
 
-        elif role not in {"buyer", "seller"}:
+        elif account_type not in {"buyer", "seller", "dealership"}:
             flash(
                 "Please select a valid account type.",
                 "danger",
@@ -816,7 +817,7 @@ def register():
                         user_id=administrator.id,
                         title="New User Registration",
                         message=(
-                            f"{user.name} registered a new {role} account."
+                            f"{user.name} registered a new {account_type} account."
                         ),
                         notification_type="user",
                         is_read=False,
@@ -828,7 +829,7 @@ def register():
                     "Account created. You can now log in.",
                     "success",
                 )
-                return redirect(url_for("auth.login"))
+                return redirect(url_for("auth.login", next=url_for("dealers.setup"))) if account_type == "dealership" else redirect(url_for("auth.login"))
 
             except Exception:
                 db.session.rollback()

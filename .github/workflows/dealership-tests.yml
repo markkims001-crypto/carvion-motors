@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'dealership_models.py'
+      - 'migrations/versions/**'
+      - 'migrations/env.py'
       - 'routes/dealers.py'
       - 'templates/dealers/**'
       - 'tests/test_dealership_structure.py'

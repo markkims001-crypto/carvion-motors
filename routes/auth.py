@@ -709,6 +709,7 @@ def register():
         email = request.form.get("email", "").strip().lower()
         phone_input = request.form.get("phone", "").strip()
         phone = normalise_phone(phone_input)
+        role = request.form.get("role", "buyer").strip().lower()
         password = request.form.get("password", "")
         confirm_password = request.form.get(
             "confirm_password",
@@ -728,6 +729,12 @@ def register():
         ):
             flash(
                 "Enter a valid Kenyan phone number, e.g. 0712345678.",
+                "danger",
+            )
+
+        elif role not in {"buyer", "seller"}:
+            flash(
+                "Please select a valid account type.",
                 "danger",
             )
 
@@ -753,7 +760,7 @@ def register():
                     email=email,
                     phone=phone,
                     password=generate_password_hash(password),
-                    role="buyer",
+                    role=role,
                 )
 
                 db.session.add(user)
@@ -768,7 +775,7 @@ def register():
                         user_id=administrator.id,
                         title="New User Registration",
                         message=(
-                            f"{user.name} registered a new buyer account."
+                            f"{user.name} registered a new {role} account."
                         ),
                         notification_type="user",
                         is_read=False,

@@ -28,6 +28,60 @@ def make_test_app():
     return app
 
 
+
+def test_buyer_and_seller_can_switch_modes_without_losing_listings():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        seller = User(name="Mode Switch Seller", email="mode-switch@example.test",
+                      phone="254700000099", password="test-password", role="seller")
+        db.session.add(seller)
+        db.session.flush()
+        car = Car(registration_number="MODE-SWITCH-1", seller_id=seller.id,
+                  brand="Toyota", model="Corolla", year=2022, price=1500000,
+                  mileage=25000, fuel="Petrol", transmission="Automatic",
+                  location="Nairobi", status="Approved")
+        db.session.add(car)
+        db.session.commit()
+        seller_id, car_id = seller.id, car.id
+    with app.test_client() as client:
+        _login_test_user(client, seller_id)
+        response = client.post("/switch-account-mode")
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/cars")
+        with app.app_context():
+            assert db.session.get(User, seller_id).role == "buyer"
+            assert Car.query.filter_by(id=car_id, seller_id=seller_id).count() == 1
+        response = client.post("/switch-account-mode")
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/seller/dashboard")
+        with app.app_context():
+            assert db.session.get(User, seller_id).role == "seller"
+            assert Car.query.filter_by(id=car_id, seller_id=seller_id).count() == 1
+
+
+def test_admin_cannot_switch_marketplace_mode():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.app_context():
+        admin_user = User(name="Mode Switch Admin", email="mode-switch-admin@example.test",
+                          phone="254700000098", password="test-password", role="admin")
+        db.session.add(admin_user)
+        db.session.commit()
+        admin_id = admin_user.id
+    with app.test_client() as client:
+        _login_test_user(client, admin_id)
+        client.post("/switch-account-mode")
+    with app.app_context():
+        assert db.session.get(User, admin_id).role == "admin"
+
+
+def test_account_mode_switch_rejects_get_requests():
+    app = make_test_app()
+    with app.test_client() as client:
+        assert client.get("/switch-account-mode").status_code == 405
+
+
 def test_marketplace_uses_page_specific_title():
     app = make_test_app()
 

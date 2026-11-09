@@ -230,7 +230,10 @@
                     </option>
 
                     <option value="seller">
-                        Seller — I want to list and sell vehicles
+                        Seller — I want to list and sell my own vehicles
+                    </option>
+                    <option value="dealership">
+                        Dealership — I manage a car dealership or showroom
                     </option>
                 </select>
 
@@ -314,7 +317,10 @@
         const passwordError = document.getElementById("passwordError");
 
         function updateRoleHelp() {
-            if (roleSelect.value === "seller") {
+            if (roleSelect.value === "dealership") {
+                roleHelp.textContent =
+                    "Create your dealership showroom and list your inventory. After registration, sign in to set up your dealership.";
+            } else if (roleSelect.value === "seller") {
                 roleHelp.textContent =
                     "List vehicles for sale, manage your listings and respond to buyer inquiries.";
             } else {

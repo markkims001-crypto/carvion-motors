@@ -779,9 +779,9 @@ def register():
                 "danger",
             )
 
-        elif len(password) < 6:
+        elif not password_meets_requirements(password):
             flash(
-                "Password must be at least 6 characters.",
+                "Use at least 10 characters, including uppercase, lowercase, and a number.",
                 "danger",
             )
 

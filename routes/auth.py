@@ -695,6 +695,47 @@ def login():
     return render_template("login.html")
 
 
+
+# ----------------------------------------------------------------------
+# BUYER / SELLER MODE SWITCH
+# ----------------------------------------------------------------------
+
+@auth.route("/switch-account-mode", methods=["POST"])
+@login_required
+def switch_account_mode():
+    """Switch a member account between Buyer and Seller mode.
+
+    The role column is the active mode for existing route authorization.
+    Changing it never changes ownership of vehicles or related records.
+    Administrator accounts are intentionally excluded.
+    """
+    current_role = (getattr(current_user, "role", "") or "").strip().lower()
+    if current_role not in {"buyer", "seller"}:
+        flash("Administrator accounts cannot switch marketplace modes.", "warning")
+        return redirect(url_for("home"))
+
+    target_role = "seller" if current_role == "buyer" else "buyer"
+    current_user.role = target_role
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Account mode switch failed for user_id=%s", current_user.id
+        )
+        flash("We could not switch your account mode. Please try again.", "danger")
+        return redirect(url_for("home"))
+
+    if target_role == "seller":
+        flash("Seller mode is now active. Your existing listings are unchanged.", "success")
+        return redirect(url_for("cars.seller_dashboard"))
+
+    flash("Buyer mode is now active. Your seller listings and account history are preserved.", "success")
+    return redirect(url_for("cars.all_cars"))
+
+
+
 # ----------------------------------------------------------------------
 # REGISTRATION
 # ----------------------------------------------------------------------

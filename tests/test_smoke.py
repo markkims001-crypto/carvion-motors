@@ -997,3 +997,12 @@ def test_admin_cannot_delete_dealership_owner_with_vehicle_listing():
         assert Dealership.query.filter_by(owner_id=owner_id).first() is not None
         assert Car.query.filter_by(seller_id=owner_id).count() == 1
 
+
+def test_legacy_favicon_path_serves_branded_icon():
+    app = make_test_app()
+    with app.test_client() as client:
+        response = client.get("/favicon.ico")
+        assert response.status_code == 200
+        assert response.mimetype == "image/svg+xml"
+        assert b"<svg" in response.data
+

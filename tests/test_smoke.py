@@ -917,3 +917,25 @@ def test_registration_password_policy_matches_reset_policy():
             assert created is not None
             assert created.role == "seller"
 
+
+
+def test_dealership_signup_is_visible_and_creates_seller_account():
+    app = make_test_app()
+    app.config.update(WTF_CSRF_ENABLED=False)
+    with app.test_client() as client:
+        page = client.get("/register?account=dealership")
+        assert page.status_code == 200
+        assert b'value="dealership" selected' in page.data
+        assert b"Register your dealership" in client.get("/login").data
+        response = client.post("/register", data={
+            "name": "Dealer Signup Test", "email": "dealer-signup@example.test",
+            "phone": "0712345680", "role": "dealership",
+            "password": "StrongPass123", "confirm_password": "StrongPass123",
+        }, follow_redirects=False)
+        assert response.status_code == 302
+        assert "/login" in response.location
+        assert "dealers" in response.location or "setup" in response.location
+        with app.app_context():
+            user = User.query.filter_by(email="dealer-signup@example.test").one()
+            assert user.role == "seller"
+

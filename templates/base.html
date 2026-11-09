@@ -282,6 +282,7 @@
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('cars.seller_dashboard') }}">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('cars.add_car') }}">Add Car</a></li>
                 <li class="nav-item"><a class="nav-link" href="{{ url_for('cars.my_cars') }}">My Cars</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('dealers.setup') }}">My Dealership</a></li>
                 <li class="nav-item">
                     <a class="nav-link {% if unread_inquiries > 0 %}nav-unread{% endif %}" href="{{ url_for('cars.seller_inquiries') }}">
                         Inquiries {% if unread_inquiries > 0 %}<span class="notification-badge">{{ unread_inquiries }}</span>{% endif %}

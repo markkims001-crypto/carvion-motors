@@ -759,8 +759,9 @@ def add_car():
 
         description=description or None,
 
-        # All new listings require administrator approval before publication.
-        status="Pending"
+        # Publish valid new listings immediately; admins can still moderate
+        # or remove listings later if they violate marketplace rules.
+        status="Approved"
     )
 
     uploaded_public_ids = []
@@ -1016,8 +1017,8 @@ def add_car():
     # ========================================================
 
     flash(
-        "Your car listing has been submitted for administrator approval. "
-        "It will appear publicly after approval. Your account is now a seller.",
+        "Your car listing is now live on Carvion Motors. "
+        "Your account is now a seller.",
         "success"
     )
 

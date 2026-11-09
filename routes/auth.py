@@ -707,7 +707,8 @@ def register():
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
-        phone = request.form.get("phone", "").strip()
+        phone_input = request.form.get("phone", "").strip()
+        phone = normalise_phone(phone_input)
         password = request.form.get("password", "")
         confirm_password = request.form.get(
             "confirm_password",
@@ -717,6 +718,16 @@ def register():
         if not name or not email or not phone:
             flash(
                 "Please complete all required fields.",
+                "danger",
+            )
+
+        elif (
+            len(phone) != 12
+            or not phone.startswith("254")
+            or "@" in phone_input
+        ):
+            flash(
+                "Enter a valid Kenyan phone number, e.g. 0712345678.",
                 "danger",
             )
 

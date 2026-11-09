@@ -31,6 +31,7 @@ from models import (
     Notification,
 )
 from hire_lease_models import HireRequest, LeaseRequest
+from dealership_models import Dealership
 
 
 # ==========================================
@@ -286,6 +287,11 @@ def delete_user(user_id):
         return redirect(url_for("admin.users"))
 
     try:
+        # A dealership has a non-null owner_id without ON DELETE CASCADE.
+        # Explicitly delete the profile before its owner, but only after
+        # confirming the owner has no vehicle listings above.
+        Dealership.query.filter_by(owner_id=user.id).delete(synchronize_session=False)
+
         # Remove records whose non-null foreign keys point to this account.
         # Deleting inquiry messages first avoids FK failures for messages
         # whose inquiry relationship is absent or no longer available.

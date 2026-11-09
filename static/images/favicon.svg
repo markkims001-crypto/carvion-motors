@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Carvion Motors">
+  <rect width="64" height="64" rx="14" fill="#fbbf24"/>
+  <path d="M47 16c-4-4-9-6-15-6-17 0-28 12-28 22s11 22 28 22c6 0 11-2 15-6l-8-8c-2 3-5 4-8 4-8 0-13-5-13-12s5-12 13-12c3 0 6 1 8 4z" fill="#111827" transform="translate(8 0)"/>
+  <path d="M35 17h7L33 33h8L26 51l4-14h-7z" fill="#fbbf24"/>
+</svg>

@@ -146,7 +146,8 @@ def test_contact_page_shows_official_contact_details():
     with app.test_client() as client:
         response = client.get("/contact")
         assert response.status_code == 200
-        assert b"+0182709886" in response.data
+        assert b"0182709886" in response.data
+        assert b"tel:+254182709886" in response.data
         assert b"carvionmotor@gmail.com" in response.data
 
 

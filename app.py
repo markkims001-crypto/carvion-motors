@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, send_from_directory
 from flask_login import login_required, current_user
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
@@ -155,6 +155,15 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
     app.register_blueprint(dealers)
+
+    @app.get("/favicon.ico")
+    def favicon_ico():
+        """Serve the existing SVG favicon at the conventional favicon path."""
+        return send_from_directory(
+            os.path.join(app.static_folder, "images"),
+            "favicon.svg",
+            mimetype="image/svg+xml",
+        )
 
     @app.before_request
     def secure_legacy_admin_mutations():

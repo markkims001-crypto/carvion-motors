@@ -1079,3 +1079,12 @@ def test_legacy_inquiry_messages_reject_unrelated_accounts():
         assert response.status_code == 302
     with app.app_context():
         assert InquiryMessage.query.filter_by(inquiry_id=inquiry_id).count() == 0
+
+def test_robots_txt_is_available_and_hides_private_routes():
+    app = make_test_app()
+    with app.test_client() as client:
+        response = client.get("/robots.txt")
+        assert response.status_code == 200
+        assert response.mimetype == "text/plain"
+        assert b"User-agent: *" in response.data
+        assert b"Disallow: /admin/" in response.data

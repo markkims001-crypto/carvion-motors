@@ -1003,8 +1003,8 @@ def test_legacy_favicon_path_serves_branded_icon():
     with app.test_client() as client:
         response = client.get("/favicon.ico")
         assert response.status_code == 200
-        assert response.mimetype == "image/svg+xml"
-        assert b"<svg" in response.data
+        assert response.mimetype == "image/png"
+        assert response.data.startswith(b"\\x89PNG\\r\\n\\x1a\\n")
 
 
 @pytest.mark.parametrize("sender_role,expected_receiver", [

@@ -1,13 +1,13 @@
 """Add seller-owned dealership profiles.
 
 Revision ID: d41e20261109
-Revises: 00cfddfc8924
+Revises: a27f63d96112
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "d41e20261109"
-down_revision = "00cfddfc8924"
+down_revision = "a27f63d96112"
 branch_labels = None
 depends_on = None
 

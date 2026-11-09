@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block title %}Dealership profile | Carvion Motors{% endblock %}
+{% block content %}
+<main class="container py-5"><h1>My dealership</h1><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<label class="form-label" for="dealer-name">Company name</label><input id="dealer-name" class="form-control mb-3" name="name" maxlength="120" required value="{{ dealer.name if dealer else '' }}">
+<label class="form-label" for="dealer-location">Location</label><input id="dealer-location" class="form-control mb-3" name="location" maxlength="160" required value="{{ dealer.location if dealer else '' }}">
+<label class="form-label" for="dealer-phone">Business phone</label><input id="dealer-phone" class="form-control mb-3" name="phone" maxlength="20" required value="{{ dealer.phone if dealer else '' }}">
+<label class="form-label" for="dealer-description">Description</label><textarea id="dealer-description" class="form-control mb-3" name="description" maxlength="2000">{{ dealer.description if dealer and dealer.description else '' }}</textarea>
+<button class="btn btn-warning" type="submit">Save dealership</button></form></main>
+{% endblock %}

@@ -12,7 +12,7 @@ dealers = Blueprint("dealers", __name__, url_prefix="/dealers")
 @dealers.route("/<slug>")
 def showroom(slug):
     dealer = Dealership.query.filter_by(slug=slug).first_or_404()
-    vehicles = Car.query.filter_by(seller_id=dealer.owner_id).order_by(Car.id.desc()).all()
+    vehicles = Car.query.filter_by(seller_id=dealer.owner_id, status="Approved").order_by(Car.id.desc()).all()
     return render_template_string("""{% extends 'base.html' %}{% block title %}{{ dealer.name }} | Carvion Motors{% endblock %}{% block content %}
     <main class="container py-5"><h1>{{ dealer.name }}</h1><p>{{ dealer.location }}</p>
     <p>{{ dealer.description or 'Carvion Motors dealership showroom' }}</p>

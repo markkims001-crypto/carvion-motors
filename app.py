@@ -175,12 +175,11 @@ def create_app():
 
     @app.get("/favicon.ico")
     def favicon_ico():
-        """Serve the existing SVG favicon at the conventional favicon path."""
-        return send_from_directory(
-            os.path.join(app.static_folder, "images"),
-            "favicon.svg",
-            mimetype="image/svg+xml",
-        )
+        """Serve a favicon even before the new PNG branding asset is uploaded."""
+        image_dir = os.path.join(app.static_folder, "images")
+        if os.path.isfile(os.path.join(image_dir, "favicon.png")):
+            return send_from_directory(image_dir, "favicon.png", mimetype="image/png")
+        return send_from_directory(image_dir, "favicon.svg", mimetype="image/svg+xml")
 
     @app.before_request
     def secure_legacy_admin_mutations():

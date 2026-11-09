@@ -1,0 +1,20 @@
+name: Dealership tests
+on:
+  pull_request:
+    paths:
+      - 'dealership_models.py'
+      - 'routes/dealers.py'
+      - 'templates/dealers/**'
+      - 'tests/test_dealership_structure.py'
+      - '.github/workflows/dealership-tests.yml'
+  workflow_dispatch:
+jobs:
+  dealership:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q tests/test_dealership_structure.py

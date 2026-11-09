@@ -17,5 +17,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Inspect Alembic revision history
+        run: |
+          find migrations/versions -maxdepth 1 -type f -name '*.py' -print
+          grep -H -E '^revision:|^revision =|^down_revision:|^down_revision =' migrations/versions/*.py || true
       - run: pip install -r requirements.txt pytest
       - run: python -m pytest -q tests/test_dealership_structure.py tests/test_dealership_integration.py

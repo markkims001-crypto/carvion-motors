@@ -33,6 +33,6 @@ jobs:
           heads = script.get_heads()
           print('Migration heads:', heads)
           assert heads == ['d41e20261109'], f'Unexpected migration heads: {heads}'
-          assert script.get_revision('d41e20261109').down_revision == '00cfddfc8924'
+          assert script.get_revision('d41e20261109').down_revision == 'a27f63d96112'
           PY
       - run: python -m pytest -q tests/test_dealership_structure.py tests/test_dealership_integration.py

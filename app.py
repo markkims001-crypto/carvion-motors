@@ -175,11 +175,11 @@ def create_app():
 
     @app.get("/favicon.ico")
     def favicon_ico():
-        """Serve the existing SVG favicon at the conventional favicon path."""
+        """Serve the branded PNG favicon at the conventional favicon path."""
         return send_from_directory(
             os.path.join(app.static_folder, "images"),
-            "favicon.svg",
-            mimetype="image/svg+xml",
+            "favicon.png",
+            mimetype="image/png",
         )
 
     @app.before_request

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -234,7 +234,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark site-navbar">
     <div class="container">
         <a href="{{ url_for('home') }}">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Carvion Motors" class="navbar-logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Carvion Motors" class="navbar-logo">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>

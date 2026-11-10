@@ -148,7 +148,7 @@ def admin_profile_detail(profile_id):
         <p>{{ profile.location }} · {{ profile.public_phone or 'No public phone' }}</p>{% endif %}
         </section></div>
         <div class="col-lg-6"><section class="card p-3 mb-3"><h2 class="h5">Vehicles ({{ vehicles|length }})</h2>
-          {% if profile.can_manage(current_user) %}<a class="btn btn-outline-primary mb-3" href="{{ url_for('cars.add_car') }}">Add vehicle for this seller</a>{% endif %}
+          {% if profile.can_manage(current_user) %}<a class="btn btn-outline-primary mb-3" href="{{ url_for('cars.add_car', seller_profile_id=profile.id) }}">Add vehicle for this seller</a>{% endif %}
           <ul class="list-group">{% for car in vehicles %}
           <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ car.brand }} {{ car.model }} · {{ car.registration_number }}<br><small class="text-muted">{{ car.status }}</small></span>
           <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=car.id) }}">View car</a></li>

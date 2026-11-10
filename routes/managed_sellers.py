@@ -3,7 +3,7 @@ from flask import Blueprint, flash, redirect, render_template_string, request, u
 from flask_login import current_user, login_required
 from sqlalchemy import select
 from extensions import db, utcnow
-from models import User
+from models import User, Car, Inquiry
 from seller_profile_models import SellerProfile, SellerProfileClaim, SellerProfileAudit
 
 managed = Blueprint("managed", __name__, url_prefix="/managed-sellers")
@@ -105,6 +105,18 @@ def review_claim(claim_id):
     claim.reviewed_by_admin_id = current_user.id
     claim.reviewed_at = utcnow()
     if decision == "approve":
+        # Transfer only this profile's listings and their inquiry recipients.
+        # Never reassign unrelated cars owned by the same admin.
+        vehicle_ids = [car_id for (car_id,) in db.session.query(Car.id).filter(
+            Car.seller_profile_id == profile.id
+        ).all()]
+        if vehicle_ids:
+            Car.query.filter(Car.id.in_(vehicle_ids)).update(
+                {"seller_id": claim.requesting_user_id}, synchronize_session=False
+            )
+            Inquiry.query.filter(Inquiry.car_id.in_(vehicle_ids)).update(
+                {"seller_id": claim.requesting_user_id}, synchronize_session=False
+            )
         profile.claimed_by_user_id = claim.requesting_user_id
         profile.assistance_enabled = False
         SellerProfileClaim.query.filter(SellerProfileClaim.profile_id == profile.id,

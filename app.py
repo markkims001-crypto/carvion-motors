@@ -20,6 +20,7 @@ from models import (
 
 # Register hire/lease tables before db.create_all() runs.
 from dealership_models import Dealership  # noqa: F401 - register dealership table
+from buyer_alert_models import SavedVehicleSearch, VehicleAlertEvent  # noqa: F401
 from seller_profile_models import SellerProfile, SellerProfileClaim, SellerProfileAudit  # noqa: F401
 
 from hire_lease_models import (  # noqa: F401, E402
@@ -286,6 +287,12 @@ def create_app():
                             FOREIGN KEY (seller_profile_id)
                             REFERENCES seller_profiles(id)
                         """))
+
+                with db.engine.begin() as connection:
+                    connection.execute(text("""
+                        ALTER TABLE seller_profiles
+                        ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE
+                    """))
 
                 with db.engine.begin() as connection:
                     connection.execute(text("""

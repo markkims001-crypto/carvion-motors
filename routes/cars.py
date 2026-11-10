@@ -25,6 +25,7 @@ from flask import (
 from flask_login import login_required, current_user
 
 from extensions import db
+from seller_profile_models import SellerProfile
 
 from models import (
     Car,
@@ -408,15 +409,34 @@ def add_car():
 
     if request.method == "GET":
 
-        return render_template(
-            "add_car.html"
-        )
+        managed_profiles = (SellerProfile.query.order_by(SellerProfile.display_name).all()
+                            if current_user.role == "admin" else [])
+        return render_template("add_car.html", managed_profiles=managed_profiles)
 
     print("================================================")
     print("ADD CAR ROUTE WAS CALLED")
     print("METHOD:", request.method)
     print("USER:", current_user.id)
     print("================================================")
+
+    # Managed seller selection is only allowed for administrators with
+    # explicit seller consent and active assistance authorization.
+    managed_profile = None
+    requested_profile_id = request.form.get("seller_profile_id", "").strip()
+    if requested_profile_id:
+        if current_user.role != "admin":
+            flash("Only admins can post on behalf of a seller.", "danger")
+            return redirect(url_for("cars.add_car"))
+        try:
+            profile_id = int(requested_profile_id)
+        except ValueError:
+            flash("Invalid managed seller.", "danger")
+            return redirect(url_for("cars.add_car"))
+        managed_profile = db.session.get(SellerProfile, profile_id)
+        if (not managed_profile or not managed_profile.advertising_consent_recorded
+                or not managed_profile.can_manage(current_user)):
+            flash("Seller authorization is required for this listing.", "danger")
+            return redirect(url_for("cars.add_car"))
 
     # ========================================================
     # FORM DATA
@@ -734,6 +754,7 @@ def add_car():
         registration_number=registration_number,
 
         seller_id=current_user.id,
+        seller_profile_id=managed_profile.id if managed_profile else None,
 
         brand=brand,
 

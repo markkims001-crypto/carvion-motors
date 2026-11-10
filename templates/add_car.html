@@ -156,6 +156,22 @@
           method="POST"
           enctype="multipart/form-data">
 
+        {% if managed_profiles %}
+        <div class="form-card">
+          <h2 class="section-title">Listing on behalf of a seller</h2>
+          <label class="form-label" for="seller_profile_id">Managed seller or dealership</label>
+          <select class="form-select" id="seller_profile_id" name="seller_profile_id">
+            <option value="">My own account</option>
+            {% for profile in managed_profiles %}
+              {% if profile.advertising_consent_recorded and profile.can_manage(current_user) %}
+              <option value="{{ profile.id }}">{{ profile.display_name }} ({{ profile.kind }})</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+          <p class="text-muted mt-2">Only choose a seller who authorized Carvion to advertise their vehicle.</p>
+        </div>
+        {% endif %}
+
         <!-- VEHICLE INFORMATION -->
 
         <div class="form-card">

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from extensions import db
 from dealership_models import Dealership
 from models import Car
+from seller_profile_models import SellerProfile
 
 dealers = Blueprint("dealers", __name__, url_prefix="/dealers")
 
@@ -49,3 +50,15 @@ def setup():
                 db.session.rollback()
                 flash("Unable to save dealership profile.", "danger")
     return render_template("dealers/setup.html", dealer=dealer)
+
+
+@dealers.route("/managed/<int:profile_id>")
+def managed_showroom(profile_id):
+    """Public showroom for a dealership managed by Carvion."""
+    profile = db.get_or_404(SellerProfile, profile_id)
+    if profile.kind != "dealership":
+        from flask import abort
+        abort(404)
+    vehicles = (Car.query.filter_by(seller_profile_id=profile.id, status="Approved")
+                .order_by(Car.id.desc()).all())
+    return render_template("dealers/managed_showroom.html", profile=profile, vehicles=vehicles)

@@ -272,21 +272,20 @@ def create_app():
                         CREATE INDEX IF NOT EXISTS ix_cars_seller_profile_id
                         ON cars (seller_profile_id)
                     """))
-                    connection.execute(text("""
-                        DO $
-                        BEGIN
-                            IF NOT EXISTS (
-                                SELECT 1 FROM pg_constraint
-                                WHERE conname = 'fk_cars_seller_profile_id'
-                                  AND conrelid = 'cars'::regclass
-                            ) THEN
-                                ALTER TABLE cars
-                                ADD CONSTRAINT fk_cars_seller_profile_id
-                                FOREIGN KEY (seller_profile_id)
-                                REFERENCES seller_profiles(id);
-                            END IF;
-                        END $;
-                    """))
+                    constraint_exists = connection.execute(text("""
+                        SELECT EXISTS (
+                            SELECT 1 FROM pg_constraint
+                            WHERE conname = 'fk_cars_seller_profile_id'
+                              AND conrelid = 'cars'::regclass
+                        )
+                    """)).scalar()
+                    if not constraint_exists:
+                        connection.execute(text("""
+                            ALTER TABLE cars
+                            ADD CONSTRAINT fk_cars_seller_profile_id
+                            FOREIGN KEY (seller_profile_id)
+                            REFERENCES seller_profiles(id)
+                        """))
 
                 with db.engine.begin() as connection:
                     connection.execute(text("""

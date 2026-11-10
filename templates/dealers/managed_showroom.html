@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.display_name }} | Carvion Cars{% endblock %}
+{% block content %}
+<main class="container py-4">
+  <h1>{{ profile.display_name }}</h1>
+  <p>{{ profile.location }} · Dealership</p>
+  <p>{{ profile.description or '' }}</p>
+  {% if profile.public_phone %}<p>Contact: {{ profile.public_phone }}</p>{% endif %}
+  <h2>Available vehicles</h2>
+  <div class="row g-3">
+  {% for car in vehicles %}
+    <div class="col-md-4"><article class="card p-3">
+      <h3>{{ car.brand }} {{ car.model }}</h3>
+      <p>{{ car.year }} · KSh {{ "{:,}".format(car.price) }}</p>
+      <a href="{{ url_for('cars.car_details', car_id=car.id) }}">View vehicle</a>
+    </article></div>
+  {% else %}<p>No vehicles listed yet.</p>{% endfor %}
+  </div>
+</main>
+{% endblock %}

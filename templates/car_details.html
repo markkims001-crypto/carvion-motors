@@ -266,7 +266,13 @@
                     <div class="mb-4">
                         <small class="text-muted">Seller</small>
                         <div class="fw-bold fs-5">
-                            {{ car.seller_profile.display_name if car.seller_profile else car.seller.name }}
+                            {{ car.seller_profile.display_name if car.seller_profile else (car.seller.dealership.name if car.seller.dealership else car.seller.name) }}
+                            {% if car.seller_profile and car.seller_profile.is_verified %}<span class="badge bg-success">Verified seller</span>{% elif not car.seller_profile and car.seller.dealership and car.seller.dealership.is_verified %}<span class="badge bg-success">Verified dealership</span>{% endif %}
+                            {% if car.seller_profile and car.seller_profile.kind == 'dealership' %}
+                            <a class="d-block fs-6" href="{{ url_for('dealers.managed_showroom', profile_id=car.seller_profile.id) }}">View dealership showroom</a>
+                            {% elif not car.seller_profile and car.seller.dealership %}
+                            <a class="d-block fs-6" href="{{ url_for('dealers.showroom', slug=car.seller.dealership.slug) }}">View dealership showroom</a>
+                            {% endif %}
                         </div>
                     </div>
 

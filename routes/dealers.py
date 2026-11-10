@@ -14,7 +14,7 @@ dealers = Blueprint("dealers", __name__, url_prefix="/dealers")
 @dealers.route("/<slug>")
 def showroom(slug):
     dealer = Dealership.query.filter_by(slug=slug).first_or_404()
-    vehicles = Car.query.filter_by(seller_id=dealer.owner_id, status="Approved").order_by(Car.id.desc()).all()
+    vehicles = Car.query.filter_by(seller_id=dealer.owner_id, seller_profile_id=None, status="Approved").order_by(Car.id.desc()).all()
     return render_template("dealers/showroom.html", dealer=dealer, vehicles=vehicles)
 
 @dealers.route("/setup", methods=["GET", "POST"])

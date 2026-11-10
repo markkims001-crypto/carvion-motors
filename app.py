@@ -260,6 +260,34 @@ def create_app():
             if db.engine.dialect.name == "postgresql":
                 from sqlalchemy import text
 
+                # Additive, idempotent schema upgrade for existing PostgreSQL
+                # databases. create_all() cannot add columns to existing tables.
+                # Keep existing seller ownership and vehicle records unchanged.
+                with db.engine.begin() as connection:
+                    connection.execute(text("""
+                        ALTER TABLE cars
+                        ADD COLUMN IF NOT EXISTS seller_profile_id INTEGER
+                    """))
+                    connection.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_cars_seller_profile_id
+                        ON cars (seller_profile_id)
+                    """))
+                    connection.execute(text("""
+                        DO $
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM pg_constraint
+                                WHERE conname = 'fk_cars_seller_profile_id'
+                                  AND conrelid = 'cars'::regclass
+                            ) THEN
+                                ALTER TABLE cars
+                                ADD CONSTRAINT fk_cars_seller_profile_id
+                                FOREIGN KEY (seller_profile_id)
+                                REFERENCES seller_profiles(id);
+                            END IF;
+                        END $;
+                    """))
+
                 with db.engine.begin() as connection:
                     connection.execute(text("""
                         ALTER TABLE users

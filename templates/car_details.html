@@ -266,14 +266,16 @@
                     <div class="mb-4">
                         <small class="text-muted">Seller</small>
                         <div class="fw-bold fs-5">
-                            {{ car.seller.name }}
+                            {{ car.seller_profile.display_name if car.seller_profile else car.seller.name }}
                         </div>
                     </div>
 
-                    {% set seller_phone = car.seller.phone|default('', true)|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
+                    {% set public_contact = (car.seller_profile.public_phone if car.seller_profile else car.seller.phone)|default('', true) %}
+                    {% set seller_phone = public_contact|replace(' ', '')|replace('-', '')|replace('+', '')|replace('(', '')|replace(')', '') %}
+                    {% set show_contact = car.seller_profile is not none or car.seller.allow_phone_contact|default(true) %}
 
                     {% if not current_user.is_authenticated or current_user.id != car.seller_id %}
-                    {% if car.seller.allow_phone_contact|default(true) and seller_phone %}
+                    {% if show_contact and seller_phone %}
                     <a href="tel:{{ seller_phone }}"
                        class="btn btn-outline-dark w-100 mb-2">
                         <i class="bi bi-telephone"></i>
@@ -281,7 +283,7 @@
                     </a>
                     {% endif %}
 
-                    {% if car.seller.allow_whatsapp_contact|default(true) and seller_phone %}
+                    {% if show_contact and seller_phone and (car.seller_profile is none or car.seller.allow_whatsapp_contact|default(true)) %}
 
                         {% if seller_phone.startswith('0') %}
                             {% set whatsapp_phone = '254' ~ seller_phone[1:] %}

@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import select, func, or_
 from extensions import db, utcnow
 from models import User, Car, Inquiry
+from dealership_models import Dealership
 from seller_profile_models import SellerProfile, SellerProfileClaim, SellerProfileAudit
 
 managed = Blueprint("managed", __name__, url_prefix="/managed-sellers")
@@ -247,3 +248,47 @@ def set_assistance(profile_id):
     db.session.commit()
     flash("Carvion assistance preference updated.", "success")
     return redirect(url_for("home"))
+
+@managed.route("/admin/verification", methods=["GET"])
+@login_required
+def verification():
+    _admin()
+    profiles = SellerProfile.query.order_by(SellerProfile.id.desc()).all()
+    dealers = Dealership.query.order_by(Dealership.id.desc()).all()
+    return render_template_string("""{% extends 'base.html' %}{% block content %}
+    <main class="container py-4"><h1>Seller verification</h1>
+    <p class="alert alert-warning">Verify identity and business authorization independently before granting a badge. A verified badge confirms the reviewed seller identity, not vehicle condition or ownership.</p>
+    <h2 class="h4">Managed sellers and dealerships</h2>
+    {% for p in profiles %}<div class="card p-3 mb-2"><strong>{{ p.display_name }}</strong> · {{ p.location }} · {{ p.kind }}
+    <span>{{ 'Verified' if p.is_verified else 'Unverified' }}</span>
+    <form method="post" action="{{ url_for('managed.set_verification', kind='profile', item_id=p.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Verification reference (required for approval)<input class="form-control" name="reference" maxlength="200"></label>
+    <button class="btn btn-sm {{ 'btn-outline-danger' if p.is_verified else 'btn-success' }}" name="decision" value="{{ 'revoke' if p.is_verified else 'verify' }}">{{ 'Revoke' if p.is_verified else 'Verify' }}</button></form></div>{% endfor %}
+    <h2 class="h4 mt-4">Registered dealerships</h2>
+    {% for d in dealers %}<div class="card p-3 mb-2"><strong>{{ d.name }}</strong> · {{ d.location }}
+    <span>{{ 'Verified' if d.is_verified else 'Unverified' }}</span>
+    <form method="post" action="{{ url_for('managed.set_verification', kind='dealership', item_id=d.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Verification reference<input class="form-control" name="reference" maxlength="200"></label>
+    <button class="btn btn-sm {{ 'btn-outline-danger' if d.is_verified else 'btn-success' }}" name="decision" value="{{ 'revoke' if d.is_verified else 'verify' }}">{{ 'Revoke' if d.is_verified else 'Verify' }}</button></form></div>{% endfor %}
+    </main>{% endblock %}""", profiles=profiles, dealers=dealers)
+
+@managed.route("/admin/verification/<kind>/<int:item_id>", methods=["POST"])
+@login_required
+def set_verification(kind, item_id):
+    _admin()
+    if kind not in {"profile", "dealership"}:
+        abort(404)
+    decision = request.form.get("decision")
+    reference = request.form.get("reference", "").strip()
+    if decision not in {"verify", "revoke"} or (decision == "verify" and not reference) or len(reference) > 200:
+        flash("A verification reference is required to verify a seller.", "danger")
+        return redirect(url_for("managed.verification"))
+    entity = db.get_or_404(SellerProfile if kind == "profile" else Dealership, item_id)
+    entity.is_verified = decision == "verify"
+    if kind == "profile":
+        _audit(entity, "verified:" + reference[:45] if decision == "verify" else "verification_revoked")
+    db.session.commit()
+    flash("Verification status updated.", "success")
+    return redirect(url_for("managed.verification"))

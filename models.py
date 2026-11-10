@@ -213,6 +213,11 @@ class Car(db.Model):
         nullable=False
     )
 
+    # For assisted listings, seller_id initially routes messages to the admin.
+    # The profile remains the actual public seller identity.
+    seller_profile_id = db.Column(db.Integer, db.ForeignKey("seller_profiles.id"), nullable=True, index=True)
+    seller_profile = db.relationship("SellerProfile", backref="vehicles")
+
     brand = db.Column(
         db.String(50),
         nullable=False

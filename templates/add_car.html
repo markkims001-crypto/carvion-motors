@@ -164,7 +164,7 @@
             <option value="">My own account</option>
             {% for profile in managed_profiles %}
               {% if profile.advertising_consent_recorded and profile.can_manage(current_user) %}
-              <option value="{{ profile.id }}">{{ profile.display_name }} ({{ profile.kind }})</option>
+              <option value="{{ profile.id }}" {% if preselected_profile_id == profile.id %}selected{% endif %}>{{ profile.display_name }} ({{ profile.kind }})</option>
               {% endif %}
             {% endfor %}
           </select>

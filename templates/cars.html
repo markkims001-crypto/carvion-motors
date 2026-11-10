@@ -494,7 +494,8 @@
                             <span class="seller-dot" aria-hidden="true"></span>
                             <span>
                                 Seller:
-                                {{ car.seller_profile.display_name if car.seller_profile else (car.seller.name or car.seller.email or "Car seller") }}
+                                {{ car.seller_profile.display_name if car.seller_profile else (car.seller.dealership.name if car.seller.dealership else (car.seller.name or car.seller.email or "Car seller")) }}
+                                {% if car.seller_profile and car.seller_profile.is_verified %}<span class="badge bg-success">Verified seller</span>{% elif not car.seller_profile and car.seller.dealership and car.seller.dealership.is_verified %}<span class="badge bg-success">Verified dealership</span>{% endif %}
                             </span>
                         </div>
                         {% endif %}

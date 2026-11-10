@@ -15,6 +15,7 @@ class SellerProfile(db.Model):
     public_phone = db.Column(db.String(20), nullable=True)
     private_phone = db.Column(db.String(20), nullable=True)
     description = db.Column(db.Text, nullable=True)
+    is_verified = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     claimed_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
     created_by_admin_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     assistance_enabled = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())

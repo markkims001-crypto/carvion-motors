@@ -411,7 +411,8 @@ def add_car():
 
         managed_profiles = (SellerProfile.query.order_by(SellerProfile.display_name).all()
                             if current_user.role == "admin" else [])
-        return render_template("add_car.html", managed_profiles=managed_profiles)
+        return render_template("add_car.html", managed_profiles=managed_profiles,
+                               preselected_profile_id=request.args.get("seller_profile_id", type=int))
 
     print("================================================")
     print("ADD CAR ROUTE WAS CALLED")
@@ -978,6 +979,8 @@ def add_car():
                 is_read=False,
             ))
 
+        from routes.buyer_alerts import notify_matching_searches
+        notify_matching_searches(car)
         db.session.commit()
 
         print("================================================")

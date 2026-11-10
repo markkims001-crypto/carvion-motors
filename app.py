@@ -20,6 +20,7 @@ from models import (
 
 # Register hire/lease tables before db.create_all() runs.
 from dealership_models import Dealership  # noqa: F401 - register dealership table
+from seller_profile_models import SellerProfile, SellerProfileClaim, SellerProfileAudit  # noqa: F401
 
 from hire_lease_models import (  # noqa: F401, E402
     CarHireOption,

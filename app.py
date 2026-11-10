@@ -20,6 +20,7 @@ from models import (
 
 # Register hire/lease tables before db.create_all() runs.
 from dealership_models import Dealership  # noqa: F401 - register dealership table
+from seller_profile_models import SellerProfile, SellerProfileClaim, SellerProfileAudit  # noqa: F401
 
 from hire_lease_models import (  # noqa: F401, E402
     CarHireOption,
@@ -147,6 +148,7 @@ def create_app():
     from routes.messages import messages
     from routes.chat import chat
     from routes.dealers import dealers
+    from routes.managed_sellers import managed
 
     app.register_blueprint(auth)
     app.register_blueprint(cars)
@@ -155,6 +157,7 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
     app.register_blueprint(dealers)
+    app.register_blueprint(managed)
 
     @app.get("/robots.txt")
     def robots_txt():

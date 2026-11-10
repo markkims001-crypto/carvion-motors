@@ -2,7 +2,7 @@
 {% block title %}{{ profile.display_name }} | Carvion Cars{% endblock %}
 {% block content %}
 <main class="container py-4">
-  <h1>{{ profile.display_name }}</h1>
+  <h1>{{ profile.display_name }} {% if profile.is_verified %}<span class="badge bg-success fs-6">Verified dealership</span>{% endif %}</h1>
   <p>{{ profile.location }} · Dealership</p>
   <p>{{ profile.description or '' }}</p>
   {% if profile.public_phone %}<p>Contact: {{ profile.public_phone }}</p>{% endif %}

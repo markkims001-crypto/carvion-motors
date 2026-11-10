@@ -494,7 +494,7 @@
                             <span class="seller-dot" aria-hidden="true"></span>
                             <span>
                                 Seller:
-                                {{ car.seller.name or car.seller.email or "Car seller" }}
+                                {{ car.seller_profile.display_name if car.seller_profile else (car.seller.name or car.seller.email or "Car seller") }}
                             </span>
                         </div>
                         {% endif %}

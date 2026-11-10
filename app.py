@@ -148,6 +148,7 @@ def create_app():
     from routes.messages import messages
     from routes.chat import chat
     from routes.dealers import dealers
+    from routes.managed_sellers import managed
 
     app.register_blueprint(auth)
     app.register_blueprint(cars)
@@ -156,6 +157,7 @@ def create_app():
     app.register_blueprint(messages)
     app.register_blueprint(chat)
     app.register_blueprint(dealers)
+    app.register_blueprint(managed)
 
     @app.get("/robots.txt")
     def robots_txt():

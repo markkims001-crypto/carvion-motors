@@ -159,7 +159,7 @@
 
                             {% if car.seller %}
 
-                                {{ car.seller.name }}
+                                {{ car.seller_profile.display_name if car.seller_profile else (car.seller.dealership.name if car.seller.dealership else car.seller.name) }}
 
                                 {% if car.seller.phone %}
 
@@ -256,6 +256,9 @@
                             >
                                 Review
                             </a>
+                            {% if not car.seller_profile or car.seller_profile.can_manage(current_user) %}
+                            <a href="{{ url_for('cars.edit_car', car_id=car.id) }}" class="btn btn-outline-primary btn-sm mb-1">Edit</a>
+                            {% endif %}
 
 
                             <!-- APPROVE -->

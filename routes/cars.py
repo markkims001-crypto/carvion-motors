@@ -1380,7 +1380,10 @@ def delete_image(image_id):
 
     car = db.get_or_404(Car, image.car_id)
 
-    if car.seller_id != current_user.id:
+    if car.seller_id != current_user.id and (
+        current_user.role != "admin" or
+        (car.seller_profile and not car.seller_profile.can_manage(current_user))
+    ):
 
         flash(
             "Permission denied.",
@@ -1450,7 +1453,7 @@ def delete_image(image_id):
         )
 
     flash("Image deleted.", "success")
-    return redirect(url_for("cars.car_details", car_id=car.id))
+    return redirect(url_for("cars.edit_car", car_id=car.id))
 
 
 # ============================================================

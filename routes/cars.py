@@ -1279,9 +1279,12 @@ def edit_car(car_id):
             )
 
         return render_template(
-        "edit_car.html",
-        car=car
-    )
+            "edit_car.html",
+            car=car
+        )
+
+    # GET requests must render the edit form rather than returning None.
+    return render_template("edit_car.html", car=car)
 
 
 # ============================================================

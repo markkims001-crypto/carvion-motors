@@ -304,6 +304,14 @@ Upload a new image only if you want to replace an existing one.
     <div class="card p-2 h-100">
       <span class="photo-position badge bg-dark mb-2">{{ 'Cover photo' if loop.first else 'Photo ' ~ loop.index }}</span>
       <img src="{{ image.filename }}" alt="Vehicle photo {{ loop.index }}" class="img-fluid rounded" style="height:170px;object-fit:cover;width:100%" draggable="false">
+      {% if car.images|length > 5 %}
+      <form method="post" action="{{ url_for('cars.delete_image', image_id=image.id) }}" onsubmit="return confirm('Delete this vehicle photo permanently?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-danger btn-sm mt-2" type="submit">Delete photo</button>
+      </form>
+      {% else %}
+      <small class="text-muted mt-2">At least 5 photos must remain</small>
+      {% endif %}
       <div class="d-flex gap-2 mt-2">
         <button type="button" class="btn btn-outline-secondary btn-sm photo-move-left" aria-label="Move photo earlier">←</button>
         <button type="button" class="btn btn-outline-secondary btn-sm photo-move-right" aria-label="Move photo later">→</button>

@@ -152,7 +152,8 @@ def admin_profile_detail(profile_id):
           {% if profile.can_manage(current_user) %}<a class="btn btn-outline-primary mb-3" href="{{ url_for('cars.add_car', seller_profile_id=profile.id) }}">Add vehicle for this seller</a>{% endif %}
           <ul class="list-group">{% for car in vehicles %}
           <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ car.brand }} {{ car.model }} · {{ car.registration_number }}<br><small class="text-muted">{{ car.status }}</small></span>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=car.id) }}">View car</a></li>
+          <span><a class="btn btn-sm btn-outline-secondary" href="{{ url_for('cars.car_details', car_id=car.id) }}">View car</a>
+          {% if profile.can_manage(current_user) %}<a class="btn btn-sm btn-primary" href="{{ url_for('cars.edit_car', car_id=car.id) }}">Edit car</a>{% endif %}</span></li>
           {% else %}<li class="list-group-item">No linked vehicles yet.</li>{% endfor %}</ul>
         </section><section class="card p-3"><h2 class="h5">Activity history</h2>
         <ul class="list-group list-group-flush">{% for entry in history %}<li class="list-group-item">{{ entry.action|replace('_', ' ')|title }} <small class="text-muted">{{ entry.created_at.strftime('%d %b %Y %H:%M') }}</small></li>

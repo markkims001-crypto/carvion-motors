@@ -1182,7 +1182,9 @@ def edit_car(car_id):
 
     car = db.get_or_404(Car, car_id)
 
-    if car.seller_id != current_user.id:
+    is_admin = current_user.role == "admin"
+    managed_allowed = not car.seller_profile or car.seller_profile.can_manage(current_user)
+    if car.seller_id != current_user.id and (not is_admin or not managed_allowed):
 
         flash(
             "You are not allowed to edit this car.",
@@ -1264,7 +1266,7 @@ def edit_car(car_id):
             db.session.commit()
 
             flash("Car updated successfully.", "success")
-            return redirect(url_for("cars.seller_dashboard"))
+            return redirect(url_for("admin.car_details", car_id=car.id) if is_admin else url_for("cars.seller_dashboard"))
 
         except Exception:
             db.session.rollback()

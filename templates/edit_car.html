@@ -296,69 +296,93 @@ Upload a new image only if you want to replace an existing one.
 
 
 
-<div class="row g-3">
-
-
-
+<p class="text-muted">Drag photos into the order you want. The first photo becomes the cover image everywhere on Carvion Motors. Changes save automatically.</p>
+<div id="photo-order-status" role="status" aria-live="polite" class="small mb-2"></div>
+<div id="car-photo-sorter" class="row g-3" data-reorder-url="{{ url_for('cars.reorder_photos', car_id=car.id) }}">
 {% for image in car.images %}
-
-
-
-<div class="col-md-4">
-
-
-<div class="card p-3">
-
-
-<img
-
-src="{{ url_for(
-'static',
-filename=image.filename
-)}}"
-
-class="img-fluid rounded mb-2"
-
-height="180">
-
-
-
-
-
-<label>
-
-Replace Image
-
-</label>
-
-
-
-<input
-
-class="form-control"
-
-type="file"
-
-name="image{{ loop.index }}"
-
-accept="image/*">
-
-
-
-
-
-</div>
-
-
-</div>
-
-
-
+  <div class="col-6 col-md-4 car-photo-item" draggable="true" data-image-id="{{ image.id }}" style="cursor:grab">
+    <div class="card p-2 h-100">
+      <span class="photo-position badge bg-dark mb-2">{{ 'Cover photo' if loop.first else 'Photo ' ~ loop.index }}</span>
+      <img src="{{ image.filename }}" alt="Vehicle photo {{ loop.index }}" class="img-fluid rounded" style="height:170px;object-fit:cover;width:100%" draggable="false">
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm photo-move-left" aria-label="Move photo earlier">←</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm photo-move-right" aria-label="Move photo later">→</button>
+      </div>
+    </div>
+  </div>
 {% endfor %}
-
-
-
 </div>
+<script>
+(function () {
+  const sorter = document.getElementById('car-photo-sorter');
+  if (!sorter) return;
+  const status = document.getElementById('photo-order-status');
+  const csrf = {{ csrf_token()|tojson }};
+  let dragging = null;
+  let busy = false;
+  const items = () => Array.from(sorter.querySelectorAll('.car-photo-item'));
+  const snapshot = () => items().map(el => Number(el.dataset.imageId));
+  const refresh = () => items().forEach((el, index) => {
+    el.querySelector('.photo-position').textContent = index === 0 ? 'Cover photo' : 'Photo ' + (index + 1);
+  });
+  async function save(previous) {
+    if (busy) return;
+    busy = true;
+    status.textContent = 'Saving photo order…';
+    try {
+      const response = await fetch(sorter.dataset.reorderUrl, {
+        method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type':'application/json', 'X-CSRFToken':csrf},
+        body: JSON.stringify({image_ids:snapshot()})
+      });
+      if (!response.ok) throw new Error('Save failed');
+      status.textContent = 'Photo order saved. Your cover image is updated.';
+    } catch (error) {
+      const byId = new Map(items().map(el => [Number(el.dataset.imageId), el]));
+      previous.forEach(id => sorter.appendChild(byId.get(id)));
+      refresh();
+      status.textContent = 'Could not save photo order. Please try again.';
+    } finally { busy = false; }
+  }
+  sorter.addEventListener('dragstart', event => {
+    if (busy) { event.preventDefault(); return; }
+    dragging = event.target.closest('.car-photo-item');
+    if (!dragging) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', dragging.dataset.imageId);
+  });
+  sorter.addEventListener('dragover', event => {
+    if (dragging && event.target.closest('.car-photo-item')) event.preventDefault();
+  });
+  sorter.addEventListener('drop', event => {
+    const target = event.target.closest('.car-photo-item');
+    if (!dragging || !target || target === dragging || busy) return;
+    event.preventDefault();
+    const previous = snapshot();
+    const elements = items();
+    const before = elements.indexOf(dragging) > elements.indexOf(target);
+    sorter.insertBefore(dragging, before ? target : target.nextSibling);
+    refresh();
+    save(previous);
+    dragging = null;
+  });
+  sorter.addEventListener('dragend', () => { dragging = null; });
+  sorter.addEventListener('click', event => {
+    const button = event.target.closest('.photo-move-left, .photo-move-right');
+    if (!button || busy) return;
+    const item = button.closest('.car-photo-item');
+    const all = items();
+    const index = all.indexOf(item);
+    const targetIndex = index + (button.classList.contains('photo-move-left') ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= all.length) return;
+    const previous = snapshot();
+    if (targetIndex < index) sorter.insertBefore(item, all[targetIndex]);
+    else sorter.insertBefore(all[targetIndex], item);
+    refresh();
+    save(previous);
+  });
+})();
+</script>
 
 
 

@@ -932,6 +932,7 @@ def add_car():
             car_image = CarImage(
 
                 car_id=car.id,
+                sort_order=index,
 
                 filename=image_url,
 
@@ -1134,6 +1135,38 @@ def my_cars():
         "dashboard.html",
         cars=cars_list
     )
+
+
+# ============================================================
+# REORDER CAR PHOTOS
+# ============================================================
+
+@cars.route("/cars/<int:car_id>/reorder-photos", methods=["POST"])
+@login_required
+def reorder_photos(car_id):
+    car = db.get_or_404(Car, car_id)
+    if car.seller_id != current_user.id and current_user.role != "admin":
+        return {"error": "Permission denied"}, 403
+
+    payload = request.get_json(silent=True) or {}
+    image_ids = payload.get("image_ids")
+    if (not isinstance(image_ids, list) or
+            not all(type(value) is int for value in image_ids) or
+            len(image_ids) != len(car.images) or
+            len(set(image_ids)) != len(image_ids) or
+            set(image_ids) != {image.id for image in car.images}):
+        return {"error": "Invalid image order"}, 400
+
+    by_id = {image.id: image for image in car.images}
+    for position, image_id in enumerate(image_ids, start=1):
+        by_id[image_id].sort_order = position
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Unable to reorder photos for vehicle %s", car_id)
+        return {"error": "Unable to save image order"}, 500
+    return {"ok": True, "cover_image_id": image_ids[0]}
 
 
 # ============================================================

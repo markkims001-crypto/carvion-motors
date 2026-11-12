@@ -305,7 +305,8 @@ class Car(db.Model):
     images = db.relationship(
         "CarImage",
         back_populates="car",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="CarImage.sort_order, CarImage.id"
     )
 
     # ========================================================
@@ -380,6 +381,8 @@ class CarImage(db.Model):
         db.String(255),
         nullable=True
     )
+
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default="0")
 
     image_type = db.Column(
         db.String(50),

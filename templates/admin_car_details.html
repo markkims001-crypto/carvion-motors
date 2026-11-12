@@ -25,6 +25,9 @@
         </p>
     </div>
 
+    {% if not car.seller_profile or car.seller_profile.can_manage(current_user) %}
+    <a class="btn btn-primary" href="{{ url_for('cars.edit_car', car_id=car.id) }}">Edit Vehicle</a>
+    {% endif %}
     <a href="{{ url_for('admin.cars') }}"
        class="btn btn-outline-secondary">
         ← Back to Car Management

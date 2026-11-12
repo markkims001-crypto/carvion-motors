@@ -500,6 +500,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const submitButton = document.getElementById("submitButton");
 
     let previewUrls = [];
+    let selectedFiles = [];
+    function syncFiles() {
+        const transfer = new DataTransfer();
+        selectedFiles.forEach(file => transfer.items.add(file));
+        imageInput.files = transfer.files;
+        imageInput.setCustomValidity("");
+    }
 
     function clearPreviews() {
         previewUrls.forEach(function (url) {
@@ -510,11 +517,9 @@ document.addEventListener("DOMContentLoaded", function () {
         photoPreview.replaceChildren();
     }
 
-    imageInput.addEventListener("change", function () {
-
+    function renderPhotos() {
         clearPreviews();
-
-        const files = Array.from(imageInput.files || []);
+        const files = selectedFiles;
 
         imageInput.setCustomValidity("");
 
@@ -566,8 +571,24 @@ document.addEventListener("DOMContentLoaded", function () {
             item.appendChild(img);
             item.appendChild(caption);
 
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "btn btn-outline-danger btn-sm mt-2";
+            remove.textContent = "Remove";
+            remove.setAttribute("aria-label", "Remove " + file.name);
+            remove.addEventListener("click", function () {
+                selectedFiles.splice(selectedFiles.indexOf(file), 1);
+                syncFiles();
+                renderPhotos();
+            });
+            item.appendChild(remove);
             photoPreview.appendChild(item);
         });
+    }
+    imageInput.addEventListener("change", function () {
+        selectedFiles = selectedFiles.concat(Array.from(imageInput.files || []));
+        syncFiles();
+        renderPhotos();
     });
 
     form.addEventListener("submit", function (event) {

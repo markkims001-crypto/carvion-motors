@@ -292,6 +292,16 @@ def create_app():
 
                 with db.engine.begin() as connection:
                     connection.execute(text("""
+                        ALTER TABLE car_images
+                        ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0
+                    """))
+                    connection.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_car_images_car_sort
+                        ON car_images (car_id, sort_order, id)
+                    """))
+
+                with db.engine.begin() as connection:
+                    connection.execute(text("""
                         ALTER TABLE seller_profiles
                         ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT FALSE
                     """))
